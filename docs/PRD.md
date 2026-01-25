@@ -417,7 +417,7 @@ spec:
   - DoD: `kro.run` group の create/get/list/watch/update/patch が生成 RBAC に含まれる
 - [x] Event を出す場合は events の RBAC を追加する
   - DoD: controller が `events.k8s.io` / `corev1` event を作成できる
-- [ ] `make manifests` で RBAC が生成されることを確認する
+- [x] `make manifests` で RBAC が生成されることを確認する
 
 ### テスト
 - [ ] endpoint parse の table-driven unit test を追加する
