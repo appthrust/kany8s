@@ -2,15 +2,19 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -278,5 +282,156 @@ func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
 	}
 	if spec2["version"] != "1.34" {
 		t.Fatalf("instance spec.version after drift = %v, want %q", spec2["version"], "1.34")
+	}
+}
+
+func TestKany8sControlPlaneReconciler_RequeuesWhenRGDNotFound(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp).WithStatusSubresource(cp).Build()
+
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter > 0")
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	cond := meta.FindStatusCondition(got.Status.Conditions, "ResourceGraphDefinitionResolved")
+	if cond == nil {
+		t.Fatalf("expected ResourceGraphDefinitionResolved condition")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != "ResourceGraphDefinitionNotFound" {
+		t.Fatalf("condition reason = %q, want %q", cond.Reason, "ResourceGraphDefinitionNotFound")
+	}
+	if !strings.Contains(cond.Message, "eks-control-plane") {
+		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "eks-control-plane")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, "ResourceGraphDefinitionNotFound") {
+			t.Fatalf("event = %q, want to contain %q", evt, "ResourceGraphDefinitionNotFound")
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
+	}
+}
+
+func TestKany8sControlPlaneReconciler_RequeuesWhenRGDInvalid(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				// kind is intentionally missing
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).WithStatusSubresource(cp).Build()
+
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter > 0")
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	cond := meta.FindStatusCondition(got.Status.Conditions, "ResourceGraphDefinitionResolved")
+	if cond == nil {
+		t.Fatalf("expected ResourceGraphDefinitionResolved condition")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != "ResourceGraphDefinitionInvalid" {
+		t.Fatalf("condition reason = %q, want %q", cond.Reason, "ResourceGraphDefinitionInvalid")
+	}
+	if !strings.Contains(cond.Message, "missing spec.schema.kind") {
+		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "missing spec.schema.kind")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, "ResourceGraphDefinitionInvalid") {
+			t.Fatalf("event = %q, want to contain %q", evt, "ResourceGraphDefinitionInvalid")
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
 	}
 }

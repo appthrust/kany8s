@@ -374,7 +374,7 @@ spec:
   - DoD: `spec.version` を手動で変えても reconcile で元に戻る
 - [x] kro instance に `OwnerReference`(controller=true) を付与し、削除連鎖できるようにする
 	- DoD: `Kany8sControlPlane` 削除で kro instance が GC される
-- [ ] RGD が見つからない/不正な場合の扱いを「Condition + Event + requeue」で統一する
+- [x] RGD が見つからない/不正な場合の扱いを「Condition + Event + requeue」で統一する
   - DoD: `kubectl describe kany8scontrolplane <name>` で失敗理由が追える
 
 ### Controller: status 正規化 contract の消費と CAPI contract の充足

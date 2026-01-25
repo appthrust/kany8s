@@ -30,3 +30,5 @@
 - 2026-01-25: Implemented kro instance `.spec` rendering from `Kany8sControlPlane.spec.kroSpec` with enforced `.spec.version`; added unit tests covering drift correction; verified `make test` and `make lint`.
 
 - 2026-01-25: Set controller OwnerReference on kro instances (GC on Kany8sControlPlane delete); added unit test; verified `make test` and `make lint`.
+
+- 2026-01-25: Standardized missing/invalid kro ResourceGraphDefinition handling (Condition + Warning Event + RequeueAfter) in `Kany8sControlPlane` reconcile; added unit tests; verified `make test` and `make lint`.

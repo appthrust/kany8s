@@ -19,21 +19,38 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/kro"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	conditionTypeResourceGraphDefinitionResolved = "ResourceGraphDefinitionResolved"
+
+	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
+	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
+
+	rgdResolveRequeueAfter = 30 * time.Second
+)
+
 // Kany8sControlPlaneReconciler reconciles a Kany8sControlPlane object
 type Kany8sControlPlaneReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +77,7 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, cp.Spec.ResourceGraphDefinitionRef.Name)
 	if err != nil {
 		log.Error(err, "resolve kro instance GVK")
-		return ctrl.Result{}, err
+		return r.requeueWithRGDResolutionCondition(ctx, cp, err)
 	}
 
 	instance := &unstructured.Unstructured{}
@@ -93,6 +110,37 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sControlPlaneReconciler) requeueWithRGDResolutionCondition(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, resolveErr error) (ctrl.Result, error) {
+	reason := reasonResourceGraphDefinitionInvalid
+	message := resolveErr.Error()
+	if errors.IsNotFound(resolveErr) {
+		reason = reasonResourceGraphDefinitionNotFound
+		message = fmt.Sprintf("ResourceGraphDefinition %q not found", cp.Spec.ResourceGraphDefinitionRef.Name)
+	}
+
+	cond := metav1.Condition{
+		Type:               conditionTypeResourceGraphDefinitionResolved,
+		Status:             metav1.ConditionFalse,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: cp.Generation,
+	}
+
+	prev := meta.FindStatusCondition(cp.Status.Conditions, cond.Type)
+	shouldEmit := prev == nil || prev.Status != cond.Status || prev.Reason != cond.Reason || prev.Message != cond.Message
+	meta.SetStatusCondition(&cp.Status.Conditions, cond)
+
+	if err := r.Status().Update(ctx, cp); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if shouldEmit && r.Recorder != nil {
+		r.Recorder.Event(cp, corev1.EventTypeWarning, reason, message)
+	}
+
+	return ctrl.Result{RequeueAfter: rgdResolveRequeueAfter}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
