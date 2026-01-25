@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -40,6 +41,10 @@ import (
 
 const (
 	conditionTypeResourceGraphDefinitionResolved = "ResourceGraphDefinitionResolved"
+	conditionTypeCreating                        = "Creating"
+	conditionTypeReady                           = "Ready"
+
+	defaultNotReadyMessage = "waiting for control plane to become ready"
 
 	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
 	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
@@ -115,6 +120,8 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		log.Error(err, "read kro instance status")
 		return ctrl.Result{}, err
 	}
+
+	controlPlaneReady := instanceStatus.Ready && instanceStatus.Endpoint != ""
 	if instanceStatus.Endpoint != "" {
 		cpEndpoint, err := endpoint.Parse(instanceStatus.Endpoint)
 		if err != nil {
@@ -141,7 +148,74 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	if err := r.reconcileConditionsAndFailure(ctx, cp, instanceStatus, controlPlaneReady); err != nil {
+		log.Error(err, "update control plane conditions")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sControlPlaneReconciler) reconcileConditionsAndFailure(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, instanceStatus kro.InstanceStatus, controlPlaneReady bool) error {
+	before := cp.DeepCopy()
+
+	if controlPlaneReady {
+		reason := instanceStatus.Reason
+		message := instanceStatus.Message
+		if reason == "" {
+			reason = "Ready"
+		}
+		if message == "" {
+			message = "control plane is ready"
+		}
+
+		conditions.Set(cp, metav1.Condition{
+			Type:    conditionTypeReady,
+			Status:  metav1.ConditionTrue,
+			Reason:  reason,
+			Message: message,
+		})
+		conditions.Delete(cp, conditionTypeCreating)
+		cp.Status.FailureReason = nil
+		cp.Status.FailureMessage = nil
+	} else {
+		reason := instanceStatus.Reason
+		message := instanceStatus.Message
+		if reason == "" {
+			reason = "Creating"
+		}
+		if message == "" {
+			message = defaultNotReadyMessage
+		}
+
+		conditions.Set(cp, metav1.Condition{
+			Type:    conditionTypeReady,
+			Status:  metav1.ConditionFalse,
+			Reason:  reason,
+			Message: message,
+		})
+		conditions.Set(cp, metav1.Condition{
+			Type:    conditionTypeCreating,
+			Status:  metav1.ConditionTrue,
+			Reason:  reason,
+			Message: message,
+		})
+
+		if instanceStatus.Reason != "" {
+			reasonCopy := instanceStatus.Reason
+			cp.Status.FailureReason = &reasonCopy
+		} else {
+			cp.Status.FailureReason = nil
+		}
+		if instanceStatus.Message != "" {
+			messageCopy := instanceStatus.Message
+			cp.Status.FailureMessage = &messageCopy
+		} else {
+			cp.Status.FailureMessage = nil
+		}
+	}
+
+	return r.Status().Patch(ctx, cp, client.MergeFrom(before))
 }
 
 func (r *Kany8sControlPlaneReconciler) requeueWithRGDResolutionCondition(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, resolveErr error) (ctrl.Result, error) {

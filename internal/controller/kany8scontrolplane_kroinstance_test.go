@@ -20,6 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const provisioningReason = "Provisioning"
+
 func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 	t.Parallel()
 
@@ -64,7 +66,7 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 	}}
 	rgd.SetGroupVersionKind(rgdGVK)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).WithStatusSubresource(cp).Build()
 
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
@@ -131,7 +133,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 	}}
 	rgd.SetGroupVersionKind(rgdGVK)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).WithStatusSubresource(cp).Build()
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -218,7 +220,7 @@ func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
 	}}
 	rgd.SetGroupVersionKind(rgdGVK)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).WithStatusSubresource(cp).Build()
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -621,4 +623,228 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenRGDInvalid(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatalf("expected an event to be recorded")
 	}
+}
+
+func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndFailureFieldsWhenNotReady(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":   false,
+			"reason":  provisioningReason,
+			"message": defaultNotReadyMessage,
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	creatingCond := meta.FindStatusCondition(got.Status.Conditions, "Creating")
+	if creatingCond == nil {
+		t.Fatalf("expected Creating condition")
+	}
+	if creatingCond.Status != metav1.ConditionTrue {
+		t.Fatalf("Creating condition status = %q, want %q", creatingCond.Status, metav1.ConditionTrue)
+	}
+	if creatingCond.Reason != provisioningReason {
+		t.Fatalf("Creating condition reason = %q, want %q", creatingCond.Reason, provisioningReason)
+	}
+	if creatingCond.Message != defaultNotReadyMessage {
+		t.Fatalf("Creating condition message = %q, want %q", creatingCond.Message, defaultNotReadyMessage)
+	}
+
+	readyCond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if readyCond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if readyCond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", readyCond.Status, metav1.ConditionFalse)
+	}
+	if readyCond.Reason != provisioningReason {
+		t.Fatalf("Ready condition reason = %q, want %q", readyCond.Reason, provisioningReason)
+	}
+	if readyCond.Message != defaultNotReadyMessage {
+		t.Fatalf("Ready condition message = %q, want %q", readyCond.Message, defaultNotReadyMessage)
+	}
+
+	if got.Status.FailureReason == nil {
+		t.Fatalf("expected failureReason to be set")
+	}
+	if *got.Status.FailureReason != provisioningReason {
+		t.Fatalf("failureReason = %q, want %q", *got.Status.FailureReason, provisioningReason)
+	}
+	if got.Status.FailureMessage == nil {
+		t.Fatalf("expected failureMessage to be set")
+	}
+	if *got.Status.FailureMessage != defaultNotReadyMessage {
+		t.Fatalf("failureMessage = %q, want %q", *got.Status.FailureMessage, defaultNotReadyMessage)
+	}
+}
+
+func TestKany8sControlPlaneReconciler_SetsReadyConditionAndClearsFailureFieldsWhenReady(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+		Status: controlplanev1alpha1.Kany8sControlPlaneStatus{
+			FailureReason:  ptrToString(provisioningReason),
+			FailureMessage: ptrToString("waiting"),
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":    true,
+			"endpoint": "https://api.demo.example.com:6443",
+			"reason":   "Ready",
+			"message":  "control plane is ready",
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	readyCond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if readyCond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if readyCond.Status != metav1.ConditionTrue {
+		t.Fatalf("Ready condition status = %q, want %q", readyCond.Status, metav1.ConditionTrue)
+	}
+
+	creatingCond := meta.FindStatusCondition(got.Status.Conditions, "Creating")
+	if creatingCond != nil {
+		t.Fatalf("expected Creating condition to be absent when Ready=true")
+	}
+
+	if got.Status.FailureReason != nil {
+		t.Fatalf("expected failureReason to be cleared, got %q", *got.Status.FailureReason)
+	}
+	if got.Status.FailureMessage != nil {
+		t.Fatalf("expected failureMessage to be cleared, got %q", *got.Status.FailureMessage)
+	}
+}
+
+func ptrToString(s string) *string {
+	return &s
 }

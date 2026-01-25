@@ -390,7 +390,7 @@ spec:
   - DoD: endpoint が parse できたら `spec.controlPlaneEndpoint` が埋まる
 - [x] endpoint が確定したら `status.initialization.controlPlaneInitialized=true` を設定する
   - DoD: initialized が True になった後は false に戻らない(仕様として戻す必要が無い)
-- [ ] `failureReason/failureMessage` と Conditions を `ready/endpoint/reason/message` に基づいて更新する
+- [x] `failureReason/failureMessage` と Conditions を `ready/endpoint/reason/message` に基づいて更新する
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - 条件(例): Creating/Ready/Failed を `sigs.k8s.io/cluster-api/util/conditions` で更新
   - DoD: Ready=false の間は Creating が立ち、Ready=true + endpoint で Ready が True になる

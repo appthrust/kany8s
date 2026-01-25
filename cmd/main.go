@@ -181,7 +181,7 @@ func main() {
 	if err := (&controller.Kany8sControlPlaneReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"),
+		Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"), //nolint:staticcheck
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Kany8sControlPlane")
 		os.Exit(1)
