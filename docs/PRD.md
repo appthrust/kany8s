@@ -394,7 +394,7 @@ spec:
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - 条件(例): Creating/Ready/Failed を `sigs.k8s.io/cluster-api/util/conditions` で更新
   - DoD: Ready=false の間は Creating が立ち、Ready=true + endpoint で Ready が True になる
-- [ ] 未 Ready の間のポーリング間隔を定数化する
+- [x] 未 Ready の間のポーリング間隔を定数化する
   - 例: `internal/constants/constants.go` などに `RequeueAfter = 15 * time.Second`
   - DoD: reconcile が過剰に回らず、endpoint/ready の変化に追従できる
 

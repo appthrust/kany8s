@@ -691,9 +691,12 @@ func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndFailureFieldsWhenN
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
-	_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
 	if err != nil {
 		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 15*time.Second {
+		t.Fatalf("RequeueAfter = %s, want %s", res.RequeueAfter, 15*time.Second)
 	}
 
 	got := &controlplanev1alpha1.Kany8sControlPlane{}

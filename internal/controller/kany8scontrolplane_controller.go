@@ -23,6 +23,7 @@ import (
 	"time"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
+	"github.com/reoring/kany8s/internal/constants"
 	"github.com/reoring/kany8s/internal/endpoint"
 	"github.com/reoring/kany8s/internal/kro"
 	corev1 "k8s.io/api/core/v1"
@@ -151,6 +152,9 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.reconcileConditionsAndFailure(ctx, cp, instanceStatus, controlPlaneReady); err != nil {
 		log.Error(err, "update control plane conditions")
 		return ctrl.Result{}, err
+	}
+	if !controlPlaneReady {
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
 	return ctrl.Result{}, nil
