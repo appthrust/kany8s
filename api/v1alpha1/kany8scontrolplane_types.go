@@ -17,22 +17,42 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Kany8sControlPlaneSpec defines the desired state of Kany8sControlPlane
-type Kany8sControlPlaneSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+// ResourceGraphDefinitionReference identifies a kro ResourceGraphDefinition.
+//
+// ResourceGraphDefinition is expected to be cluster-scoped.
+type ResourceGraphDefinitionReference struct {
+	// name is the name of the ResourceGraphDefinition.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+}
 
-	// foo is an example field of Kany8sControlPlane. Edit kany8scontrolplane_types.go to remove/update
+// Kany8sControlPlaneSpec defines the desired state of Kany8sControlPlane.
+type Kany8sControlPlaneSpec struct {
+	// version is the Kubernetes version to use for the control plane.
+	// +kubebuilder:validation:MinLength=1
+	Version string `json:"version"`
+
+	// resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
+	// provision the managed control plane.
+	ResourceGraphDefinitionRef ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef"`
+
+	// kroSpec is an arbitrary, provider-specific object passed through to the kro
+	// instance spec.
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`
+
+	// controlPlaneEndpoint is the endpoint used by Cluster API to communicate with
+	// the control plane.
+	// +optional
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
 }
 
 // Kany8sControlPlaneStatus defines the observed state of Kany8sControlPlane.

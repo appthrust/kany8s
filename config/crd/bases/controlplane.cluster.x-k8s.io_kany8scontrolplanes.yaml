@@ -40,10 +40,49 @@ spec:
           spec:
             description: spec defines the desired state of Kany8sControlPlane
             properties:
-              foo:
-                description: foo is an example field of Kany8sControlPlane. Edit kany8scontrolplane_types.go
-                  to remove/update
+              controlPlaneEndpoint:
+                description: |-
+                  controlPlaneEndpoint is the endpoint used by Cluster API to communicate with
+                  the control plane.
+                minProperties: 1
+                properties:
+                  host:
+                    description: host is the hostname on which the API server is serving.
+                    maxLength: 512
+                    minLength: 1
+                    type: string
+                  port:
+                    description: port is the port on which the API server is serving.
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                type: object
+              kroSpec:
+                description: |-
+                  kroSpec is an arbitrary, provider-specific object passed through to the kro
+                  instance spec.
+                x-kubernetes-preserve-unknown-fields: true
+              resourceGraphDefinitionRef:
+                description: |-
+                  resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
+                  provision the managed control plane.
+                properties:
+                  name:
+                    description: name is the name of the ResourceGraphDefinition.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
+              version:
+                description: version is the Kubernetes version to use for the control
+                  plane.
+                minLength: 1
                 type: string
+            required:
+            - resourceGraphDefinitionRef
+            - version
             type: object
           status:
             description: status defines the observed state of Kany8sControlPlane

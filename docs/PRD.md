@@ -324,7 +324,7 @@ spec:
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --resource --controller=false`
   - 成果物: `api/v1alpha1/kany8scontrolplane_types.go`
   - DoD: `make generate` が通る(フィールド追加前でも OK)
-- [ ] `Kany8sControlPlaneSpec` を MVP 要件どおりに定義する
+- [x] `Kany8sControlPlaneSpec` を MVP 要件どおりに定義する
   - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
   - 追加:
     - `spec.version` (required)
