@@ -104,3 +104,34 @@ func TestExamplesKroEKSPodIdentitySetRGDSampleExists(t *testing.T) {
 		}
 	}
 }
+
+func TestExamplesKroEKSPlatformClusterRGDSampleExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rgdPath := filepath.Join(root, "examples", "kro", "eks", "platform-cluster-rgd.yaml")
+	rgdBytes, err := os.ReadFile(rgdPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rgdPath, err)
+	}
+
+	rgd := string(rgdBytes)
+	wantRGDSubstrings := []string{
+		"apiVersion: kro.run/v1alpha1",
+		"kind: ResourceGraphDefinition",
+		"name: eks-platform-cluster.kro.run",
+		"kind: PlatformCluster",
+		"kind: EKSControlPlane",
+		"kind: EKSAddons",
+		"kind: PodIdentitySet",
+		"endpoint: ${controlPlane",
+		"ready: ${int(controlPlane",
+		"clusterName: ${controlPlane.metadata.name}",
+		"subnetIDs:",
+		"securityGroupIDs:",
+	}
+	for _, want := range wantRGDSubstrings {
+		if !strings.Contains(rgd, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(rgdPath), want)
+		}
+	}
+}

@@ -465,7 +465,7 @@ spec:
   - DoD: Addon の Ready/依存が ControlPlane Ready と分離できる
 - [x] `examples/kro/eks/pod-identity-set-rgd.yaml` を作成し、Role 群 + PodIdentityAssociation 群を別 RGD に分離する
   - DoD: Role -> PodIdentityAssociation の順序が DAG で保証できる
-- [ ] `examples/kro/eks/platform-cluster-rgd.yaml` を作成し、chaining で部品 RGD を束ねる
+- [x] `examples/kro/eks/platform-cluster-rgd.yaml` を作成し、chaining で部品 RGD を束ねる
   - DoD: 親 instance の `status.ready/endpoint` が ControlPlane と一致する
 
 ### 動作確認手順の整備

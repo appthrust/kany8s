@@ -1,0 +1,51 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-platform-cluster.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: PlatformCluster
+    spec:
+      region: string | required=true description="AWS region"
+      version: string | required=true description="Kubernetes version"
+      vpc:
+        subnetIDs: '[]string | required=true description="Subnet IDs"'
+        securityGroupIDs: '[]string | default=[] description="Security group IDs"'
+
+    status:
+      endpoint: ${controlPlane.?status.?endpoint.orValue("")}
+      ready: ${int(controlPlane.?status.?ready.orValue(false) == true) == 1}
+
+  resources:
+    - id: controlPlane
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: EKSControlPlane
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          version: ${schema.spec.version}
+          vpc:
+            subnetIDs: ${schema.spec.vpc.subnetIDs}
+            securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
+
+    - id: addons
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: EKSAddons
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          region: ${schema.spec.region}
+          clusterName: ${controlPlane.metadata.name}
+
+    - id: podIdentitySet
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: PodIdentitySet
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          region: ${schema.spec.region}
+          clusterName: ${controlPlane.metadata.name}
