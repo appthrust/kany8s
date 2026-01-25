@@ -514,7 +514,7 @@ spec:
 ## M5: マルチプロバイダ拡張と配布
 
 ### 配布/リリース
-- [ ] `config/default` を整備し `make deploy` でインストールできるようにする
+- [x] `config/default` を整備し `make deploy` でインストールできるようにする
   - DoD: kind などの検証クラスタに 1 コマンドでデプロイできる
 - [ ] Helm chart を作るか、clusterctl provider として `components.yaml` を提供するかを決める
   - DoD: "利用者がどうインストールするか" が 1 つに決まる
