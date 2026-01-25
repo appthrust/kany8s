@@ -426,7 +426,7 @@ spec:
 - [x] RGD schema(apiVersion/kind) -> instance GVK 解決の unit test を追加する
   - 追加: `internal/kro/gvk_test.go`
   - DoD: `schema.apiVersion` が `v1alpha1` / `example.com/v1alpha1` の両方で期待結果になる
-- [ ] fake client で controller の reconcile を unit test する
+- [x] fake client で controller の reconcile を unit test する
   - 追加: `controllers/kany8scontrolplane_controller_test.go` (例)
   - シナリオ例:
     - instance 未 Ready -> `RequeueAfter` が返る
