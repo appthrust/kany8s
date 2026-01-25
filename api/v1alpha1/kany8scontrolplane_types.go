@@ -66,6 +66,15 @@ type Kany8sControlPlaneInitializationStatus struct {
 
 // Kany8sControlPlaneStatus defines the observed state of Kany8sControlPlane.
 type Kany8sControlPlaneStatus struct {
+	// version represents the minimum Kubernetes version for the control plane.
+	//
+	// This field is required by the Cluster API control plane provider contract and is used by the
+	// topology controller to determine provisioning and upgrade state.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=256
+	Version string `json:"version,omitempty"`
+
 	// initialization holds fields related to control plane initialization.
 	// +optional
 	Initialization Kany8sControlPlaneInitializationStatus `json:"initialization,omitzero"`
@@ -91,6 +100,7 @@ type Kany8sControlPlaneStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
 // +kubebuilder:printcolumn:name="INITIALIZED",type=boolean,JSONPath=".status.initialization.controlPlaneInitialized"
 // +kubebuilder:printcolumn:name="ENDPOINT",type=string,JSONPath=".spec.controlPlaneEndpoint.host"
 

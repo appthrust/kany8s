@@ -155,7 +155,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 		if ref.APIVersion != "controlplane.cluster.x-k8s.io/v1alpha1" {
 			continue
 		}
-		if ref.Kind != "Kany8sControlPlane" {
+		if ref.Kind != kany8sControlPlaneKind {
 			continue
 		}
 		if ref.Name != demoName {

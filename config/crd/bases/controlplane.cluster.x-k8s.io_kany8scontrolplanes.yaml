@@ -4,6 +4,8 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
+  labels:
+    cluster.x-k8s.io/v1beta2: v1alpha1
   name: kany8scontrolplanes.controlplane.cluster.x-k8s.io
 spec:
   group: controlplane.cluster.x-k8s.io
@@ -177,6 +179,15 @@ spec:
                       initialization.
                     type: boolean
                 type: object
+              version:
+                description: |-
+                  version represents the minimum Kubernetes version for the control plane.
+
+                  This field is required by the Cluster API control plane provider contract and is used by the
+                  topology controller to determine provisioning and upgrade state.
+                maxLength: 256
+                minLength: 1
+                type: string
             type: object
         required:
         - spec

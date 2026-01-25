@@ -508,7 +508,7 @@ spec:
 - [x] `clusterctl` で Kany8s provider を扱える packaging 方針を決める
   - 例: `components.yaml` 生成、Helm chart の採否
   - DoD: "clusterctl init" 相当の手順が 1 つに定まる
-- [ ] ClusterClass 経由で `Cluster` を作成し、Kany8sControlPlane が生成/更新されることを確認する
+- [x] ClusterClass 経由で `Cluster` を作成し、Kany8sControlPlane が生成/更新されることを確認する
   - DoD: topology 変更で kro instance まで追従する
 
 ## M5: マルチプロバイダ拡張と配布

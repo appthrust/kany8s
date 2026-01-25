@@ -267,6 +267,9 @@ func (r *Kany8sControlPlaneReconciler) reconcileConditionsAndFailure(ctx context
 		conditions.Delete(cp, conditionTypeCreating)
 		cp.Status.FailureReason = nil
 		cp.Status.FailureMessage = nil
+		if cp.Spec.Version != "" && cp.Status.Version != cp.Spec.Version {
+			cp.Status.Version = cp.Spec.Version
+		}
 	} else {
 		reason := instanceStatus.Reason
 		message := instanceStatus.Message

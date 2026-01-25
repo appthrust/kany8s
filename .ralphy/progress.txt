@@ -112,3 +112,5 @@
 - 2026-01-25: Added a ClusterClass + template sample showing variables/patches mapping into `Kany8sControlPlaneTemplate.spec.template.spec.kroSpec` (`examples/capi/clusterclass.yaml`); added a devtools test enforcing it; verified `make test` and `make lint`.
 
 - 2026-01-25: Documented the MVP `clusterctl` packaging approach (using `make build-installer` output as the `ControlPlaneProvider` components manifest) in `docs/runbooks/clusterctl.md`; added a devtools test enforcing the runbook exists; verified `make test` and `make lint`.
+
+- 2026-01-26: Enabled ClusterClass/Topology upgrades for `Kany8sControlPlane` by adding required CAPI contract labels to the generated CRD and implementing `status.version` (set once Ready); added a unit test verifying a topology version change propagates to the kro instance; verified `make test` and `make lint`.
