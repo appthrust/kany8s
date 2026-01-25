@@ -100,3 +100,5 @@
 - 2026-01-25: Documented Option A requirements for having the RGD create the CAPI-compatible `<cluster>-kubeconfig` Secret in `docs/design.md`; added a devtools test enforcing the section; verified `make test` and `make lint`.
 
 - 2026-01-25: Documented Option B input contract for having Kany8s create the CAPI-compatible `<cluster>-kubeconfig` Secret from a provider-specific source Secret; added a devtools test enforcing the design section; verified `make test` and `make lint`.
+
+- 2026-01-25: Added CAPI-compatible kubeconfig Secret contract helpers (`internal/kubeconfig`) for `<cluster>-kubeconfig` (type/label/data key) with unit tests; verified `make test` and `make lint`.

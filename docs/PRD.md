@@ -486,7 +486,7 @@ spec:
   - DoD: Secret 名/namespace/labels/type が CAPI contract と一致する
 - [x] (方針 B) Kany8s 側で kubeconfig Secret を作る場合の入力 contract を定義する
   - DoD: endpoint/CA/token 等の入手元が矛盾なく決まっている
-- [ ] `<cluster>-kubeconfig` Secret の contract を満たす
+- [x] `<cluster>-kubeconfig` Secret の contract を満たす
   - `type=cluster.x-k8s.io/secret`
   - `cluster.x-k8s.io/cluster-name=<cluster>` label
   - DoD: Cluster API が kubeconfig Secret を発見できる
