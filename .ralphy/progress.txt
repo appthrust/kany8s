@@ -2,3 +2,5 @@
 
 
 - 2026-01-25: Initialized Go module + kubebuilder scaffolding; verified `make test` and `make lint`.
+
+- 2026-01-25: Pinned Go toolchain + tracked/pinned dev tools (controller-gen, kustomize, setup-envtest, golangci-lint) in go.mod; added hack/tools.go and a unit test to enforce it; verified `make test` and `make lint`.

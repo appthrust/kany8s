@@ -305,7 +305,7 @@ spec:
   - コマンド: `go mod init <module>` / `kubebuilder init --domain cluster.x-k8s.io --repo <module>`
   - 成果物: `go.mod`, `main.go`, `config/`, `Makefile`
   - DoD: `make help` が表示でき、`go test ./...` が通る
-- [ ] Go バージョンと開発ツールバージョンを pin する
+- [x] Go バージョンと開発ツールバージョンを pin する
   - 触る: `go.mod` の `go` directive, `hack/tools.go` (例: `controller-gen`, `kustomize`, `setup-envtest`)
   - DoD: クリーンな checkout から `make generate` が再現性を持って動く
 - [ ] ローカルの開発ループを確認し、前提/手順を README に残す
