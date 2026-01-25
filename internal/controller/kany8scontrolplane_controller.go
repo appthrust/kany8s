@@ -24,6 +24,7 @@ import (
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/constants"
+	"github.com/reoring/kany8s/internal/dynamicwatch"
 	"github.com/reoring/kany8s/internal/endpoint"
 	"github.com/reoring/kany8s/internal/kro"
 	corev1 "k8s.io/api/core/v1"
@@ -32,12 +33,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -58,6 +63,8 @@ type Kany8sControlPlaneReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+
+	InstanceWatcher *dynamicwatch.Watcher
 }
 
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes,verbs=get;list;watch;create;update;patch;delete
@@ -89,6 +96,11 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		log.Error(err, "resolve kro instance GVK")
 		return r.requeueWithRGDResolutionCondition(ctx, cp, err)
+	}
+	if r.InstanceWatcher != nil {
+		if err := r.InstanceWatcher.EnsureWatch(ctx, instanceGVK); err != nil {
+			log.Error(err, "ensure dynamic watch for kro instance", "gvk", instanceGVK.String())
+		}
 	}
 
 	instance := &unstructured.Unstructured{}
@@ -259,9 +271,22 @@ func (r *Kany8sControlPlaneReconciler) requeueWithRGDResolutionCondition(ctx con
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Kany8sControlPlaneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	instanceEvents := make(chan event.GenericEvent, 1024)
+
+	dynClient, err := dynamic.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+
+	watcher := dynamicwatch.New(dynClient, instanceEvents)
+	if err := mgr.Add(watcher); err != nil {
+		return err
+	}
+	r.InstanceWatcher = watcher
+
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&controlplanev1alpha1.Kany8sControlPlane{}).
+		WatchesRawSource(source.Channel(instanceEvents, &handler.EnqueueRequestForObject{})).
 		Named("kany8scontrolplane").
 		Complete(r)
 }
