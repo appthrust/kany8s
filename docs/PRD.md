@@ -479,7 +479,7 @@ spec:
 ## M3: kubeconfig Secret (CAPI contract)
 
 ### kubeconfig 生成方式の決定と実装
-- [ ] provider-agnostic に kubeconfig を得る contract を決め、`docs/design.md` に追記する
+- [x] provider-agnostic に kubeconfig を得る contract を決め、`docs/design.md` に追記する
   - 例: kro instance status に `kubeconfigSecretRef` (name/namespace) を追加する
   - DoD: "RGD 側で何を出すか / Kany8s 側で何を読むか" が 1 枚で説明できる
 - [ ] (方針 A) RGD 側で kubeconfig Secret を作る場合の要件を定義する
