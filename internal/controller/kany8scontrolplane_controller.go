@@ -27,6 +27,7 @@ import (
 	"github.com/reoring/kany8s/internal/dynamicwatch"
 	"github.com/reoring/kany8s/internal/endpoint"
 	"github.com/reoring/kany8s/internal/kro"
+	"github.com/reoring/kany8s/internal/kubeconfig"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -72,6 +73,7 @@ type Kany8sControlPlaneReconciler struct {
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes/finalizers,verbs=update
 // +kubebuilder:rbac:groups=kro.run,resources=resourcegraphdefinitions,verbs=get;list;watch
 // +kubebuilder:rbac:groups=kro.run,resources=*,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
@@ -138,6 +140,11 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	if err := r.reconcileKubeconfigSecret(ctx, cp, instance); err != nil {
+		log.Error(err, "reconcile kubeconfig secret")
+		return ctrl.Result{}, err
+	}
+
 	controlPlaneReady := instanceStatus.Ready && instanceStatus.Endpoint != ""
 	if instanceStatus.Endpoint != "" {
 		cpEndpoint, err := endpoint.Parse(instanceStatus.Endpoint)
@@ -174,6 +181,68 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, instance *unstructured.Unstructured) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+	if instance == nil {
+		return fmt.Errorf("kro instance is nil")
+	}
+
+	sourceName, found, err := unstructured.NestedString(instance.Object, "status", "kubeconfigSecretRef", "name")
+	if err != nil {
+		return fmt.Errorf("read status.kubeconfigSecretRef.name: %w", err)
+	}
+	if !found || sourceName == "" {
+		return nil
+	}
+
+	sourceNamespace, foundNamespace, err := unstructured.NestedString(instance.Object, "status", "kubeconfigSecretRef", "namespace")
+	if err != nil {
+		return fmt.Errorf("read status.kubeconfigSecretRef.namespace: %w", err)
+	}
+	if !foundNamespace || sourceNamespace == "" {
+		sourceNamespace = cp.Namespace
+	}
+
+	sourceSecret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{Name: sourceName, Namespace: sourceNamespace}, sourceSecret); err != nil {
+		return err
+	}
+
+	kc, ok := sourceSecret.Data[kubeconfig.DataKey]
+	if !ok {
+		return fmt.Errorf("source secret %s/%s missing data[%q]", sourceNamespace, sourceName, kubeconfig.DataKey)
+	}
+
+	targetName, err := kubeconfig.SecretName(cp.Name)
+	if err != nil {
+		return err
+	}
+
+	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: targetName, Namespace: cp.Namespace}}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, target, func() error {
+		if err := controllerutil.SetControllerReference(cp, target, r.Scheme); err != nil {
+			return err
+		}
+		if target.Labels == nil {
+			target.Labels = map[string]string{}
+		}
+		target.Labels[kubeconfig.ClusterNameLabelKey] = cp.Name
+		target.Type = kubeconfig.SecretType
+		if target.Data == nil {
+			target.Data = map[string][]byte{}
+		}
+		target.Data[kubeconfig.DataKey] = kc
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Kany8sControlPlaneReconciler) reconcileConditionsAndFailure(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, instanceStatus kro.InstanceStatus, controlPlaneReady bool) error {

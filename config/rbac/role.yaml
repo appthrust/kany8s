@@ -6,6 +6,17 @@ metadata:
 rules:
 - apiGroups:
   - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
   - events.k8s.io
   resources:
   - events

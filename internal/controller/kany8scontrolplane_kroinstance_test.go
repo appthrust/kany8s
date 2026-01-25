@@ -41,8 +41,8 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 
 	cp := &controlplanev1alpha1.Kany8sControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
-			Namespace: "default",
+			Name:      demoName,
+			Namespace: demoNamespace,
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
@@ -71,21 +71,21 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: types.NamespacedName{Name: demoName, Namespace: demoNamespace}})
 	if err != nil {
 		t.Fatalf("reconcile: %v", err)
 	}
 
 	got := &unstructured.Unstructured{}
 	got.SetGroupVersionKind(instanceGVK)
-	if err := c.Get(context.Background(), client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+	if err := c.Get(context.Background(), client.ObjectKey{Name: demoName, Namespace: demoNamespace}, got); err != nil {
 		t.Fatalf("get kro instance: %v", err)
 	}
-	if got.GetName() != "demo" {
-		t.Fatalf("kro instance name = %q, want %q", got.GetName(), "demo")
+	if got.GetName() != demoName {
+		t.Fatalf("kro instance name = %q, want %q", got.GetName(), demoName)
 	}
-	if got.GetNamespace() != "default" {
-		t.Fatalf("kro instance namespace = %q, want %q", got.GetNamespace(), "default")
+	if got.GetNamespace() != demoNamespace {
+		t.Fatalf("kro instance namespace = %q, want %q", got.GetNamespace(), demoNamespace)
 	}
 }
 
@@ -107,8 +107,8 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 
 	cp := &controlplanev1alpha1.Kany8sControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
-			Namespace: "default",
+			Name:      demoName,
+			Namespace: demoNamespace,
 			UID:       types.UID("00000000-0000-0000-0000-000000000000"),
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
@@ -138,7 +138,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
-	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}}
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: demoName, Namespace: demoNamespace}}
 	_, err := r.Reconcile(ctx, req)
 	if err != nil {
 		t.Fatalf("reconcile: %v", err)
@@ -146,7 +146,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 
 	got := &unstructured.Unstructured{}
 	got.SetGroupVersionKind(instanceGVK)
-	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+	if err := c.Get(ctx, client.ObjectKey{Name: demoName, Namespace: demoNamespace}, got); err != nil {
 		t.Fatalf("get kro instance: %v", err)
 	}
 
@@ -158,7 +158,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 		if ref.Kind != "Kany8sControlPlane" {
 			continue
 		}
-		if ref.Name != "demo" {
+		if ref.Name != demoName {
 			continue
 		}
 

@@ -95,6 +95,46 @@ func TestGeneratedManagerRoleIncludesEventsRBAC(t *testing.T) {
 	}
 }
 
+func TestGeneratedManagerRoleIncludesSecretsRBAC(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rolePath := filepath.Join(root, "config", "rbac", "role.yaml")
+	roleBytes, err := os.ReadFile(rolePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rolePath, err)
+	}
+
+	var role rbacRole
+	if err := yaml.Unmarshal(roleBytes, &role); err != nil {
+		t.Fatalf("parse %q: %v", rolePath, err)
+	}
+
+	found := false
+	for _, rule := range role.Rules {
+		if !slices.Contains(rule.APIGroups, "") {
+			continue
+		}
+		if !slices.Contains(rule.Resources, "secrets") {
+			continue
+		}
+		missing := false
+		for _, verb := range []string{"create", "get", "list", "patch", "update", "watch"} {
+			if !slices.Contains(rule.Verbs, verb) {
+				missing = true
+				break
+			}
+		}
+		if missing {
+			continue
+		}
+		found = true
+		break
+	}
+	if !found {
+		t.Errorf("%s missing RBAC rule for core secrets with create/get/list/watch/update/patch", filepath.ToSlash(rolePath))
+	}
+}
+
 func TestGeneratedManagerRoleIncludesKany8sControlPlaneRBAC(t *testing.T) {
 	root := findRepoRoot(t)
 

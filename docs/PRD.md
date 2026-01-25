@@ -490,7 +490,7 @@ spec:
   - `type=cluster.x-k8s.io/secret`
   - `cluster.x-k8s.io/cluster-name=<cluster>` label
   - DoD: Cluster API が kubeconfig Secret を発見できる
-- [ ] kubeconfig Secret の作成/更新を reconcile に組み込み、回帰テストを追加する
+- [x] kubeconfig Secret の作成/更新を reconcile に組み込み、回帰テストを追加する
   - DoD: kubeconfig 周りの変更がテストで検知できる
 
 ## M4: ClusterClass/Topology と Template API
