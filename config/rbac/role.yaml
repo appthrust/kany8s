@@ -33,6 +33,17 @@ rules:
 - apiGroups:
   - kro.run
   resources:
+  - '*'
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kro.run
+  resources:
   - resourcegraphdefinitions
   verbs:
   - get

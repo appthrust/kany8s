@@ -48,3 +48,5 @@
 - 2026-01-25: Added a unit test covering the end-to-end polling flow (requeue while not Ready, then stop once Ready+endpoint) and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-01-25: Added manager RBAC to read kro `ResourceGraphDefinition` objects via kubebuilder RBAC markers; regenerated manifests and added a devtools test enforcing the generated `config/rbac/role.yaml`; verified `make test` and `make lint`.
+
+- 2026-01-25: Added broad manager RBAC for dynamically generated kro instances (`kro.run` resources `*` with create/get/list/watch/update/patch); regenerated manifests and updated the devtools RBAC test; verified `make test` and `make lint`.

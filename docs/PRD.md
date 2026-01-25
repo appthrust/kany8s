@@ -412,7 +412,7 @@ spec:
   - DoD: `kany8scontrolplanes` の CRUD + status/finalizers が生成 RBAC に含まれる
 - [x] `ResourceGraphDefinition` を読む RBAC を追加する
   - DoD: `resourcegraphdefinitions.kro.run` の get/list/watch が生成 RBAC に含まれる
-- [ ] 動的に生成される kro instance を create/update できる RBAC を追加する
+- [x] 動的に生成される kro instance を create/update できる RBAC を追加する
   - 注意: GVK が動的なので、MVP は `kro.run` group を広めに許可する(最小権限化は後続)
   - DoD: `kro.run` group の create/get/list/watch/update/patch が生成 RBAC に含まれる
 - [ ] Event を出す場合は events の RBAC を追加する
