@@ -50,6 +50,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - kany8sclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - kany8sclusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infrastructure.cluster.x-k8s.io
+  resources:
+  - kany8sclusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - kro.run
   resources:
   - '*'

@@ -533,5 +533,5 @@ spec:
 ### Kany8sCluster (Infrastructure provider) の最小実装 (任意)
 - [x] `Kany8sCluster` CRD を追加し、`Cluster.spec.infrastructureRef` を満たす最小 contract を定義する
   - DoD: `Cluster` の infraRef が "とりあえず" 解決できる
-- [ ] `Kany8sCluster` controller で Ready 条件を立て、CAPI の `InfrastructureReady` を unblock できるようにする
+- [x] `Kany8sCluster` controller で Ready 条件を立て、CAPI の `InfrastructureReady` を unblock できるようにする
   - DoD: InfrastructureReady が True になり、ControlPlane 側のフローへ進める
