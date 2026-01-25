@@ -1,0 +1,28 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  # Kany8s is currently a ControlPlane provider only. Replace this ref with your
+  # Infrastructure provider (e.g. DockerCluster, AWSCluster, AzureCluster, ...).
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+    kind: Kany8sCluster
+    name: demo-cluster
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    kind: Kany8sControlPlane
+    name: demo-cluster
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sControlPlane
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  version: "1.34"
+  resourceGraphDefinitionRef:
+    name: eks-control-plane
+  kroSpec:
+    region: ap-northeast-1

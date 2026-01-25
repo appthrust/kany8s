@@ -54,3 +54,5 @@
 - 2026-01-25: Added manager RBAC for creating/patching Events (core + `events.k8s.io`) and a devtools test enforcing the generated `config/rbac/role.yaml`; verified `make test` and `make lint`.
 
 - 2026-01-25: Implemented dynamic watch for kro instances (dynamic informer + channel source) so instance updates enqueue `Kany8sControlPlane` reconciles; added an envtest covering update-triggered reconcile; verified `make test` and `make lint`.
+
+- 2026-01-25: Added `examples/capi/cluster.yaml` minimal `Cluster` + `Kany8sControlPlane` example and a devtools unit test enforcing it; verified `make test` and `make lint`.
