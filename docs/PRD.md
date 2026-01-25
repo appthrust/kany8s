@@ -378,7 +378,7 @@ spec:
   - DoD: `kubectl describe kany8scontrolplane <name>` で失敗理由が追える
 
 ### Controller: status 正規化 contract の消費と CAPI contract の充足
-- [ ] kro instance status (`ready/endpoint/reason/message`) を安全に読むヘルパーを追加する
+- [x] kro instance status (`ready/endpoint/reason/message`) を安全に読むヘルパーを追加する
   - 追加: `internal/kro/status.go`
   - DoD: status field が欠落していても panic せず、(ready=false, endpoint="") として扱える
 - [ ] endpoint parse ユーティリティを追加する
