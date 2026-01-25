@@ -320,7 +320,7 @@ spec:
   - DoD: PR/Push で `make test` が実行され、失敗が検知できる
 
 ### API: Kany8sControlPlane CRD を定義する
-- [ ] API scaffold を生成する
+- [x] API scaffold を生成する
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --resource --controller=false`
   - 成果物: `api/v1alpha1/kany8scontrolplane_types.go`
   - DoD: `make generate` が通る(フィールド追加前でも OK)
