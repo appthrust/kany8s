@@ -6,3 +6,5 @@
 - 2026-01-25: Pinned Go toolchain + tracked/pinned dev tools (controller-gen, kustomize, setup-envtest, golangci-lint) in go.mod; added hack/tools.go and a unit test to enforce it; verified `make test` and `make lint`.
 
 - 2026-01-25: Documented local development prerequisites/quickstart in README; added a unit test to enforce presence; verified `make test` and `make lint`.
+
+- 2026-01-25: Pinned Dockerfile Go builder image to the go.mod toolchain; added a unit test to enforce it; verified `make test`, `make lint`, and `make docker-build IMG=example.com/kany8s/controller:dev`.

@@ -312,7 +312,7 @@ spec:
   - 実行: `make test` / `make generate` / `make manifests` / `make run`
   - 成果物: `README.md` に「必要ツール」「最短の動かし方」が書かれている
   - DoD: 別環境(=新しい作業者)が README の手順だけでローカル実行できる
-- [ ] Controller イメージの build/push ターゲットを整備する
+- [x] Controller イメージの build/push ターゲットを整備する
   - 触る: `Dockerfile`, `Makefile` (`docker-build`, `docker-push`, `IMG ?= ...`)
   - DoD: `make docker-build IMG=example.com/kany8s/controller:dev` が成功する
 - [ ] (推奨) CI で `make test` / `make manifests` が回るようにする
