@@ -46,3 +46,5 @@
 - 2026-01-25: Added a fixed 15s poll interval while the control plane is not Ready (centralized as `internal/constants/ControlPlaneNotReadyRequeueAfter`); added unit test; verified `make test` and `make lint`.
 
 - 2026-01-25: Added a unit test covering the end-to-end polling flow (requeue while not Ready, then stop once Ready+endpoint) and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-25: Added manager RBAC to read kro `ResourceGraphDefinition` objects via kubebuilder RBAC markers; regenerated manifests and added a devtools test enforcing the generated `config/rbac/role.yaml`; verified `make test` and `make lint`.

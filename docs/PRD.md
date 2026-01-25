@@ -410,7 +410,7 @@ spec:
 - [ ] `+kubebuilder:rbac` を追加し、ControlPlane CRD 自身の権限を揃える
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - DoD: `kany8scontrolplanes` の CRUD + status/finalizers が生成 RBAC に含まれる
-- [ ] `ResourceGraphDefinition` を読む RBAC を追加する
+- [x] `ResourceGraphDefinition` を読む RBAC を追加する
   - DoD: `resourcegraphdefinitions.kro.run` の get/list/watch が生成 RBAC に含まれる
 - [ ] 動的に生成される kro instance を create/update できる RBAC を追加する
   - 注意: GVK が動的なので、MVP は `kro.run` group を広めに許可する(最小権限化は後続)
