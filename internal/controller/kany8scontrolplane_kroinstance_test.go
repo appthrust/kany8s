@@ -82,6 +82,93 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 	}
 }
 
+func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			UID:       types.UID("00000000-0000-0000-0000-000000000000"),
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).Build()
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}}
+	_, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	got := &unstructured.Unstructured{}
+	got.SetGroupVersionKind(instanceGVK)
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get kro instance: %v", err)
+	}
+
+	var found bool
+	for _, ref := range got.GetOwnerReferences() {
+		if ref.APIVersion != "controlplane.cluster.x-k8s.io/v1alpha1" {
+			continue
+		}
+		if ref.Kind != "Kany8sControlPlane" {
+			continue
+		}
+		if ref.Name != "demo" {
+			continue
+		}
+
+		found = true
+		if ref.UID != cp.UID {
+			t.Fatalf("owner ref uid = %q, want %q", ref.UID, cp.UID)
+		}
+		if ref.Controller == nil || !*ref.Controller {
+			t.Fatalf("owner ref controller = %v, want true", ref.Controller)
+		}
+		break
+	}
+	if !found {
+		t.Fatalf("kro instance missing controller owner reference")
+	}
+}
+
 func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
 	t.Parallel()
 

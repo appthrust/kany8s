@@ -372,8 +372,8 @@ spec:
     - `Kany8sControlPlane.spec.kroSpec` を instance `.spec` に展開する
     - `.spec.version` は必ず `Kany8sControlPlane.spec.version` で上書きする
   - DoD: `spec.version` を手動で変えても reconcile で元に戻る
-- [ ] kro instance に `OwnerReference`(controller=true) を付与し、削除連鎖できるようにする
-  - DoD: `Kany8sControlPlane` 削除で kro instance が GC される
+- [x] kro instance に `OwnerReference`(controller=true) を付与し、削除連鎖できるようにする
+	- DoD: `Kany8sControlPlane` 削除で kro instance が GC される
 - [ ] RGD が見つからない/不正な場合の扱いを「Condition + Event + requeue」で統一する
   - DoD: `kubectl describe kany8scontrolplane <name>` で失敗理由が追える
 

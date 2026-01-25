@@ -72,6 +72,9 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		instance.SetGroupVersionKind(instanceGVK)
 		instance.SetName(cp.Name)
 		instance.SetNamespace(cp.Namespace)
+		if err := controllerutil.SetControllerReference(cp, instance, r.Scheme); err != nil {
+			return err
+		}
 
 		spec := map[string]any{}
 		if cp.Spec.KroSpec != nil && len(cp.Spec.KroSpec.Raw) > 0 {
