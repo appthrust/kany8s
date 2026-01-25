@@ -344,7 +344,7 @@ spec:
   - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
   - 例: INITIALIZED/ENDPOINT をそれぞれ `.status.initialization.controlPlaneInitialized` / `.spec.controlPlaneEndpoint.host` から表示
   - DoD: `make manifests` 後の CRD に additionalPrinterColumns が入る
-- [ ] `make generate` / `make manifests` を実行し `config/crd/bases/` の更新を確認する
+- [x] `make generate` / `make manifests` を実行し `config/crd/bases/` の更新を確認する
   - DoD: `config/crd/bases/` の差分が API 変更を反映している
 
 ### Controller: RGD 参照と kro instance の作成/更新
