@@ -94,3 +94,66 @@ func TestGeneratedManagerRoleIncludesEventsRBAC(t *testing.T) {
 		}
 	}
 }
+
+func TestGeneratedManagerRoleIncludesKany8sControlPlaneRBAC(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rolePath := filepath.Join(root, "config", "rbac", "role.yaml")
+	roleBytes, err := os.ReadFile(rolePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rolePath, err)
+	}
+
+	var role rbacRole
+	if err := yaml.Unmarshal(roleBytes, &role); err != nil {
+		t.Fatalf("parse %q: %v", rolePath, err)
+	}
+
+	requireRule := func(apiGroup, resource string, verbs ...string) {
+		t.Helper()
+
+		for _, rule := range role.Rules {
+			if !slices.Contains(rule.APIGroups, apiGroup) {
+				continue
+			}
+			if !slices.Contains(rule.Resources, resource) {
+				continue
+			}
+			missing := []string{}
+			for _, verb := range verbs {
+				if !slices.Contains(rule.Verbs, verb) {
+					missing = append(missing, verb)
+				}
+			}
+			if len(missing) == 0 {
+				return
+			}
+		}
+
+		t.Errorf("%s missing RBAC rule for %s %s with verbs %s", filepath.ToSlash(rolePath), apiGroup, resource, strings.Join(verbs, ","))
+	}
+
+	requireRule(
+		"controlplane.cluster.x-k8s.io",
+		"kany8scontrolplanes",
+		"create",
+		"delete",
+		"get",
+		"list",
+		"patch",
+		"update",
+		"watch",
+	)
+	requireRule(
+		"controlplane.cluster.x-k8s.io",
+		"kany8scontrolplanes/status",
+		"get",
+		"patch",
+		"update",
+	)
+	requireRule(
+		"controlplane.cluster.x-k8s.io",
+		"kany8scontrolplanes/finalizers",
+		"update",
+	)
+}

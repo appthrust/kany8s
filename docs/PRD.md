@@ -407,7 +407,7 @@ spec:
   - DoD: kro instance の update で該当 `Kany8sControlPlane` が enqueue される
 
 ### RBAC/配布 (最低限)
-- [ ] `+kubebuilder:rbac` を追加し、ControlPlane CRD 自身の権限を揃える
+- [x] `+kubebuilder:rbac` を追加し、ControlPlane CRD 自身の権限を揃える
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - DoD: `kany8scontrolplanes` の CRUD + status/finalizers が生成 RBAC に含まれる
 - [x] `ResourceGraphDefinition` を読む RBAC を追加する

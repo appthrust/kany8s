@@ -56,3 +56,5 @@
 - 2026-01-25: Implemented dynamic watch for kro instances (dynamic informer + channel source) so instance updates enqueue `Kany8sControlPlane` reconciles; added an envtest covering update-triggered reconcile; verified `make test` and `make lint`.
 
 - 2026-01-25: Added `examples/capi/cluster.yaml` minimal `Cluster` + `Kany8sControlPlane` example and a devtools unit test enforcing it; verified `make test` and `make lint`.
+
+- 2026-01-25: Added a devtools test enforcing generated manager RBAC for `Kany8sControlPlane` (CRUD + status/finalizers); verified `make test` and `make lint`.
