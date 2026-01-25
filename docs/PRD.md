@@ -457,7 +457,7 @@ spec:
   - DoD: ready が常に boolean として出力される
 - [x] Role -> Cluster の依存を `${clusterRole.status.ackResourceMetadata.arn}` 参照で DAG 化する
   - DoD: Role 未作成の race で ACK Terminal に落ちる確率を下げられる
-- [ ] `readyWhen` は self resource のみ参照できる前提で、Cluster resource 自身の readyWhen に判定を置く
+- [x] `readyWhen` は self resource のみ参照できる前提で、Cluster resource 自身の readyWhen に判定を置く
   - DoD: Cluster の `readyWhen` が `ACTIVE` + `endpoint != ""` を待つ
 
 ### 部品化/合成 (任意)

@@ -41,3 +41,6 @@ spec:
           resourcesVPCConfig:
             subnetIDs: ${schema.spec.vpc.subnetIDs}
             securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
+
+      readyWhen:
+        - ${cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != ""}
