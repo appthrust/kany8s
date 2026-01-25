@@ -348,10 +348,10 @@ spec:
   - DoD: `config/crd/bases/` の差分が API 変更を反映している
 
 ### Controller: RGD 参照と kro instance の作成/更新
- - [x] controller scaffold を生成し、manager に登録される状態にする
-   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --controller --resource=false`
-   - 成果物: `controllers/kany8scontrolplane_controller.go`
-   - DoD: `make test` が通る(ロジック追加前でも OK)
+- [x] controller scaffold を生成し、manager に登録される状態にする
+  - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --controller --resource=false`
+  - 成果物: `controllers/kany8scontrolplane_controller.go`
+  - DoD: `make test` が通る(ロジック追加前でも OK)
 - [ ] `ResourceGraphDefinition` の取得と「生成される instance GVK」の解決ロジックを実装する
   - 触る/追加:
     - 追加: `internal/kro/gvk.go` (例: `ResolveInstanceGVK(ctx, client, rgdName) (schema.GroupVersionKind, error)`)
