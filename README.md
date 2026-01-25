@@ -175,6 +175,29 @@ schema:
 - Does **not** write Terraform-like outputs to Secrets for endpoint/initialized (for now)
 - Kubeconfig secret management (`<cluster>-kubeconfig`) is required by the CAPI contract (planned)
 
+## Development
+
+### Prerequisites
+
+- Go (toolchain is pinned in `go.mod`)
+- `make`
+- Optional: `docker` (for `make docker-build`)
+- Optional: `kubectl` + access to a Kubernetes cluster (for `make run`)
+- Optional: `kind` (for `make test-e2e`)
+
+The Makefile auto-downloads build/test tooling into `./bin/` (kustomize, controller-gen, setup-envtest, golangci-lint).
+
+### Quickstart
+
+- `make test`: run unit tests (includes `make generate` + `make manifests`)
+- `make lint`: run `golangci-lint`
+- `make run`: run the controller locally against your current kubeconfig context
+
+For code generation only:
+
+- `make generate`
+- `make manifests`
+
 ## Documents
 
 - `design.md`: architecture and controller ↔ kro contract

@@ -308,7 +308,7 @@ spec:
 - [x] Go バージョンと開発ツールバージョンを pin する
   - 触る: `go.mod` の `go` directive, `hack/tools.go` (例: `controller-gen`, `kustomize`, `setup-envtest`)
   - DoD: クリーンな checkout から `make generate` が再現性を持って動く
-- [ ] ローカルの開発ループを確認し、前提/手順を README に残す
+- [x] ローカルの開発ループを確認し、前提/手順を README に残す
   - 実行: `make test` / `make generate` / `make manifests` / `make run`
   - 成果物: `README.md` に「必要ツール」「最短の動かし方」が書かれている
   - DoD: 別環境(=新しい作業者)が README の手順だけでローカル実行できる
