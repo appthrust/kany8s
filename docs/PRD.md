@@ -381,7 +381,7 @@ spec:
 - [x] kro instance status (`ready/endpoint/reason/message`) を安全に読むヘルパーを追加する
   - 追加: `internal/kro/status.go`
   - DoD: status field が欠落していても panic せず、(ready=false, endpoint="") として扱える
-- [ ] endpoint parse ユーティリティを追加する
+- [x] endpoint parse ユーティリティを追加する
   - 追加: `internal/endpoint/parse.go`
   - 仕様: 入力は `https://host[:port]` または `host[:port]`。port 省略は 443。
   - DoD: `internal/endpoint/parse_test.go` の table-driven test が通る
