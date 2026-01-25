@@ -432,7 +432,7 @@ spec:
     - instance 未 Ready -> `RequeueAfter` が返る
     - Ready + endpoint -> `spec.controlPlaneEndpoint` と `status.initialization.controlPlaneInitialized` が更新される
   - DoD: watch を使わず reconcile 単体の期待がテストで固定できる
-- [ ] `make test` を CI で実行できるようにする
+- [x] `make test` を CI で実行できるようにする
   - 前提: envtest を使う場合は `setup-envtest` を tools として pin する
   - DoD: CI 上で `make test` が動作し、失敗が検知できる
 

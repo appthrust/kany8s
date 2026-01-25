@@ -70,3 +70,5 @@
 - 2026-01-25: Documented a kind+kro demo flow in README (install -> apply RGD -> apply Cluster/Kany8sControlPlane); updated the CAPI sample to use the demo RGD; added a devtools test to enforce the README section; verified `make test` and `make lint`.
 
 - 2026-01-25: Added a fake-client unit test for the "Ready but endpoint missing" reconcile case (requeue + no endpoint/initialized) and marked the PRD fake-client reconcile test task complete; verified `make test` and `make lint`.
+
+- 2026-01-25: Marked the PRD CI `make test` task complete (CI workflow + devtools assertion already present); verified `make test` and `make lint`.
