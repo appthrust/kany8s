@@ -526,7 +526,7 @@ spec:
   - DoD: provider 実装者が "どの status を出せば良いか" を迷わない
 - [x] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(スタブでも可)
   - DoD: 新しい provider を追加する最小テンプレがある
-- [ ] RGD の static analysis/kro 既知問題(NetworkPolicy 等)の注意点を `docs/rgd-guidelines.md` にまとめる
+- [x] RGD の static analysis/kro 既知問題(NetworkPolicy 等)の注意点を `docs/rgd-guidelines.md` にまとめる
   - 参考: `docs/kro.md` の検証結果
   - DoD: RGD 作成者がハマりやすい点を事前に回避できる
 
