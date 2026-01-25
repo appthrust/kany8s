@@ -13,6 +13,9 @@ spec:
         subnetIDs: '[]string | required=true description="Subnet IDs"'
         securityGroupIDs: '[]string | default=[] description="Security group IDs"'
 
+    status:
+      endpoint: ${cluster.?status.?endpoint.orValue("")}
+
   resources:
     - id: clusterRole
       template:

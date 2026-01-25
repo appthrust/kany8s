@@ -74,3 +74,5 @@
 - 2026-01-25: Marked the PRD CI `make test` task complete (CI workflow + devtools assertion already present); verified `make test` and `make lint`.
 
 - 2026-01-25: Added an initial ACK-based EKS control plane kro RGD example (`examples/kro/eks/eks-control-plane-rgd.yaml`) plus a devtools test and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-25: Projected the EKS RGD instance `status.endpoint` from the ACK EKS Cluster status in `examples/kro/eks/eks-control-plane-rgd.yaml`; updated the devtools assertion; verified `make test` and `make lint`.

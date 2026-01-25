@@ -449,7 +449,7 @@ spec:
 ### RGD: eks-control-plane
 - [x] `examples/kro/eks/eks-control-plane-rgd.yaml` を作成し、ACK EKS Cluster + 前提 IAM Role を graph に含める
   - DoD: `kubectl apply -f` で RGD が `ResourceGraphAccepted=True` になる
-- [ ] RGD instance の `status.endpoint` を `${cluster.status.endpoint}` で射影する
+- [x] RGD instance の `status.endpoint` を `${cluster.status.endpoint}` で射影する
   - 注意: kro v0.7.1 の "文字列テンプレート" の落とし穴があるため、必要なら CEL 1式で連結する (`docs/kro.md`)
   - DoD: endpoint が欠落せず、常に string として出力される
 - [ ] RGD instance の `status.ready` を "欠落しにくい" 形で materialize する

@@ -22,6 +22,8 @@ func TestExamplesKroEKSControlPlaneRGDSampleExists(t *testing.T) {
 		"kind: ResourceGraphDefinition",
 		"name: eks-control-plane.kro.run",
 		"kind: EKSControlPlane",
+		"status:",
+		"endpoint: ${cluster",
 		"awsAccountID:",
 		"iam.services.k8s.aws/v1alpha1",
 		"kind: Role",
