@@ -1,0 +1,40 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-control-plane.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: EKSControlPlane
+    spec:
+      version: string | required=true description="Kubernetes version"
+      awsAccountID: string | required=true description="AWS account ID (temporary; used to build the IAM role ARN)"
+      vpc:
+        subnetIDs: '[]string | required=true description="Subnet IDs"'
+        securityGroupIDs: '[]string | default=[] description="Security group IDs"'
+
+  resources:
+    - id: clusterRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.metadata.name}-eks-control-plane
+        spec:
+          name: ${schema.metadata.name}-eks-control-plane
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+
+    - id: cluster
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          name: ${schema.metadata.name}
+          version: ${schema.spec.version}
+          roleARN: ${"arn:aws:iam::" + schema.spec.awsAccountID + ":role/" + clusterRole.spec.name}
+          resourcesVPCConfig:
+            subnetIDs: ${schema.spec.vpc.subnetIDs}
+            securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}

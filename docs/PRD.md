@@ -447,7 +447,7 @@ spec:
 ## M2: AWS/EKS 参照 RGD (ACK) と end-to-end 動作確認
 
 ### RGD: eks-control-plane
-- [ ] `examples/kro/eks/eks-control-plane-rgd.yaml` を作成し、ACK EKS Cluster + 前提 IAM Role を graph に含める
+- [x] `examples/kro/eks/eks-control-plane-rgd.yaml` を作成し、ACK EKS Cluster + 前提 IAM Role を graph に含める
   - DoD: `kubectl apply -f` で RGD が `ResourceGraphAccepted=True` になる
 - [ ] RGD instance の `status.endpoint` を `${cluster.status.endpoint}` で射影する
   - 注意: kro v0.7.1 の "文字列テンプレート" の落とし穴があるため、必要なら CEL 1式で連結する (`docs/kro.md`)
