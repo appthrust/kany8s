@@ -24,6 +24,8 @@ func TestExamplesKroEKSControlPlaneRGDSampleExists(t *testing.T) {
 		"kind: EKSControlPlane",
 		"status:",
 		"endpoint: ${cluster",
+		"ready: ${int(cluster",
+		"== \"ACTIVE\"",
 		"awsAccountID:",
 		"iam.services.k8s.aws/v1alpha1",
 		"kind: Role",

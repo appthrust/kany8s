@@ -76,3 +76,5 @@
 - 2026-01-25: Added an initial ACK-based EKS control plane kro RGD example (`examples/kro/eks/eks-control-plane-rgd.yaml`) plus a devtools test and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-01-25: Projected the EKS RGD instance `status.endpoint` from the ACK EKS Cluster status in `examples/kro/eks/eks-control-plane-rgd.yaml`; updated the devtools assertion; verified `make test` and `make lint`.
+
+- 2026-01-25: Materialized the EKS RGD instance `status.ready` as a boolean using the `int(...) == 1` pattern (kro v0.7.1 bool-missing workaround); updated devtools sample assertions and marked the PRD item complete; verified `make test` and `make lint`.

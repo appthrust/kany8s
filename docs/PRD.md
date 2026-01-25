@@ -452,7 +452,7 @@ spec:
 - [x] RGD instance の `status.endpoint` を `${cluster.status.endpoint}` で射影する
   - 注意: kro v0.7.1 の "文字列テンプレート" の落とし穴があるため、必要なら CEL 1式で連結する (`docs/kro.md`)
   - DoD: endpoint が欠落せず、常に string として出力される
-- [ ] RGD instance の `status.ready` を "欠落しにくい" 形で materialize する
+- [x] RGD instance の `status.ready` を "欠落しにくい" 形で materialize する
   - 例: `${int(cluster.status.status == "ACTIVE" && cluster.status.endpoint != "") == 1}` (kro v0.7.1 の bool 欠落回避)
   - DoD: ready が常に boolean として出力される
 - [ ] Role -> Cluster の依存を `${clusterRole.status.ackResourceMetadata.arn}` 参照で DAG 化する
