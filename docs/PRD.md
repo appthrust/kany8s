@@ -388,7 +388,7 @@ spec:
 - [x] endpoint を `Kany8sControlPlane.spec.controlPlaneEndpoint` (host/port) に反映する
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - DoD: endpoint が parse できたら `spec.controlPlaneEndpoint` が埋まる
-- [ ] endpoint が確定したら `status.initialization.controlPlaneInitialized=true` を設定する
+- [x] endpoint が確定したら `status.initialization.controlPlaneInitialized=true` を設定する
   - DoD: initialized が True になった後は false に戻らない(仕様として戻す必要が無い)
 - [ ] `failureReason/failureMessage` と Conditions を `ready/endpoint/reason/message` に基づいて更新する
   - 触る: `controllers/kany8scontrolplane_controller.go`

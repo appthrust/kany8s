@@ -130,6 +130,15 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 				return ctrl.Result{}, err
 			}
 		}
+
+		if !cp.Status.Initialization.ControlPlaneInitialized {
+			before := cp.DeepCopy()
+			cp.Status.Initialization.ControlPlaneInitialized = true
+			if err := r.Status().Patch(ctx, cp, client.MergeFrom(before)); err != nil {
+				log.Error(err, "update control plane initialized")
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil

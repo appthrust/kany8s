@@ -38,3 +38,5 @@
 - 2026-01-25: Added endpoint string parser utility (`internal/endpoint/parse.go`) with table-driven unit tests; verified `make test` and `make lint`.
 
 - 2026-01-25: Reflected kro instance `status.endpoint` into `Kany8sControlPlane.spec.controlPlaneEndpoint`; added unit test; verified `make test` and `make lint`.
+
+- 2026-01-25: Set `Kany8sControlPlane.status.initialization.controlPlaneInitialized=true` once an endpoint is observed; added unit test to ensure it is sticky; verified `make test` and `make lint`.
