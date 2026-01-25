@@ -3,6 +3,8 @@
 # It should be run by config/default
 resources:
 - bases/controlplane.cluster.x-k8s.io_kany8scontrolplanes.yaml
+- bases/controlplane.cluster.x-k8s.io_kany8scontrolplanetemplates.yaml
+- bases/controlplane.cluster.x-k8s.io_kany8sclustertemplates.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

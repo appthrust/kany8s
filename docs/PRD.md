@@ -496,7 +496,7 @@ spec:
 ## M4: ClusterClass/Topology と Template API
 
 ### Template CRD
-- [ ] `Kany8sControlPlaneTemplate` / `Kany8sClusterTemplate` の API を追加する(ClusterClass から参照できる形)
+- [x] `Kany8sControlPlaneTemplate` / `Kany8sClusterTemplate` の API を追加する(ClusterClass から参照できる形)
   - DoD: ClusterClass から参照できる `Template` が作れる
 - [ ] `Cluster.spec.topology.version` -> `Kany8sControlPlane.spec.version` の流し込み方針を設計する
   - DoD: version の single source of truth が `Cluster.spec.topology.version` になる

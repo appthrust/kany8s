@@ -69,7 +69,7 @@ var _ = Describe("Kany8sControlPlane Controller", func() {
 			r := &Kany8sControlPlaneReconciler{
 				Client:   mgr.GetClient(),
 				Scheme:   mgr.GetScheme(),
-				Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"),
+				Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"), //nolint:staticcheck
 			}
 			Expect(r.SetupWithManager(mgr)).To(Succeed())
 
