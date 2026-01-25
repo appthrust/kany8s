@@ -1,0 +1,40 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gcp-bucket-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: GCPBucket
+    spec:
+      bucketName: string | required=true minLength=3
+      projectId: string | required=true minLength=1
+      location: string | default="US"
+      versioningEnabled: boolean | default=true
+      forceDestroy: boolean | default=false
+      lifecycleDays: integer | default=30 minimum=1
+    status:
+      url: ${bucket.status.?url.orValue("")}
+      selfLink: ${bucket.status.?selfLink.orValue("")}
+
+  resources:
+    - id: bucket
+      template:
+        apiVersion: storage.cnrm.cloud.google.com/v1beta1
+        kind: StorageBucket
+        metadata:
+          name: ${schema.spec.bucketName}
+          annotations:
+            cnrm.cloud.google.com/project-id: ${schema.spec.projectId}
+            cnrm.cloud.google.com/force-destroy: ${string(schema.spec.forceDestroy)}
+        spec:
+          location: ${schema.spec.location}
+          uniformBucketLevelAccess: true
+          versioning:
+            enabled: ${schema.spec.versioningEnabled}
+          lifecycleRule:
+            - action:
+                type: Delete
+              condition:
+                age: ${schema.spec.lifecycleDays}
+                withState: ANY

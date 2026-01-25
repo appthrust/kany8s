@@ -1,0 +1,14 @@
+apiVersion: platform.example.com/v1alpha1
+kind: PortableBucket
+metadata:
+  name: demo-portable-bucket-gcp
+spec:
+  provider: gcp
+  # GCS bucket names must be globally unique.
+  bucketName: my-gcp-unique-bucket-12345
+  versioningEnabled: true
+  lifecycleDays: 7
+  gcp:
+    projectId: my-gcp-project
+    location: asia-northeast1
+    forceDestroy: false

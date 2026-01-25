@@ -1,0 +1,9 @@
+apiVersion: kro.run/v1alpha1
+kind: WebAppConfig
+metadata:
+  name: demo-no-ingress
+spec:
+  name: demo-no-ingress
+  replicas: 1
+  ingress:
+    enabled: false

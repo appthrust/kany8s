@@ -1,0 +1,50 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: bucket-gcp.platform.example.com
+spec:
+  schema:
+    group: platform.example.com
+    apiVersion: v1alpha1
+    kind: Bucket
+    spec:
+      bucketName: string | required=true pattern="^[a-z0-9]{3,24}$" description="Provider-agnostic bucket name"
+      versioningEnabled: boolean | default=true
+      lifecycleDays: integer | default=30 minimum=1
+    status:
+      provider: ${"gcp"}
+      projectId: ${platformConfig.data.?GCP_PROJECT_ID.orValue("")}
+      url: ${bucket.status.?url.orValue("gs://" + bucket.spec.resourceID)}
+      selfLink: ${bucket.status.?selfLink.orValue("")}
+
+  resources:
+    - id: platformConfig
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: bucket-platform-config
+          namespace: platform-system
+
+    - id: bucket
+      template:
+        apiVersion: storage.cnrm.cloud.google.com/v1beta1
+        kind: StorageBucket
+        metadata:
+          name: ${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+          annotations:
+            cnrm.cloud.google.com/project-id: ${platformConfig.data.?GCP_PROJECT_ID.orValue("")}
+        spec:
+          # Use resourceID so the Kubernetes object name can differ from the actual bucket name.
+          resourceID: ${schema.spec.bucketName}
+          location: ${platformConfig.data.?GCP_LOCATION.orValue("US")}
+          uniformBucketLevelAccess: true
+          versioning:
+            enabled: ${schema.spec.versioningEnabled}
+          lifecycleRule:
+            - action:
+                type: Delete
+              condition:
+                age: ${schema.spec.lifecycleDays}
+                withState: ANY

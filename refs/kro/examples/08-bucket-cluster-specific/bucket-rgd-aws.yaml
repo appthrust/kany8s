@@ -1,0 +1,52 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: bucket-aws.platform.example.com
+spec:
+  schema:
+    group: platform.example.com
+    apiVersion: v1alpha1
+    kind: Bucket
+    spec:
+      bucketName: string | required=true pattern="^[a-z0-9]{3,24}$" description="Provider-agnostic bucket name"
+      versioningEnabled: boolean | default=true
+      lifecycleDays: integer | default=30 minimum=1
+    status:
+      provider: ${"aws"}
+      region: ${platformConfig.data.?AWS_REGION.orValue("ap-northeast-1")}
+      arn: ${bucket.status.?ackResourceMetadata.?arn.orValue("")}
+      url: ${"https://%s.s3.%s.amazonaws.com".format([bucket.spec.name, platformConfig.data.?AWS_REGION.orValue("ap-northeast-1")])}
+
+  resources:
+    - id: platformConfig
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: bucket-platform-config
+          namespace: platform-system
+
+    - id: bucket
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          name: ${schema.spec.bucketName}
+          createBucketConfiguration:
+            locationConstraint: ${platformConfig.data.?AWS_REGION.orValue("ap-northeast-1")}
+          versioning:
+            status: '${schema.spec.versioningEnabled ? "Enabled" : "Suspended"}'
+          publicAccessBlock:
+            blockPublicACLs: true
+            ignorePublicACLs: true
+            blockPublicPolicy: true
+            restrictPublicBuckets: true
+          lifecycle:
+            rules:
+              - id: expire
+                status: Enabled
+                expiration:
+                  days: ${schema.spec.lifecycleDays}

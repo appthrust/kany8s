@@ -1,0 +1,43 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-bucket-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AWSBucket
+    types:
+      Tag:
+        key: string | required=true minLength=1
+        value: string | required=true
+    spec:
+      bucketName: string | required=true minLength=3
+      region: string | default="ap-northeast-1"
+      versioningEnabled: boolean | default=true
+      blockPublicAccess: boolean | default=true
+      tags: '[]Tag | default=[]'
+    status:
+      bucketName: ${bucket.spec.name}
+      arn: ${bucket.status.?ackResourceMetadata.?arn.orValue("")}
+      url: '${"https://" + bucket.spec.name + ".s3." + bucket.spec.createBucketConfiguration.locationConstraint + ".amazonaws.com"}'
+
+  resources:
+    - id: bucket
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          name: ${schema.spec.bucketName}
+          createBucketConfiguration:
+            locationConstraint: ${schema.spec.region}
+          versioning:
+            status: '${schema.spec.versioningEnabled ? "Enabled" : "Suspended"}'
+          publicAccessBlock:
+            blockPublicACLs: ${schema.spec.blockPublicAccess}
+            ignorePublicACLs: ${schema.spec.blockPublicAccess}
+            blockPublicPolicy: ${schema.spec.blockPublicAccess}
+            restrictPublicBuckets: ${schema.spec.blockPublicAccess}
+          tagging:
+            tagSet: ${schema.spec.tags}

@@ -1,0 +1,61 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-tenant-environment-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoTenantEnvironment
+    spec:
+      tenantId: string | required=true minLength=3 pattern="^[a-z0-9-]+$"
+      quota:
+        requestsCpu: string | default="1"
+        requestsMemory: string | default="1Gi"
+        limitsCpu: string | default="2"
+        limitsMemory: string | default="2Gi"
+    status:
+      namespace: ${tenantNamespace.metadata.name}
+
+  resources:
+    - id: tenantNamespace
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.tenantId}
+          labels:
+            saas/tenant-id: ${schema.spec.tenantId}
+
+    - id: tenantQuota
+      template:
+        apiVersion: v1
+        kind: ResourceQuota
+        metadata:
+          name: ${schema.spec.tenantId}-quota
+          namespace: ${tenantNamespace.metadata.name}
+          labels:
+            saas/tenant-id: ${schema.spec.tenantId}
+        spec:
+          hard:
+            requests.cpu: ${schema.spec.quota.requestsCpu}
+            requests.memory: ${schema.spec.quota.requestsMemory}
+            limits.cpu: ${schema.spec.quota.limitsCpu}
+            limits.memory: ${schema.spec.quota.limitsMemory}
+
+    - id: tenantNetworkPolicy
+      template:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: ${schema.spec.tenantId}-isolation
+          namespace: ${tenantNamespace.metadata.name}
+          labels:
+            saas/tenant-id: ${schema.spec.tenantId}
+        spec:
+          podSelector:
+            matchLabels: {}
+          policyTypes:
+            - Ingress
+          ingress:
+            - from:
+                - podSelector: {}

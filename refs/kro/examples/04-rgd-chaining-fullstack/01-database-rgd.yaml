@@ -1,0 +1,89 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-database-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoDatabase
+    spec:
+      name: string | required=true
+      user: string | default="postgres"
+      password: string | default="changeme" description="Demo only. Prefer external secrets in production."
+      database: string | default="app"
+      port: integer | default=5432 minimum=1 maximum=65535
+      image: string | default="postgres:15"
+    status:
+      ready: ${dbStatefulSet.?status.?readyReplicas.orValue(0) == 1}
+      serviceName: ${dbService.metadata.name}
+      secretName: ${dbSecret.metadata.name}
+      connectionString: '${"postgresql://" + dbStatefulSet.spec.template.spec.containers[0].env.filter(e, e.name == "POSTGRES_USER")[0].value + "@" + dbService.metadata.name + "." + dbService.metadata.namespace + ".svc.cluster.local:" + string(dbService.spec.ports[0].port) + "/" + dbStatefulSet.spec.template.spec.containers[0].env.filter(e, e.name == "POSTGRES_DB")[0].value}'
+
+  resources:
+    - id: dbSecret
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${schema.spec.name}
+        type: Opaque
+        stringData:
+          password: ${schema.spec.password}
+
+    - id: dbService
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.spec.name}
+        spec:
+          ports:
+            - name: postgres
+              port: ${schema.spec.port}
+              targetPort: postgres
+          selector:
+            app.kubernetes.io/name: ${schema.spec.name}
+
+    - id: dbStatefulSet
+      template:
+        apiVersion: apps/v1
+        kind: StatefulSet
+        metadata:
+          name: ${schema.spec.name}
+          labels:
+            app.kubernetes.io/name: ${schema.spec.name}
+        spec:
+          serviceName: ${dbService.metadata.name}
+          replicas: 1
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: ${schema.spec.name}
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: ${schema.spec.name}
+            spec:
+              containers:
+                - name: postgres
+                  image: ${schema.spec.image}
+                  ports:
+                    - name: postgres
+                      containerPort: 5432
+                  env:
+                    - name: POSTGRES_USER
+                      value: ${schema.spec.user}
+                    - name: POSTGRES_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: ${dbSecret.metadata.name}
+                          key: password
+                    - name: POSTGRES_DB
+                      value: ${schema.spec.database}
+                  volumeMounts:
+                    - name: data
+                      mountPath: /var/lib/postgresql/data
+              volumes:
+                - name: data
+                  emptyDir: {}
+      readyWhen:
+        - ${dbStatefulSet.?status.?readyReplicas.orValue(0) == 1}

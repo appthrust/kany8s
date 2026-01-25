@@ -1,0 +1,49 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-tenant-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoTenant
+    spec:
+      tenantId: string | required=true minLength=3 pattern="^[a-z0-9-]+$"
+      quota:
+        requestsCpu: string | default="1"
+        requestsMemory: string | default="1Gi"
+        limitsCpu: string | default="2"
+        limitsMemory: string | default="2Gi"
+      app:
+        name: string | required=true minLength=1
+        image: string | default="nginx:1.27"
+        replicas: integer | default=1 minimum=1 maximum=10
+        port: integer | default=80 minimum=1 maximum=65535
+    status:
+      namespace: ${environment.status.namespace}
+      appUrl: ${app.status.url}
+
+  resources:
+    - id: environment
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: DemoTenantEnvironment
+        metadata:
+          name: ${schema.spec.tenantId}-env
+        spec:
+          tenantId: ${schema.spec.tenantId}
+          quota: ${schema.spec.quota}
+      readyWhen:
+        - ${environment.status.state == "ACTIVE"}
+
+    - id: app
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: DemoTenantApplication
+        metadata:
+          name: ${schema.spec.tenantId}-app
+        spec:
+          tenantNamespace: ${environment.status.namespace}
+          name: ${schema.spec.app.name}
+          image: ${schema.spec.app.image}
+          replicas: ${schema.spec.app.replicas}
+          port: ${schema.spec.app.port}

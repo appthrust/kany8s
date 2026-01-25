@@ -1,0 +1,18 @@
+apiVersion: platform.example.com/v1alpha1
+kind: PortableBucket
+metadata:
+  name: demo-portable-bucket-aws
+spec:
+  provider: aws
+  # S3 bucket names must be globally unique.
+  bucketName: my-company-demo-bucket-12345
+  versioningEnabled: true
+  lifecycleDays: 30
+  aws:
+    region: ap-northeast-1
+    blockPublicAccess: true
+    tags:
+      - key: owner
+        value: platform
+      - key: env
+        value: dev

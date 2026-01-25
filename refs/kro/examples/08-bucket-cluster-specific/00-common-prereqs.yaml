@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bucket-platform-config
+  namespace: platform-system
+data:
+  # AWS (ACK)
+  AWS_REGION: ap-northeast-1
+
+  # GCP (Config Connector)
+  GCP_PROJECT_ID: my-gcp-project
+  GCP_LOCATION: US
+
+  # Azure (Azure Service Operator)
+  AZURE_LOCATION: westcentralus
+  AZURE_RESOURCE_GROUP: platform-rg

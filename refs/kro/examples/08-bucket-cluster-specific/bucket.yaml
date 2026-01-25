@@ -1,0 +1,10 @@
+apiVersion: platform.example.com/v1alpha1
+kind: Bucket
+metadata:
+  name: demo-bucket
+spec:
+  # Cross-provider friendly bucket name.
+  # This example intentionally uses only [a-z0-9]{3,24} to be usable for Azure storage account names too.
+  bucketName: demobucket123
+  versioningEnabled: true
+  lifecycleDays: 7

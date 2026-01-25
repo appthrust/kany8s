@@ -1,0 +1,57 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-fullstack-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoFullStackApp
+    spec:
+      name: string | required=true
+      image: string | default="nginx:1.27"
+      replicas: integer | default=2 minimum=1 maximum=10
+      ingress:
+        enabled: boolean | default=false
+        className: string | default="nginx"
+        host: string | default="example.local"
+        path: string | default="/"
+      db:
+        user: string | default="postgres"
+        password: string | default="changeme"
+        database: string | default="app"
+        port: integer | default=5432 minimum=1 maximum=65535
+        image: string | default="postgres:15"
+    status:
+      databaseConnectionString: ${database.status.connectionString}
+      endpoint: ${webapp.status.endpoint}
+
+  resources:
+    - id: database
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: DemoDatabase
+        metadata:
+          name: ${schema.spec.name}-db
+        spec:
+          name: ${schema.spec.name}-db
+          user: ${schema.spec.db.user}
+          password: ${schema.spec.db.password}
+          database: ${schema.spec.db.database}
+          port: ${schema.spec.db.port}
+          image: ${schema.spec.db.image}
+      readyWhen:
+        - ${database.status.state == "ACTIVE"}
+
+    - id: webapp
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: DemoWebApplication
+        metadata:
+          name: ${schema.spec.name}-web
+        spec:
+          name: ${schema.spec.name}-web
+          image: ${schema.spec.image}
+          replicas: ${schema.spec.replicas}
+          port: 80
+          databaseUrl: ${database.status.connectionString}
+          ingress: ${schema.spec.ingress}

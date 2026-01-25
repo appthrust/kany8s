@@ -1,0 +1,13 @@
+apiVersion: platform.example.com/v1alpha1
+kind: PortableBucket
+metadata:
+  name: demo-portable-bucket-azure
+spec:
+  provider: azure
+  # For Azure, bucketName is also used as default storageAccountName.
+  bucketName: demostorageacct123
+  azure:
+    resourceGroupName: demo-rg
+    location: westcentralus
+    storageAccountName: demostorageacct123
+    containerName: democontainer

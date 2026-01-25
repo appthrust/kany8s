@@ -1,0 +1,12 @@
+apiVersion: kro.run/v1alpha1
+kind: WebAppConfig
+metadata:
+  name: demo-with-ingress
+spec:
+  name: demo-with-ingress
+  replicas: 1
+  ingress:
+    enabled: true
+    className: nginx
+    host: demo.local
+    path: /

@@ -1,0 +1,9 @@
+apiVersion: kro.run/v1alpha1
+kind: WebApp
+metadata:
+  name: hello-web
+spec:
+  name: hello-web
+  image: nginx:1.27
+  replicas: 1
+  port: 80

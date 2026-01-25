@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: DemoTenant
+metadata:
+  name: tenant-001
+spec:
+  tenantId: tenant-001
+  quota:
+    requestsCpu: "1"
+    requestsMemory: "1Gi"
+    limitsCpu: "2"
+    limitsMemory: "2Gi"
+  app:
+    name: hello
+    image: nginx:1.27
+    replicas: 1
+    port: 80

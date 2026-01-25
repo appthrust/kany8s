@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: DemoFullStackApp
+metadata:
+  name: demo-fullstack
+spec:
+  name: demo-fullstack
+  image: nginx:1.27
+  replicas: 1
+  ingress:
+    enabled: false
+  db:
+    user: postgres
+    password: changeme
+    database: app
+    port: 5432
+    image: postgres:15

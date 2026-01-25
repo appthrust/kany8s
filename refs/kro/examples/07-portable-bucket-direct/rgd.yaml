@@ -1,0 +1,148 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: portable-bucket-direct.platform.example.com
+spec:
+  schema:
+    group: platform.example.com
+    apiVersion: v1alpha1
+    kind: PortableBucket
+
+    types:
+      Tag:
+        key: string | required=true minLength=1
+        value: string | required=true
+
+    spec:
+      provider: string | required=true enum="aws,gcp,azure"
+      bucketName: string | required=true minLength=3
+      versioningEnabled: boolean | default=true
+      lifecycleDays: integer | default=30 minimum=1
+
+      aws:
+        region: string | default="ap-northeast-1"
+        blockPublicAccess: boolean | default=true
+        tags: '[]Tag | default=[]'
+
+      gcp:
+        projectId: string description="Required when provider=gcp"
+        location: string | default="US"
+        forceDestroy: boolean | default=false
+
+      azure:
+        resourceGroupName: string description="Optional. Default is <instance>-rg"
+        location: string | default="westcentralus"
+        storageAccountName: string description="Optional. Default is bucketName (must match ^[a-z0-9]{3,24}$)"
+        containerName: string description="Optional. Default is bucketName"
+
+    status:
+      url: '${awsBucket.?metadata.?name.orValue("") != "" ? "https://" + awsBucket.spec.name + ".s3." + awsBucket.spec.createBucketConfiguration.locationConstraint + ".amazonaws.com" : gcpBucket.?metadata.?name.orValue("") != "" ? "gs://" + gcpBucket.spec.resourceID : "https://" + azureStorageAccount.metadata.name + ".blob.core.windows.net/" + azureContainer.metadata.name}'
+      awsArn: '${awsBucket.?metadata.?name.orValue("") != "" ? awsBucket.status.?ackResourceMetadata.?arn.orValue("") : ""}'
+      gcpSelfLink: '${gcpBucket.?metadata.?name.orValue("") != "" ? gcpBucket.status.?selfLink.orValue("") : ""}'
+
+  resources:
+    - id: awsBucket
+      includeWhen:
+        - ${schema.spec.provider == "aws"}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.metadata.name}-aws
+          namespace: ${schema.metadata.namespace}
+        spec:
+          name: ${schema.spec.bucketName}
+          createBucketConfiguration:
+            locationConstraint: ${schema.spec.?aws.?region.orValue("ap-northeast-1")}
+          versioning:
+            status: '${schema.spec.versioningEnabled ? "Enabled" : "Suspended"}'
+          publicAccessBlock:
+            blockPublicACLs: ${schema.spec.?aws.?blockPublicAccess.orValue(true)}
+            ignorePublicACLs: ${schema.spec.?aws.?blockPublicAccess.orValue(true)}
+            blockPublicPolicy: ${schema.spec.?aws.?blockPublicAccess.orValue(true)}
+            restrictPublicBuckets: ${schema.spec.?aws.?blockPublicAccess.orValue(true)}
+          tagging:
+            tagSet: ${schema.spec.?aws.?tags.orValue([])}
+
+    - id: gcpBucket
+      includeWhen:
+        - ${schema.spec.provider == "gcp"}
+      template:
+        apiVersion: storage.cnrm.cloud.google.com/v1beta1
+        kind: StorageBucket
+        metadata:
+          name: ${schema.metadata.name}-gcp
+          namespace: ${schema.metadata.namespace}
+          annotations:
+            cnrm.cloud.google.com/project-id: ${schema.spec.?gcp.?projectId.orValue("")}
+            cnrm.cloud.google.com/force-destroy: ${string(schema.spec.?gcp.?forceDestroy.orValue(false))}
+        spec:
+          resourceID: ${schema.spec.bucketName}
+          location: ${schema.spec.?gcp.?location.orValue("US")}
+          uniformBucketLevelAccess: true
+          versioning:
+            enabled: ${schema.spec.versioningEnabled}
+          lifecycleRule:
+            - action:
+                type: Delete
+              condition:
+                age: ${schema.spec.lifecycleDays}
+                withState: ANY
+
+    - id: azureResourceGroup
+      includeWhen:
+        - ${schema.spec.provider == "azure"}
+      template:
+        apiVersion: resources.azure.com/v1api20200601
+        kind: ResourceGroup
+        metadata:
+          name: ${schema.spec.?azure.?resourceGroupName.orValue(schema.metadata.name + "-rg")}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          location: ${schema.spec.?azure.?location.orValue("westcentralus")}
+
+    - id: azureStorageAccount
+      includeWhen:
+        - ${schema.spec.provider == "azure"}
+      template:
+        apiVersion: storage.azure.com/v1api20210401
+        kind: StorageAccount
+        metadata:
+          name: ${schema.spec.?azure.?storageAccountName.orValue(schema.spec.bucketName)}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          location: ${schema.spec.?azure.?location.orValue("westcentralus")}
+          kind: StorageV2
+          sku:
+            name: Standard_LRS
+          owner:
+            name: ${azureResourceGroup.metadata.name}
+          accessTier: Hot
+
+    - id: azureBlobService
+      includeWhen:
+        - ${schema.spec.provider == "azure"}
+      template:
+        apiVersion: storage.azure.com/v1api20210401
+        kind: StorageAccountsBlobService
+        metadata:
+          name: ${azureStorageAccount.metadata.name}-blob
+          namespace: ${schema.metadata.namespace}
+          annotations:
+            serviceoperator.azure.com/reconcile-policy: detach-on-delete
+        spec:
+          owner:
+            name: ${azureStorageAccount.metadata.name}
+
+    - id: azureContainer
+      includeWhen:
+        - ${schema.spec.provider == "azure"}
+      template:
+        apiVersion: storage.azure.com/v1api20210401
+        kind: StorageAccountsBlobServicesContainer
+        metadata:
+          name: ${schema.spec.?azure.?containerName.orValue(schema.spec.bucketName)}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          owner:
+            name: ${azureBlobService.metadata.name}

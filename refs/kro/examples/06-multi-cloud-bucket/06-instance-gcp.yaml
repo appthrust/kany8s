@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: Bucket
+metadata:
+  name: demo-bucket-gcp
+spec:
+  provider: gcp
+  # GCS bucket names must be globally unique.
+  bucketName: my-gcp-project-sample-unique-bucket
+  versioningEnabled: true
+  lifecycleDays: 7
+  gcp:
+    projectId: my-gcp-project
+    location: asia-northeast1
+    forceDestroy: false

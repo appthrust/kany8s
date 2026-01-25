@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: Bucket
+metadata:
+  name: demo-bucket-azure
+spec:
+  provider: azure
+  bucketName: democontainer
+  azure:
+    resourceGroupName: demo-rg
+    location: westcentralus
+    # Azure storage account names must be globally unique and match ^[a-z0-9]{3,24}$
+    storageAccountName: demostorageacct123
+    # containerName is optional; omitted means bucketName is used.

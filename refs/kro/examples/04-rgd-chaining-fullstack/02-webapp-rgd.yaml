@@ -1,0 +1,90 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-webapp-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoWebApplication
+    spec:
+      name: string | required=true
+      image: string | default="nginx:1.27"
+      replicas: integer | default=2 minimum=1 maximum=10
+      port: integer | default=80 minimum=1 maximum=65535
+      databaseUrl: string | required=true minLength=1
+      ingress:
+        enabled: boolean | default=false
+        className: string | default="nginx"
+        host: string | default="example.local"
+        path: string | default="/"
+    status:
+      availableReplicas: ${deployment.status.availableReplicas}
+      serviceName: ${service.metadata.name}
+      endpoint: '${"http://" + service.metadata.name + "." + service.metadata.namespace + ".svc.cluster.local:" + string(service.spec.ports[0].port)}'
+
+  resources:
+    - id: deployment
+      template:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${schema.spec.name}
+          labels:
+            app.kubernetes.io/name: ${schema.spec.name}
+        spec:
+          replicas: ${schema.spec.replicas}
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: ${schema.spec.name}
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: ${schema.spec.name}
+            spec:
+              containers:
+                - name: app
+                  image: ${schema.spec.image}
+                  ports:
+                    - name: http
+                      containerPort: ${schema.spec.port}
+                  env:
+                    - name: DATABASE_URL
+                      value: ${schema.spec.databaseUrl}
+      readyWhen:
+        - ${deployment.status.?availableReplicas.orValue(0) >= deployment.spec.replicas}
+
+    - id: service
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.spec.name}-svc
+        spec:
+          selector: ${deployment.spec.selector.matchLabels}
+          ports:
+            - name: http
+              protocol: TCP
+              port: ${schema.spec.port}
+              targetPort: ${schema.spec.port}
+
+    - id: ingress
+      includeWhen:
+        - ${schema.spec.ingress.enabled}
+      template:
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: ${schema.spec.name}-ing
+        spec:
+          ingressClassName: ${schema.spec.ingress.className}
+          rules:
+            - host: ${schema.spec.ingress.host}
+              http:
+                paths:
+                  - path: ${schema.spec.ingress.path}
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: ${service.metadata.name}
+                        port:
+                          number: ${schema.spec.port}

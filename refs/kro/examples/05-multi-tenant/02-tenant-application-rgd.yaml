@@ -1,0 +1,63 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-tenant-application-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoTenantApplication
+    spec:
+      tenantNamespace: string | required=true minLength=1
+      name: string | required=true minLength=1
+      image: string | default="nginx:1.27"
+      replicas: integer | default=1 minimum=1 maximum=10
+      port: integer | default=80 minimum=1 maximum=65535
+    status:
+      namespace: ${deployment.metadata.namespace}
+      serviceName: ${service.metadata.name}
+      availableReplicas: ${deployment.status.availableReplicas}
+      url: '${"http://" + service.metadata.name + "." + deployment.metadata.namespace + ".svc.cluster.local:" + string(service.spec.ports[0].port)}'
+
+  resources:
+    - id: deployment
+      template:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.tenantNamespace}
+          labels:
+            app.kubernetes.io/name: ${schema.spec.name}
+            saas/tenant-id: ${schema.spec.tenantNamespace}
+        spec:
+          replicas: ${schema.spec.replicas}
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: ${schema.spec.name}
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: ${schema.spec.name}
+                saas/tenant-id: ${schema.spec.tenantNamespace}
+            spec:
+              containers:
+                - name: app
+                  image: ${schema.spec.image}
+                  ports:
+                    - name: http
+                      containerPort: ${schema.spec.port}
+
+    - id: service
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.spec.name}-svc
+          namespace: ${schema.spec.tenantNamespace}
+        spec:
+          selector: ${deployment.spec.selector.matchLabels}
+          ports:
+            - name: http
+              protocol: TCP
+              port: ${schema.spec.port}
+              targetPort: ${schema.spec.port}

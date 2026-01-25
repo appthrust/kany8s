@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: PostgresBackedApp
+metadata:
+  name: demo-postgres-app
+spec:
+  name: demo-postgres-app
+  replicas: 1
+  image: busybox:1.36
+  db:
+    user: postgres
+    password: changeme
+    database: app
+    port: 5432
+    image: postgres:15

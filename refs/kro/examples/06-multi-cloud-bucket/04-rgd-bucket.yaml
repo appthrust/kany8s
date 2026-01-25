@@ -1,0 +1,83 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: bucket-rgd.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Bucket
+    types:
+      Tag:
+        key: string | required=true minLength=1
+        value: string | required=true
+    spec:
+      provider: string | required=true enum="aws,gcp,azure"
+      bucketName: string | required=true minLength=3
+      versioningEnabled: boolean | default=true
+      lifecycleDays: integer | default=30 minimum=1
+
+      aws:
+        region: string | default="ap-northeast-1"
+        blockPublicAccess: boolean | default=true
+        tags: '[]Tag | default=[]'
+
+      gcp:
+        projectId: string description="Required when provider=gcp"
+        location: string | default="US"
+        forceDestroy: boolean | default=false
+
+      azure:
+        resourceGroupName: string description="Required when provider=azure"
+        location: string | default="westcentralus"
+        storageAccountName: string description="Required when provider=azure (^[a-z0-9]{3,24}$)"
+        containerName: string description="Optional. Default is bucketName"
+
+    status:
+      provider: '${awsBucket.?metadata.?name.orValue("") != "" ? "aws" : gcpBucket.?metadata.?name.orValue("") != "" ? "gcp" : "azure"}'
+      url: '${awsBucket.?metadata.?name.orValue("") != "" ? awsBucket.status.url : gcpBucket.?metadata.?name.orValue("") != "" ? gcpBucket.status.url : azureBucket.status.url}'
+
+  resources:
+    - id: awsBucket
+      includeWhen:
+        - ${schema.spec.provider == "aws"}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AWSBucket
+        metadata:
+          name: ${schema.metadata.name}-aws
+        spec:
+          bucketName: ${schema.spec.bucketName}
+          region: ${schema.spec.?aws.?region.orValue("ap-northeast-1")}
+          versioningEnabled: ${schema.spec.versioningEnabled}
+          blockPublicAccess: ${schema.spec.?aws.?blockPublicAccess.orValue(true)}
+          tags: ${schema.spec.?aws.?tags.orValue([])}
+
+    - id: gcpBucket
+      includeWhen:
+        - ${schema.spec.provider == "gcp"}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: GCPBucket
+        metadata:
+          name: ${schema.metadata.name}-gcp
+        spec:
+          bucketName: ${schema.spec.bucketName}
+          projectId: ${schema.spec.?gcp.?projectId.orValue("")}
+          location: ${schema.spec.?gcp.?location.orValue("US")}
+          versioningEnabled: ${schema.spec.versioningEnabled}
+          forceDestroy: ${schema.spec.?gcp.?forceDestroy.orValue(false)}
+          lifecycleDays: ${schema.spec.lifecycleDays}
+
+    - id: azureBucket
+      includeWhen:
+        - ${schema.spec.provider == "azure"}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AzureBucket
+        metadata:
+          name: ${schema.metadata.name}-azure
+        spec:
+          resourceGroupName: ${schema.spec.?azure.?resourceGroupName.orValue("")}
+          location: ${schema.spec.?azure.?location.orValue("westcentralus")}
+          storageAccountName: ${schema.spec.?azure.?storageAccountName.orValue("")}
+          containerName: ${schema.spec.?azure.?containerName.orValue(schema.spec.bucketName)}
