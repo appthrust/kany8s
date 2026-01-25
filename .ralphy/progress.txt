@@ -60,3 +60,5 @@
 - 2026-01-25: Added a devtools test enforcing generated manager RBAC for `Kany8sControlPlane` (CRUD + status/finalizers); verified `make test` and `make lint`.
 
 - 2026-01-25: Ensured `make manifests` explicitly generates RBAC into `config/rbac/` (controller-gen output config); added a devtools unit test enforcing it; verified `make test` and `make lint`.
+
+- 2026-01-25: Expanded endpoint parser unit tests (query/fragment/userinfo + trailing slash coverage) and marked the PRD test item complete; verified `make test` and `make lint`.

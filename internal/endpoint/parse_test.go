@@ -31,6 +31,11 @@ func TestParse(t *testing.T) {
 			want:  clusterv1.APIEndpoint{Host: "example.com", Port: 443},
 		},
 		{
+			name:  "https url trailing slash is accepted",
+			input: "https://example.com/",
+			want:  clusterv1.APIEndpoint{Host: "example.com", Port: 443},
+		},
+		{
 			name:  "https url host port is preserved",
 			input: "https://example.com:6443",
 			want:  clusterv1.APIEndpoint{Host: "example.com", Port: 6443},
@@ -51,6 +56,11 @@ func TestParse(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "userinfo is rejected",
+			input:   "https://user:pass@example.com",
+			wantErr: true,
+		},
+		{
 			name:    "invalid port returns error",
 			input:   "example.com:abc",
 			wantErr: true,
@@ -63,6 +73,16 @@ func TestParse(t *testing.T) {
 		{
 			name:    "url path is rejected",
 			input:   "https://example.com/path",
+			wantErr: true,
+		},
+		{
+			name:    "url query is rejected",
+			input:   "https://example.com?x=y",
+			wantErr: true,
+		},
+		{
+			name:    "url fragment is rejected",
+			input:   "https://example.com#frag",
 			wantErr: true,
 		},
 		{
