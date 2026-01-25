@@ -26,7 +26,7 @@ func TestExamplesKroEKSControlPlaneRGDSampleExists(t *testing.T) {
 		"endpoint: ${cluster",
 		"ready: ${int(cluster",
 		"== \"ACTIVE\"",
-		"awsAccountID:",
+		"roleARN: ${clusterRole.status.ackResourceMetadata.arn}",
 		"iam.services.k8s.aws/v1alpha1",
 		"kind: Role",
 		"eks.services.k8s.aws/v1alpha1",
