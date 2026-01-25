@@ -455,6 +455,11 @@ stringData:
     kind: Config
 ```
 
+  - Option B: Kany8s creates kubeconfig Secret
+    - kro instance は `status.kubeconfigSecretRef` を出力し、kubeconfig を `data.value` に入れた **source Secret** を参照できるようにする。
+    - source Secret 側は provider-specific でよく、`name/type/labels` などのメタデータ契約は課さない（Kany8s が `data.value` だけを読んで CAPI 準拠の Secret を作る）。
+    - Kany8s は `<cluster>-kubeconfig` Secret を作成/更新し、`data.value` をコピーしつつ `type/labels` を CAPI contract に合わせる。
+
 - Provider 追加（AKS/GKE 等）
   - RGD 側で status 正規化を実装し、Kany8s コントローラは変更しない
 

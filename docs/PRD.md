@@ -484,7 +484,7 @@ spec:
   - DoD: "RGD 側で何を出すか / Kany8s 側で何を読むか" が 1 枚で説明できる
 - [x] (方針 A) RGD 側で kubeconfig Secret を作る場合の要件を定義する
   - DoD: Secret 名/namespace/labels/type が CAPI contract と一致する
-- [ ] (方針 B) Kany8s 側で kubeconfig Secret を作る場合の入力 contract を定義する
+- [x] (方針 B) Kany8s 側で kubeconfig Secret を作る場合の入力 contract を定義する
   - DoD: endpoint/CA/token 等の入手元が矛盾なく決まっている
 - [ ] `<cluster>-kubeconfig` Secret の contract を満たす
   - `type=cluster.x-k8s.io/secret`
