@@ -86,3 +86,5 @@
 - 2026-01-25: Added a kind+kro setup runbook (`docs/runbooks/kind-kro.md`) plus a devtools test enforcing it; verified `make test` and `make lint`.
 
 - 2026-01-25: Added an ACK-based EKS addons kro RGD example (`examples/kro/eks/eks-addons-rgd.yaml`) plus a devtools test and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-25: Added an EKS PodIdentitySet kro RGD example (`examples/kro/eks/pod-identity-set-rgd.yaml`) that ensures Role -> PodIdentityAssociation DAG ordering; added a devtools test and marked the PRD item complete; verified `make test` and `make lint`.

@@ -1,0 +1,71 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-pod-identity-set.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: PodIdentitySet
+    spec:
+      region: string | required=true description="AWS region"
+      clusterName: string | required=true description="EKS cluster name"
+
+    status:
+      ready: ${int(externalDNSAssociation.?status.?status.orValue("") == "ACTIVE" && awsLoadBalancerControllerAssociation.?status.?status.orValue("") == "ACTIVE") == 1}
+
+  resources:
+    - id: externalDNSRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.clusterName}-external-dns-role
+        spec:
+          name: ${schema.spec.clusterName}-ExternalDNSRole
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"],"Sid":"ExternalDNS"}]}
+
+    - id: externalDNSAssociation
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: PodIdentityAssociation
+        metadata:
+          name: ${schema.spec.clusterName}-external-dns
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          namespace: external-dns
+          serviceAccount: external-dns
+          roleARN: ${externalDNSRole.status.ackResourceMetadata.arn}
+
+      readyWhen:
+        - ${externalDNSAssociation.?status.?status.orValue("") == "ACTIVE"}
+
+    - id: awsLoadBalancerControllerRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.clusterName}-aws-load-balancer-controller-role
+        spec:
+          name: ${schema.spec.clusterName}-AWSLoadBalancerControllerRole
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"],"Sid":"AWSLoadBalancerController"}]}
+
+    - id: awsLoadBalancerControllerAssociation
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: PodIdentityAssociation
+        metadata:
+          name: ${schema.spec.clusterName}-aws-load-balancer-controller
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          namespace: kube-system
+          serviceAccount: aws-load-balancer-controller
+          roleARN: ${awsLoadBalancerControllerRole.status.ackResourceMetadata.arn}
+
+      readyWhen:
+        - ${awsLoadBalancerControllerAssociation.?status.?status.orValue("") == "ACTIVE"}
