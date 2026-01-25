@@ -8,3 +8,5 @@
 - 2026-01-25: Documented local development prerequisites/quickstart in README; added a unit test to enforce presence; verified `make test` and `make lint`.
 
 - 2026-01-25: Pinned Dockerfile Go builder image to the go.mod toolchain; added a unit test to enforce it; verified `make test`, `make lint`, and `make docker-build IMG=example.com/kany8s/controller:dev`.
+
+- 2026-01-25: Added GitHub Actions CI workflow to run `make test`, `make manifests`, and `make lint`; added a unit test to enforce it; verified `make test` and `make lint`.

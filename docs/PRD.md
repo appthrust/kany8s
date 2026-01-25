@@ -315,7 +315,7 @@ spec:
 - [x] Controller イメージの build/push ターゲットを整備する
   - 触る: `Dockerfile`, `Makefile` (`docker-build`, `docker-push`, `IMG ?= ...`)
   - DoD: `make docker-build IMG=example.com/kany8s/controller:dev` が成功する
-- [ ] (推奨) CI で `make test` / `make manifests` が回るようにする
+- [x] (推奨) CI で `make test` / `make manifests` が回るようにする
   - 追加: `.github/workflows/ci.yaml`
   - DoD: PR/Push で `make test` が実行され、失敗が検知できる
 
