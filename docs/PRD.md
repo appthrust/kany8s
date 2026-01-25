@@ -423,7 +423,7 @@ spec:
 - [x] endpoint parse の table-driven unit test を追加する
   - 追加: `internal/endpoint/parse_test.go`
   - DoD: `make test` で parse の境界値(hostのみ/host:port/https URL/不正入力)をカバーできる
-- [ ] RGD schema(apiVersion/kind) -> instance GVK 解決の unit test を追加する
+- [x] RGD schema(apiVersion/kind) -> instance GVK 解決の unit test を追加する
   - 追加: `internal/kro/gvk_test.go`
   - DoD: `schema.apiVersion` が `v1alpha1` / `example.com/v1alpha1` の両方で期待結果になる
 - [ ] fake client で controller の reconcile を unit test する

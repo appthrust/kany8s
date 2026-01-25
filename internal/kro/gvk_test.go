@@ -2,6 +2,7 @@ package kro
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -69,6 +70,102 @@ func TestResolveInstanceGVK(t *testing.T) {
 			}
 			if got != tt.wantGVK {
 				t.Fatalf("ResolveInstanceGVK returned %v, want %v", got, tt.wantGVK)
+			}
+		})
+	}
+}
+
+func TestResolveInstanceGVK_Errors(t *testing.T) {
+	t.Parallel()
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+
+	tests := []struct {
+		name           string
+		rgdName        string
+		rgdObject      map[string]any
+		wantErrContain string
+	}{
+		{
+			name:           "blank rgd name",
+			rgdName:        " ",
+			wantErrContain: "rgd name is required",
+		},
+		{
+			name:    "missing spec.schema.apiVersion",
+			rgdName: "test-rgd",
+			rgdObject: map[string]any{
+				"apiVersion": rgdGVK.GroupVersion().String(),
+				"kind":       rgdGVK.Kind,
+				"metadata": map[string]any{
+					"name": "test-rgd",
+				},
+				"spec": map[string]any{
+					"schema": map[string]any{
+						"kind": "EKSControlPlane",
+					},
+				},
+			},
+			wantErrContain: "missing spec.schema.apiVersion",
+		},
+		{
+			name:    "missing spec.schema.kind",
+			rgdName: "test-rgd",
+			rgdObject: map[string]any{
+				"apiVersion": rgdGVK.GroupVersion().String(),
+				"kind":       rgdGVK.Kind,
+				"metadata": map[string]any{
+					"name": "test-rgd",
+				},
+				"spec": map[string]any{
+					"schema": map[string]any{
+						"apiVersion": "v1alpha1",
+					},
+				},
+			},
+			wantErrContain: "missing spec.schema.kind",
+		},
+		{
+			name:    "invalid spec.schema.apiVersion",
+			rgdName: "test-rgd",
+			rgdObject: map[string]any{
+				"apiVersion": rgdGVK.GroupVersion().String(),
+				"kind":       rgdGVK.Kind,
+				"metadata": map[string]any{
+					"name": "test-rgd",
+				},
+				"spec": map[string]any{
+					"schema": map[string]any{
+						"apiVersion": "example.com/",
+						"kind":       "ExampleControlPlane",
+					},
+				},
+			},
+			wantErrContain: "invalid ResourceGraphDefinition schema apiVersion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			scheme := runtime.NewScheme()
+			scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+			scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+
+			c := fake.NewClientBuilder().WithScheme(scheme).Build()
+			if tt.rgdObject != nil {
+				rgd := &unstructured.Unstructured{Object: tt.rgdObject}
+				rgd.SetGroupVersionKind(rgdGVK)
+				c = fake.NewClientBuilder().WithScheme(scheme).WithObjects(rgd).Build()
+			}
+
+			_, err := ResolveInstanceGVK(context.Background(), c, tt.rgdName)
+			if err == nil {
+				t.Fatalf("ResolveInstanceGVK unexpectedly succeeded")
+			}
+			if !strings.Contains(err.Error(), tt.wantErrContain) {
+				t.Fatalf("ResolveInstanceGVK returned error %q, want to contain %q", err.Error(), tt.wantErrContain)
 			}
 		})
 	}

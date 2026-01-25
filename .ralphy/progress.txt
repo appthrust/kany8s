@@ -64,3 +64,5 @@
 - 2026-01-25: Expanded endpoint parser unit tests (query/fragment/userinfo + trailing slash coverage) and marked the PRD test item complete; verified `make test` and `make lint`.
 
 - 2026-01-25: Added a minimal kro RGD + instance example for the normalized `status.ready`/`status.endpoint` contract under `examples/kro/`; added a devtools test to enforce its presence; verified `make test` and `make lint`.
+
+- 2026-01-25: Expanded `ResolveInstanceGVK` unit tests (success + error cases) and marked the PRD item complete; verified `make test` and `make lint`.
