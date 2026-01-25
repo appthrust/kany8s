@@ -415,7 +415,7 @@ spec:
 - [x] 動的に生成される kro instance を create/update できる RBAC を追加する
   - 注意: GVK が動的なので、MVP は `kro.run` group を広めに許可する(最小権限化は後続)
   - DoD: `kro.run` group の create/get/list/watch/update/patch が生成 RBAC に含まれる
-- [ ] Event を出す場合は events の RBAC を追加する
+- [x] Event を出す場合は events の RBAC を追加する
   - DoD: controller が `events.k8s.io` / `corev1` event を作成できる
 - [ ] `make manifests` で RBAC が生成されることを確認する
 

@@ -50,3 +50,5 @@
 - 2026-01-25: Added manager RBAC to read kro `ResourceGraphDefinition` objects via kubebuilder RBAC markers; regenerated manifests and added a devtools test enforcing the generated `config/rbac/role.yaml`; verified `make test` and `make lint`.
 
 - 2026-01-25: Added broad manager RBAC for dynamically generated kro instances (`kro.run` resources `*` with create/get/list/watch/update/patch); regenerated manifests and updated the devtools RBAC test; verified `make test` and `make lint`.
+
+- 2026-01-25: Added manager RBAC for creating/patching Events (core + `events.k8s.io`) and a devtools test enforcing the generated `config/rbac/role.yaml`; verified `make test` and `make lint`.
