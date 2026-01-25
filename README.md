@@ -9,6 +9,47 @@ The goal is simple: **if you can express it as a kro RGD, Kany8s can drive it vi
 - Name: `Kany8s` = "k(ro)" + "any" + "k8s" (and it’s pronounceable)
 - Repo status: design-first / prototype
 
+## Quickstart (Install -> Apply -> Observe)
+
+Prereqs:
+
+- A Kubernetes management cluster where Cluster API is already installed.
+- `kubectl` configured to talk to that cluster.
+
+Local setup helpers:
+
+- `docs/runbooks/kind-kro.md`: kind + kro
+- `docs/runbooks/ack.md`: ACK (AWS Controllers for Kubernetes)
+- `docs/runbooks/e2e.md`: end-to-end walkthrough
+
+Minimal flow:
+
+```bash
+# 1) kro install
+KRO_VERSION=0.7.1
+kubectl create namespace kro-system
+kubectl apply -f \
+  https://github.com/kubernetes-sigs/kro/releases/download/v${KRO_VERSION}/kro-core-install-manifests.yaml
+kubectl rollout status -n kro-system deploy/kro
+
+# 2) Kany8s install (controller + CRDs)
+# NOTE: install manifests/packaging are not published yet (WIP).
+# This is the intended command shape:
+kubectl apply -f <kany8s-install.yaml>
+
+# 3) RGD apply (provider-specific)
+kubectl apply -f <provider-rgd.yaml>
+
+# 4) Cluster apply
+kubectl apply -f examples/capi/cluster.yaml
+
+# Observe
+kubectl get rgd -o wide
+kubectl get clusters -A -o wide
+kubectl get kany8scontrolplanes -A -o wide
+kubectl describe kany8scontrolplane -n default demo-cluster
+```
+
 ## Concept
 
 Kany8s separates responsibilities clearly:
@@ -180,6 +221,7 @@ schema:
 - `design.md`: architecture and controller ↔ kro contract
 - `idea.md`: ACK CR examples and RGD modularization ideas
 - `capt/`: reference implementation (Cluster API Provider Terraform) used for comparison
+- `docs/runbooks/`: reproducible setups + observation commands
 
 ## Roadmap (Sketch)
 

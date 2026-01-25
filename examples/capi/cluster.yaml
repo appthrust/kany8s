@@ -1,0 +1,31 @@
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sControlPlane
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  version: "1.34"
+
+  # Provider selection (kro ResourceGraphDefinition)
+  # - This RGD must expose the normalized status contract:
+  #   - status.ready: boolean
+  #   - status.endpoint: string (https://host[:port] or host[:port])
+  resourceGraphDefinitionRef:
+    name: eks-control-plane
+
+  # Provider-specific inputs passed to the kro instance.
+  # Shape is defined by the referenced RGD.
+  kroSpec: {}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  # Minimal example: only the ControlPlaneRef.
+  # In a real CAPI setup you typically also set `.spec.infrastructureRef` (or `.spec.topology`).
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    kind: Kany8sControlPlane
+    name: demo-cluster
