@@ -106,3 +106,5 @@
 - 2026-01-25: Implemented kubeconfig Secret reconciliation in the `Kany8sControlPlane` controller (copy from kro instance `status.kubeconfigSecretRef` into CAPI `<cluster>-kubeconfig` Secret), added unit tests + secrets RBAC devtools check; verified `make test` and `make lint`.
 
 - 2026-01-25: Added ClusterClass template APIs (`Kany8sControlPlaneTemplate`, `Kany8sClusterTemplate`) with minimal template resource specs; added devtools tests asserting scaffold + generated CRD bases; verified `make test` and `make lint`.
+
+- 2026-01-25: Documented ClusterClass/Topology version single source of truth (`Cluster.spec.topology.version` -> `Kany8sControlPlane.spec.version`) in `docs/design.md`; added a devtools assertion test; verified `make test` and `make lint`.

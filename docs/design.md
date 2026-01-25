@@ -94,6 +94,19 @@
 - CAPI の actuation の中核は `ControlPlaneRef` と `InfrastructureRef`。
 - ControlPlane provider の `Ready` を周辺構築まで引きずると、CAPI 側の期待（「ControlPlane ready」=「API endpoint を設定できる」）とズレやすい。
 
+### 3.7 ClusterClass/Topology では `Cluster.spec.topology.version` を single source of truth とする
+
+**Decision**
+- ClusterClass/Topology 利用時は `Cluster.spec.topology.version` を Kubernetes version の single source of truth とする。
+- Topology controller により、生成される `Kany8sControlPlane.spec.version` は `Cluster.spec.topology.version` と一致することを期待する。
+- `Kany8sControlPlaneTemplate` には version を持たせず、Kany8s コントローラは `Kany8sControlPlane.spec.version` を kro instance の `spec.version` に注入する（= Topology version -> ControlPlane version -> kro instance version の流れ）。
+
+**Rationale**
+- version の二重管理（Cluster と template の両方で指定）を避け、drift と運用負荷を下げる。
+
+**Consequence**
+- Topology を使わない場合（`Cluster.spec.controlPlaneRef` 直指定）は `Kany8sControlPlane.spec.version` をユーザーが明示する。
+
 ## 4. アーキテクチャ概要
 
 ### 4.1 コンポーネント
