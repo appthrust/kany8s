@@ -361,7 +361,7 @@ spec:
     - instance の GVK は `rgd.spec.schema.apiVersion` と `rgd.spec.schema.kind` から作る
       - `schema.apiVersion` が `v1alpha1` のように group を含まない場合は `kro.run/<schema.apiVersion>` にする
   - DoD: `internal/kro/gvk_test.go` で table-driven に期待 GVK が解決できる
-- [ ] kro instance を `unstructured.Unstructured` として 1:1 で create/update できるようにする
+- [x] kro instance を `unstructured.Unstructured` として 1:1 で create/update できるようにする
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - MVP 既定:
     - kro instance/RGD ともに `unstructured.Unstructured` で扱い、kro の Go API 依存を持ち込まない

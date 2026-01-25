@@ -24,3 +24,5 @@
 - 2026-01-25: Ran `make generate` + `make manifests` to confirm `config/crd/bases/` is up to date; added a devtools unit test to enforce key CRD YAML contents; verified `make test` and `make lint`.
 
 - 2026-01-25: Implemented kro `ResourceGraphDefinition` schema->instance GVK resolver (`internal/kro/ResolveInstanceGVK`) with table-driven unit tests; verified `make test` and `make lint`.
+
+- 2026-01-25: Implemented `Kany8sControlPlane` reconcile to resolve kro instance GVK and create/update the corresponding unstructured kro instance; added a unit test for instance creation; verified `make test` and `make lint`.

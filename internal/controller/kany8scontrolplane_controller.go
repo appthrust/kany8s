@@ -19,9 +19,13 @@ package controller
 import (
 	"context"
 
+	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
+	"github.com/reoring/kany8s/internal/kro"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -45,9 +49,34 @@ type Kany8sControlPlaneReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.23.0/pkg/reconcile
 func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
-	// TODO(user): your logic here
+	cp := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := r.Get(ctx, req.NamespacedName, cp); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, cp.Spec.ResourceGraphDefinitionRef.Name)
+	if err != nil {
+		log.Error(err, "resolve kro instance GVK")
+		return ctrl.Result{}, err
+	}
+
+	instance := &unstructured.Unstructured{}
+	instance.SetGroupVersionKind(instanceGVK)
+	instance.SetName(cp.Name)
+	instance.SetNamespace(cp.Namespace)
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
+		instance.SetGroupVersionKind(instanceGVK)
+		instance.SetName(cp.Name)
+		instance.SetNamespace(cp.Namespace)
+		return nil
+	})
+	if err != nil {
+		log.Error(err, "create or update kro instance")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
