@@ -290,121 +290,248 @@ spec:
 
 # TODO
 
+このセクションは「実装の作業指示書」に近い TODO リストです。
+
+方針:
+
+- 1つのチェックボックス = だいたい1コミット(目安)
+- 各項目に「成果物(触るファイル/追加するもの)」と「完了条件(DoD)」を書く
+- 選択肢がある場合は「MVP の既定」を TODO 内に明記し、後で見直せる形にする
+
 ## M1: Kany8sControlPlane MVP (CRD + Controller)
 
 ### リポジトリ/開発環境の立ち上げ
-- [ ] Go module パスを決めて `go mod init <module>` を実行する (例: `github.com/<org>/kany8s`)
-- [ ] Go バージョンを決めて `go.mod` の `go` directive を固定する
-- [ ] Kubebuilder で scaffold を生成する: `kubebuilder init --domain cluster.x-k8s.io --repo <module>`
-- [ ] `make test` / `make generate` / `make manifests` / `make run` がローカルで通ることを確認する
-- [ ] `hack/tools.go` 等で `controller-gen` 等のツールバージョンを pin する
-- [ ] `Dockerfile` / `Makefile` の `docker-build` / `docker-push` ターゲットを整備する
+- [ ] Go module + kubebuilder scaffold を生成する
+  - コマンド: `go mod init <module>` / `kubebuilder init --domain cluster.x-k8s.io --repo <module>`
+  - 成果物: `go.mod`, `main.go`, `config/`, `Makefile`
+  - DoD: `make help` が表示でき、`go test ./...` が通る
+- [ ] Go バージョンと開発ツールバージョンを pin する
+  - 触る: `go.mod` の `go` directive, `hack/tools.go` (例: `controller-gen`, `kustomize`, `setup-envtest`)
+  - DoD: クリーンな checkout から `make generate` が再現性を持って動く
+- [ ] ローカルの開発ループを確認し、前提/手順を README に残す
+  - 実行: `make test` / `make generate` / `make manifests` / `make run`
+  - 成果物: `README.md` に「必要ツール」「最短の動かし方」が書かれている
+  - DoD: 別環境(=新しい作業者)が README の手順だけでローカル実行できる
+- [ ] Controller イメージの build/push ターゲットを整備する
+  - 触る: `Dockerfile`, `Makefile` (`docker-build`, `docker-push`, `IMG ?= ...`)
+  - DoD: `make docker-build IMG=example.com/kany8s/controller:dev` が成功する
+- [ ] (推奨) CI で `make test` / `make manifests` が回るようにする
+  - 追加: `.github/workflows/ci.yaml`
+  - DoD: PR/Push で `make test` が実行され、失敗が検知できる
 
 ### API: Kany8sControlPlane CRD を定義する
-- [ ] API を生成する: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --resource --controller=false`
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `spec.version` (required) を追加する
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `spec.resourceGraphDefinitionRef.name` (required) を追加する
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `spec.kroSpec` (optional; arbitrary object) を追加する (`runtime.RawExtension` or `apiextensionsv1.JSON` を採用)
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `spec.controlPlaneEndpoint` (optional; `clusterv1.APIEndpoint`) を追加する (controller が設定)
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `status.initialization.controlPlaneInitialized` を追加する
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `status.conditions` を追加し、`GetConditions/SetConditions` を実装する
-- [ ] `api/v1alpha1/kany8scontrolplane_types.go` に `status.failureReason` / `status.failureMessage` を追加する
-- [ ] `make generate` / `make manifests` を実行し `config/crd/bases/` が更新されることを確認する
+- [ ] API scaffold を生成する
+  - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --resource --controller=false`
+  - 成果物: `api/v1alpha1/kany8scontrolplane_types.go`
+  - DoD: `make generate` が通る(フィールド追加前でも OK)
+- [ ] `Kany8sControlPlaneSpec` を MVP 要件どおりに定義する
+  - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
+  - 追加:
+    - `spec.version` (required)
+    - `spec.resourceGraphDefinitionRef.name` (required)
+    - `spec.kroSpec` (optional; arbitrary object)
+      - MVP 既定: `apiextensionsv1.JSON` を採用し unknown fields を許容する
+    - `spec.controlPlaneEndpoint` (optional; `clusterv1.APIEndpoint`; controller が設定)
+  - DoD: `make generate` 後に `spec.version` と `spec.resourceGraphDefinitionRef.name` が CRD 上 required になる
+- [ ] `Kany8sControlPlaneStatus` を MVP 要件どおりに定義する
+  - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
+  - 追加:
+    - `status.initialization.controlPlaneInitialized`
+    - `status.conditions` + `GetConditions/SetConditions` (Cluster API util/conditions と互換)
+    - `status.failureReason` / `status.failureMessage`
+  - DoD: `make test` が通り、`make manifests` の CRD に status subresource が生成される
+- [ ] (任意/推奨) `kubectl get kany8scontrolplanes` が読みやすくなるよう PrintColumns を追加する
+  - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
+  - 例: INITIALIZED/ENDPOINT をそれぞれ `.status.initialization.controlPlaneInitialized` / `.spec.controlPlaneEndpoint.host` から表示
+  - DoD: `make manifests` 後の CRD に additionalPrinterColumns が入る
+- [ ] `make generate` / `make manifests` を実行し `config/crd/bases/` の更新を確認する
+  - DoD: `config/crd/bases/` の差分が API 変更を反映している
 
 ### Controller: RGD 参照と kro instance の作成/更新
-- [ ] controller を生成する: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --controller --resource=false`
-- [ ] `controllers/kany8scontrolplane_controller.go` で `spec.resourceGraphDefinitionRef.name` から `kro.run/v1alpha1 ResourceGraphDefinition` を取得できるようにする
-- [ ] `ResourceGraphDefinition.spec.schema.kind` を読み、kro instance の `kind` に使う
-- [ ] `ResourceGraphDefinition.spec.schema.apiVersion` を読み、kro instance の `apiVersion` を組み立てる (例: `kro.run/<schema.apiVersion>`; 既に `/` を含む場合はそのまま)
-- [ ] kro instance を `unstructured.Unstructured` で扱い、`metadata.name/namespace` を `Kany8sControlPlane` と一致させる
-- [ ] kro instance の `spec` を `spec.kroSpec` から構築し、`spec.version` は必ず `Kany8sControlPlane.spec.version` で上書きする
+- [ ] controller scaffold を生成し、manager に登録される状態にする
+  - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --controller --resource=false`
+  - 成果物: `controllers/kany8scontrolplane_controller.go`
+  - DoD: `make test` が通る(ロジック追加前でも OK)
+- [ ] `ResourceGraphDefinition` の取得と「生成される instance GVK」の解決ロジックを実装する
+  - 触る/追加:
+    - 追加: `internal/kro/gvk.go` (例: `ResolveInstanceGVK(ctx, client, rgdName) (schema.GroupVersionKind, error)`)
+    - 触る: `controllers/kany8scontrolplane_controller.go`
+  - 実装メモ:
+    - RGD 自体は `kro.run/v1alpha1` / `kind=ResourceGraphDefinition`
+    - instance の GVK は `rgd.spec.schema.apiVersion` と `rgd.spec.schema.kind` から作る
+      - `schema.apiVersion` が `v1alpha1` のように group を含まない場合は `kro.run/<schema.apiVersion>` にする
+  - DoD: `internal/kro/gvk_test.go` で table-driven に期待 GVK が解決できる
+- [ ] kro instance を `unstructured.Unstructured` として 1:1 で create/update できるようにする
+  - 触る: `controllers/kany8scontrolplane_controller.go`
+  - MVP 既定:
+    - kro instance/RGD ともに `unstructured.Unstructured` で扱い、kro の Go API 依存を持ち込まない
+    - patch 方式は `controllerutil.CreateOrUpdate` を採用する(SSA は後で検討)
+  - DoD: `metadata.name/namespace` が `Kany8sControlPlane` と一致した instance が作成/更新される
+- [ ] kro instance `spec` の構築ルールを固定し、idempotent に反映する
+  - 仕様:
+    - `Kany8sControlPlane.spec.kroSpec` を instance `.spec` に展開する
+    - `.spec.version` は必ず `Kany8sControlPlane.spec.version` で上書きする
+  - DoD: `spec.version` を手動で変えても reconcile で元に戻る
 - [ ] kro instance に `OwnerReference`(controller=true) を付与し、削除連鎖できるようにする
-- [ ] `controllerutil.CreateOrUpdate` または Server-Side Apply のどちらを採用するか決め、idempotent に spec を反映できるようにする
-- [ ] RGD が見つからない/不正な場合のエラーを Condition と Event に出し、適切に requeue する
+  - DoD: `Kany8sControlPlane` 削除で kro instance が GC される
+- [ ] RGD が見つからない/不正な場合の扱いを「Condition + Event + requeue」で統一する
+  - DoD: `kubectl describe kany8scontrolplane <name>` で失敗理由が追える
 
 ### Controller: status 正規化 contract の消費と CAPI contract の充足
-- [ ] kro instance の `status.endpoint` を読み取る (string)
-- [ ] kro instance の `status.ready` を読み取る (bool; 取得できない場合は false 扱い)
-- [ ] endpoint parse ユーティリティを追加する: `internal/endpoint/parse.go` (入力: `https://host[:port]` or `host[:port]`; port 省略は 443)
-- [ ] endpoint が parse できたら `Kany8sControlPlane.spec.controlPlaneEndpoint.host/port` を設定する
-- [ ] endpoint が確定したら `Kany8sControlPlane.status.initialization.controlPlaneInitialized=true` を設定する
-- [ ] kro instance の `status.reason` / `status.message` があれば `failureReason/failureMessage` と Condition の Reason/Message に反映する
-- [ ] Condition の状態遷移を定義する (例: Creating/Ready/Failed) と、`sigs.k8s.io/cluster-api/util/conditions` で一貫して更新する
-- [ ] kro instance が未 Ready の間は `RequeueAfter` でポーリングする間隔(例: 10-30s)を固定する
+- [ ] kro instance status (`ready/endpoint/reason/message`) を安全に読むヘルパーを追加する
+  - 追加: `internal/kro/status.go`
+  - DoD: status field が欠落していても panic せず、(ready=false, endpoint="") として扱える
+- [ ] endpoint parse ユーティリティを追加する
+  - 追加: `internal/endpoint/parse.go`
+  - 仕様: 入力は `https://host[:port]` または `host[:port]`。port 省略は 443。
+  - DoD: `internal/endpoint/parse_test.go` の table-driven test が通る
+- [ ] endpoint を `Kany8sControlPlane.spec.controlPlaneEndpoint` (host/port) に反映する
+  - 触る: `controllers/kany8scontrolplane_controller.go`
+  - DoD: endpoint が parse できたら `spec.controlPlaneEndpoint` が埋まる
+- [ ] endpoint が確定したら `status.initialization.controlPlaneInitialized=true` を設定する
+  - DoD: initialized が True になった後は false に戻らない(仕様として戻す必要が無い)
+- [ ] `failureReason/failureMessage` と Conditions を `ready/endpoint/reason/message` に基づいて更新する
+  - 触る: `controllers/kany8scontrolplane_controller.go`
+  - 条件(例): Creating/Ready/Failed を `sigs.k8s.io/cluster-api/util/conditions` で更新
+  - DoD: Ready=false の間は Creating が立ち、Ready=true + endpoint で Ready が True になる
+- [ ] 未 Ready の間のポーリング間隔を定数化する
+  - 例: `internal/constants/constants.go` などに `RequeueAfter = 15 * time.Second`
+  - DoD: reconcile が過剰に回らず、endpoint/ready の変化に追従できる
 
 ### Controller: 動的 GVK の watch 戦略
-- [ ] MVP は `RequeueAfter` ポーリングで進め、kro instance の status 反映が動くことを最優先で確認する
-- [ ] 拡張として dynamic informer(`dynamicinformer.NewFilteredDynamicSharedInformerFactory`)で GVR ごとに watch を立てる設計にするか判断し、採用する場合は `internal/dynamicwatch/` を追加する
-- [ ] dynamic watch を採用する場合、kro instance の OwnerReference から `Kany8sControlPlane` を特定して reconcile queue へ enqueue する
+- [ ] MVP は `RequeueAfter` ポーリングで進め、まず「status 反映が動く」ことを確認する
+  - DoD: kro instance の endpoint/ready が変わると、次回 reconcile で ControlPlane 側が追従する
+- [ ] (拡張) dynamic watch の要否を判断し、採用する場合は実装する
+  - 判断基準(例): 反応速度が課題/クラスタ数が多くポーリングが重い/instance の GVK が少数に収まる
+  - 採用する場合の成果物: `internal/dynamicwatch/` + `dynamicinformer.NewFilteredDynamicSharedInformerFactory`
+  - DoD: kro instance の update で該当 `Kany8sControlPlane` が enqueue される
 
 ### RBAC/配布 (最低限)
-- [ ] `+kubebuilder:rbac` を追加し、`kany8scontrolplanes` の get/list/watch/create/update/patch/delete と status/finalizers を許可する
-- [ ] `+kubebuilder:rbac` を追加し、`resourcegraphdefinitions.kro.run` の get/list/watch を許可する
-- [ ] kro instance を作成/更新するため、`kro.run` group の生成 CR に対する create/get/list/watch/update/patch を許可する(最小権限の設計は後続で詰める)
+- [ ] `+kubebuilder:rbac` を追加し、ControlPlane CRD 自身の権限を揃える
+  - 触る: `controllers/kany8scontrolplane_controller.go`
+  - DoD: `kany8scontrolplanes` の CRUD + status/finalizers が生成 RBAC に含まれる
+- [ ] `ResourceGraphDefinition` を読む RBAC を追加する
+  - DoD: `resourcegraphdefinitions.kro.run` の get/list/watch が生成 RBAC に含まれる
+- [ ] 動的に生成される kro instance を create/update できる RBAC を追加する
+  - 注意: GVK が動的なので、MVP は `kro.run` group を広めに許可する(最小権限化は後続)
+  - DoD: `kro.run` group の create/get/list/watch/update/patch が生成 RBAC に含まれる
+- [ ] Event を出す場合は events の RBAC を追加する
+  - DoD: controller が `events.k8s.io` / `corev1` event を作成できる
 - [ ] `make manifests` で RBAC が生成されることを確認する
 
 ### テスト
-- [ ] endpoint parse の table-driven unit test を追加する: `internal/endpoint/parse_test.go`
-- [ ] RGD schema(apiVersion/kind) から instance GVK を解決する unit test を追加する: `internal/kro/gvk_test.go`
-- [ ] fake client で controller の "未 Ready -> requeue" と "Ready+endpoint -> spec/status 更新" を検証する unit test を追加する
-- [ ] `make test` が CI で実行できるようにする (envtest を使う場合は setup-envtest の導入も含める)
+- [ ] endpoint parse の table-driven unit test を追加する
+  - 追加: `internal/endpoint/parse_test.go`
+  - DoD: `make test` で parse の境界値(hostのみ/host:port/https URL/不正入力)をカバーできる
+- [ ] RGD schema(apiVersion/kind) -> instance GVK 解決の unit test を追加する
+  - 追加: `internal/kro/gvk_test.go`
+  - DoD: `schema.apiVersion` が `v1alpha1` / `example.com/v1alpha1` の両方で期待結果になる
+- [ ] fake client で controller の reconcile を unit test する
+  - 追加: `controllers/kany8scontrolplane_controller_test.go` (例)
+  - シナリオ例:
+    - instance 未 Ready -> `RequeueAfter` が返る
+    - Ready + endpoint -> `spec.controlPlaneEndpoint` と `status.initialization.controlPlaneInitialized` が更新される
+  - DoD: watch を使わず reconcile 単体の期待がテストで固定できる
+- [ ] `make test` を CI で実行できるようにする
+  - 前提: envtest を使う場合は `setup-envtest` を tools として pin する
+  - DoD: CI 上で `make test` が動作し、失敗が検知できる
 
 ### サンプル/ドキュメント
 - [ ] `examples/capi/cluster.yaml` に `Cluster` + `Kany8sControlPlane` の最小例を追加する
+  - DoD: 例の YAML だけで「どの CR を apply するか」が理解できる
 - [ ] `examples/kro/` に "ready/endpoint" 正規化 contract を満たす最小 RGD の例を追加する
+  - DoD: RGD instance の `status.ready/endpoint` が必ず出力される(欠落しない)例になっている
 - [ ] `README.md` に "install -> apply RGD -> apply Cluster" の手順を追記する
+  - DoD: kind 上での最短手順が 1 セクションで追える
 
 ## M2: AWS/EKS 参照 RGD (ACK) と end-to-end 動作確認
 
 ### RGD: eks-control-plane
 - [ ] `examples/kro/eks/eks-control-plane-rgd.yaml` を作成し、ACK EKS Cluster + 前提 IAM Role を graph に含める
-- [ ] RGD の instance `status.endpoint` を `${cluster.status.endpoint}` で射影する
-- [ ] RGD の instance `status.ready` を `${int(cluster.status.status == "ACTIVE" && cluster.status.endpoint != "") == 1}` 等で安定して materialize される形にする(kro v0.7.1 の bool 欠落回避)
-- [ ] Role -> Cluster の依存を `${clusterRole.status.ackResourceMetadata.arn}` 参照で DAG 化し、ACK の race/Terminal を避ける
-- [ ] `readyWhen` は self resource のみ参照できる前提で、Cluster resource 自身の readyWhen に ACTIVE/endpoint 条件を置く
+  - DoD: `kubectl apply -f` で RGD が `ResourceGraphAccepted=True` になる
+- [ ] RGD instance の `status.endpoint` を `${cluster.status.endpoint}` で射影する
+  - 注意: kro v0.7.1 の "文字列テンプレート" の落とし穴があるため、必要なら CEL 1式で連結する (`docs/kro.md`)
+  - DoD: endpoint が欠落せず、常に string として出力される
+- [ ] RGD instance の `status.ready` を "欠落しにくい" 形で materialize する
+  - 例: `${int(cluster.status.status == "ACTIVE" && cluster.status.endpoint != "") == 1}` (kro v0.7.1 の bool 欠落回避)
+  - DoD: ready が常に boolean として出力される
+- [ ] Role -> Cluster の依存を `${clusterRole.status.ackResourceMetadata.arn}` 参照で DAG 化する
+  - DoD: Role 未作成の race で ACK Terminal に落ちる確率を下げられる
+- [ ] `readyWhen` は self resource のみ参照できる前提で、Cluster resource 自身の readyWhen に判定を置く
+  - DoD: Cluster の `readyWhen` が `ACTIVE` + `endpoint != ""` を待つ
 
 ### 部品化/合成 (任意)
 - [ ] `examples/kro/eks/eks-addons-rgd.yaml` を作成し、Addon 群を別 RGD に分離する
+  - DoD: Addon の Ready/依存が ControlPlane Ready と分離できる
 - [ ] `examples/kro/eks/pod-identity-set-rgd.yaml` を作成し、Role 群 + PodIdentityAssociation 群を別 RGD に分離する
-- [ ] `examples/kro/eks/platform-cluster-rgd.yaml` を作成し、chaining で部品 RGD を束ねる(親 status に ready/endpoint を統一)
+  - DoD: Role -> PodIdentityAssociation の順序が DAG で保証できる
+- [ ] `examples/kro/eks/platform-cluster-rgd.yaml` を作成し、chaining で部品 RGD を束ねる
+  - DoD: 親 instance の `status.ready/endpoint` が ControlPlane と一致する
 
 ### 動作確認手順の整備
 - [ ] kind (管理クラスタ) + kro のセットアップ手順を `docs/runbooks/kind-kro.md` にまとめる
+  - DoD: "再現環境を作る" 手順がコピペで実行できる
 - [ ] ACK コントローラ導入/認証の前提を `docs/runbooks/ack.md` にまとめる
+  - DoD: 最低限 "何をインストールし、どの認証情報が必要か" が明記されている
 - [ ] `Cluster` 適用から endpoint/initialized が立つまでの観測コマンド集を `docs/runbooks/e2e.md` にまとめる
+  - DoD: "詰まった時にどこを見るか" が一覧できる
 
 ## M3: kubeconfig Secret (CAPI contract)
 
 ### kubeconfig 生成方式の決定と実装
-- [ ] provider-agnostic に kubeconfig を得る contract を決める(例: kro instance status に `kubeconfigSecretRef` を追加する)
-- [ ] RGD 側で kubeconfig Secret を作る場合、Secret 名/namespace/labels/type を CAPI contract に合わせる設計にする
-- [ ] Kany8s 側で kubeconfig Secret を作る場合、入力(認証/CA/endpoint)をどこから得るかを定義し実装する
-- [ ] `<cluster>-kubeconfig` Secret の `type=cluster.x-k8s.io/secret` と `cluster.x-k8s.io/cluster-name` label を満たす
-- [ ] kubeconfig Secret の作成/更新を controller の reconcile に組み込み、回帰テストを追加する
+- [ ] provider-agnostic に kubeconfig を得る contract を決め、`docs/design.md` に追記する
+  - 例: kro instance status に `kubeconfigSecretRef` (name/namespace) を追加する
+  - DoD: "RGD 側で何を出すか / Kany8s 側で何を読むか" が 1 枚で説明できる
+- [ ] (方針 A) RGD 側で kubeconfig Secret を作る場合の要件を定義する
+  - DoD: Secret 名/namespace/labels/type が CAPI contract と一致する
+- [ ] (方針 B) Kany8s 側で kubeconfig Secret を作る場合の入力 contract を定義する
+  - DoD: endpoint/CA/token 等の入手元が矛盾なく決まっている
+- [ ] `<cluster>-kubeconfig` Secret の contract を満たす
+  - `type=cluster.x-k8s.io/secret`
+  - `cluster.x-k8s.io/cluster-name=<cluster>` label
+  - DoD: Cluster API が kubeconfig Secret を発見できる
+- [ ] kubeconfig Secret の作成/更新を reconcile に組み込み、回帰テストを追加する
+  - DoD: kubeconfig 周りの変更がテストで検知できる
 
 ## M4: ClusterClass/Topology と Template API
 
 ### Template CRD
-- [ ] `Kany8sControlPlaneTemplate` / `Kany8sClusterTemplate` の API を追加する (ClusterClass から参照できる形)
-- [ ] `Cluster.spec.topology.version` を `Kany8sControlPlane.spec.version` へ流し込む前提で設計する
-- [ ] variables/patches で `kroSpec` にマップする方針を決め、サンプル `ClusterClass` を `examples/capi/clusterclass.yaml` に追加する
+- [ ] `Kany8sControlPlaneTemplate` / `Kany8sClusterTemplate` の API を追加する(ClusterClass から参照できる形)
+  - DoD: ClusterClass から参照できる `Template` が作れる
+- [ ] `Cluster.spec.topology.version` -> `Kany8sControlPlane.spec.version` の流し込み方針を設計する
+  - DoD: version の single source of truth が `Cluster.spec.topology.version` になる
+- [ ] variables/patches -> `kroSpec` マッピング方針を決め、サンプル `ClusterClass` を追加する
+  - 追加: `examples/capi/clusterclass.yaml`
+  - DoD: "どの variables が kroSpec のどこに入るか" が例で追える
 
 ### Topology 動作確認
-- [ ] `clusterctl` で Kany8s provider を扱える packaging 方針を決める(components.yaml 生成など)
+- [ ] `clusterctl` で Kany8s provider を扱える packaging 方針を決める
+  - 例: `components.yaml` 生成、Helm chart の採否
+  - DoD: "clusterctl init" 相当の手順が 1 つに定まる
 - [ ] ClusterClass 経由で `Cluster` を作成し、Kany8sControlPlane が生成/更新されることを確認する
+  - DoD: topology 変更で kro instance まで追従する
 
 ## M5: マルチプロバイダ拡張と配布
 
 ### 配布/リリース
 - [ ] `config/default` を整備し `make deploy` でインストールできるようにする
+  - DoD: kind などの検証クラスタに 1 コマンドでデプロイできる
 - [ ] Helm chart を作るか、clusterctl provider として `components.yaml` を提供するかを決める
+  - DoD: "利用者がどうインストールするか" が 1 つに決まる
 - [ ] バージョニングとリリースフロー(タグ/リリースノート/イメージ公開)を `docs/release.md` にまとめる
+  - DoD: リリース作業が手順書どおりに実行できる
 
 ### Provider/RGD カタログ
 - [ ] `docs/rgd-contract.md` を作成し、Kany8s が期待する正規化 status(ready/endpoint/reason/message)を明文化する
-- [ ] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(実装はスタブでも良い)
+  - DoD: provider 実装者が "どの status を出せば良いか" を迷わない
+- [ ] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(スタブでも可)
+  - DoD: 新しい provider を追加する最小テンプレがある
 - [ ] RGD の static analysis/kro 既知問題(NetworkPolicy 等)の注意点を `docs/rgd-guidelines.md` にまとめる
+  - 参考: `docs/kro.md` の検証結果
+  - DoD: RGD 作成者がハマりやすい点を事前に回避できる
 
 ### Kany8sCluster (Infrastructure provider) の最小実装 (任意)
 - [ ] `Kany8sCluster` CRD を追加し、`Cluster.spec.infrastructureRef` を満たす最小 contract を定義する
+  - DoD: `Cluster` の infraRef が "とりあえず" 解決できる
 - [ ] `Kany8sCluster` controller で Ready 条件を立て、CAPI の `InfrastructureReady` を unblock できるようにする
+  - DoD: InfrastructureReady が True になり、ControlPlane 側のフローへ進める
