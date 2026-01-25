@@ -352,7 +352,7 @@ spec:
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sControlPlane --controller --resource=false`
   - 成果物: `controllers/kany8scontrolplane_controller.go`
   - DoD: `make test` が通る(ロジック追加前でも OK)
-- [ ] `ResourceGraphDefinition` の取得と「生成される instance GVK」の解決ロジックを実装する
+- [x] `ResourceGraphDefinition` の取得と「生成される instance GVK」の解決ロジックを実装する
   - 触る/追加:
     - 追加: `internal/kro/gvk.go` (例: `ResolveInstanceGVK(ctx, client, rgdName) (schema.GroupVersionKind, error)`)
     - 触る: `controllers/kany8scontrolplane_controller.go`
