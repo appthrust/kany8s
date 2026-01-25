@@ -439,7 +439,7 @@ spec:
 ### サンプル/ドキュメント
 - [x] `examples/capi/cluster.yaml` に `Cluster` + `Kany8sControlPlane` の最小例を追加する
   - DoD: 例の YAML だけで「どの CR を apply するか」が理解できる
-- [ ] `examples/kro/` に "ready/endpoint" 正規化 contract を満たす最小 RGD の例を追加する
+- [x] `examples/kro/` に "ready/endpoint" 正規化 contract を満たす最小 RGD の例を追加する
   - DoD: RGD instance の `status.ready/endpoint` が必ず出力される(欠落しない)例になっている
 - [ ] `README.md` に "install -> apply RGD -> apply Cluster" の手順を追記する
   - DoD: kind 上での最短手順が 1 セクションで追える

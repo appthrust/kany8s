@@ -1,0 +1,7 @@
+apiVersion: kro.run/v1alpha1
+kind: DemoControlPlane
+metadata:
+  name: demo-control-plane
+spec:
+  name: demo-control-plane
+  version: "1.34"
