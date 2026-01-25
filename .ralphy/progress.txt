@@ -84,3 +84,5 @@
 - 2026-01-25: Set the ACK EKS `Cluster` resource `readyWhen` in `examples/kro/eks/eks-control-plane-rgd.yaml` to wait for `ACTIVE` + non-empty endpoint (self-only readyWhen constraint); updated the devtools assertion; verified `make test` and `make lint`.
 
 - 2026-01-25: Added a kind+kro setup runbook (`docs/runbooks/kind-kro.md`) plus a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-01-25: Added an ACK-based EKS addons kro RGD example (`examples/kro/eks/eks-addons-rgd.yaml`) plus a devtools test and marked the PRD item complete; verified `make test` and `make lint`.

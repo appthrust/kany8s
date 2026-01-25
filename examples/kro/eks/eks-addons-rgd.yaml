@@ -1,0 +1,66 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-addons.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: EKSAddons
+    spec:
+      region: string | required=true description="AWS region"
+      clusterName: string | required=true description="EKS cluster name"
+
+    status:
+      ready: ${int(coredns.?status.?status.orValue("") == "ACTIVE" && kubeProxy.?status.?status.orValue("") == "ACTIVE" && vpcCni.?status.?status.orValue("") == "ACTIVE") == 1}
+
+  resources:
+    - id: coredns
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.clusterName}-coredns
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          name: coredns
+          addonVersion: v1.12.3-eksbuild.1
+          preserve: true
+
+      readyWhen:
+        - ${coredns.?status.?status.orValue("") == "ACTIVE"}
+
+    - id: kubeProxy
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.clusterName}-kube-proxy
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          name: kube-proxy
+          addonVersion: v1.34.0-eksbuild.2
+          preserve: true
+
+      readyWhen:
+        - ${kubeProxy.?status.?status.orValue("") == "ACTIVE"}
+
+    - id: vpcCni
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.clusterName}-vpc-cni
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          name: vpc-cni
+          addonVersion: v1.20.4-eksbuild.2
+          preserve: true
+
+      readyWhen:
+        - ${vpcCni.?status.?status.orValue("") == "ACTIVE"}
