@@ -96,3 +96,5 @@
 - 2026-01-25: Added an e2e troubleshooting command runbook (`docs/runbooks/e2e.md`) plus a devtools test enforcing it; verified `make test` and `make lint`.
 
 - 2026-01-25: Defined a provider-agnostic kubeconfig retrieval contract (`status.kubeconfigSecretRef`) in `docs/design.md`; added a devtools test enforcing the contract is documented; verified `make test` and `make lint`.
+
+- 2026-01-25: Documented Option A requirements for having the RGD create the CAPI-compatible `<cluster>-kubeconfig` Secret in `docs/design.md`; added a devtools test enforcing the section; verified `make test` and `make lint`.

@@ -435,6 +435,25 @@ resources:
   - provider-agnostic な入力として、kro instance は `status.kubeconfigSecretRef` を出力する。
   - `<cluster>-kubeconfig` / type `cluster.x-k8s.io/secret` / label `cluster.x-k8s.io/cluster-name=${CLUSTER_NAME}`
   - `data.value` に kubeconfig を格納
+  - Option A: RGD creates kubeconfig Secret
+    - RGD が Secret を作る場合、CAPI が発見できるメタデータ契約を満たす必要がある（name/namespace/labels/type）。
+    - Secret の namespace は `Cluster` と同じ（= `Kany8sControlPlane` と同じ）であること。
+    - 例:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <cluster>-kubeconfig
+  namespace: <cluster-namespace>
+  labels:
+    cluster.x-k8s.io/cluster-name: <cluster>
+type: cluster.x-k8s.io/secret
+stringData:
+  value: |
+    apiVersion: v1
+    kind: Config
+```
 
 - Provider 追加（AKS/GKE 等）
   - RGD 側で status 正規化を実装し、Kany8s コントローラは変更しない
