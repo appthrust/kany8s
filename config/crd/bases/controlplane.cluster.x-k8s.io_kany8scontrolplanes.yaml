@@ -14,7 +14,14 @@ spec:
     singular: kany8scontrolplane
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.initialization.controlPlaneInitialized
+      name: INITIALIZED
+      type: boolean
+    - jsonPath: .spec.controlPlaneEndpoint.host
+      name: ENDPOINT
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Kany8sControlPlane is the Schema for the kany8scontrolplanes

@@ -18,3 +18,5 @@
 - 2026-01-25: Defined `Kany8sControlPlaneStatus` MVP fields (initialization.controlPlaneInitialized, conditions accessors, failureReason/failureMessage); added unit tests; verified `make test` and `make lint`.
 
 - 2026-01-25: Scaffolded `Kany8sControlPlane` controller (kubebuilder create api --controller --resource=false); added a unit test enforcing the scaffold exists and is wired into the manager; verified `make test` and `make lint`.
+
+- 2026-01-25: Added `kubectl get` print columns (INITIALIZED/ENDPOINT) to `Kany8sControlPlane`; added a unit test enforcing the markers; verified `make test` and `make lint`.

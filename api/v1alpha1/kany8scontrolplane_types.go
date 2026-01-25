@@ -91,6 +91,8 @@ type Kany8sControlPlaneStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="INITIALIZED",type=boolean,JSONPath=".status.initialization.controlPlaneInitialized"
+// +kubebuilder:printcolumn:name="ENDPOINT",type=string,JSONPath=".spec.controlPlaneEndpoint.host"
 
 // Kany8sControlPlane is the Schema for the kany8scontrolplanes API
 type Kany8sControlPlane struct {

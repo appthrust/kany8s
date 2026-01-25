@@ -1,7 +1,10 @@
 package v1alpha1
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -151,6 +154,30 @@ func TestKany8sControlPlane_ConditionsAccessors(t *testing.T) {
 	}
 }
 
+func TestKany8sControlPlane_PrintColumnsMarkers(t *testing.T) {
+	t.Parallel()
+
+	root := findRepoRoot(t)
+	path := filepath.Join(root, "api", "v1alpha1", "kany8scontrolplane_types.go")
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %q: %v", path, err)
+	}
+	content := string(bytes)
+
+	required := []string{
+		"+kubebuilder:printcolumn:name=\"INITIALIZED\"",
+		"JSONPath=\".status.initialization.controlPlaneInitialized\"",
+		"+kubebuilder:printcolumn:name=\"ENDPOINT\"",
+		"JSONPath=\".spec.controlPlaneEndpoint.host\"",
+	}
+	for _, want := range required {
+		if !strings.Contains(content, want) {
+			t.Errorf("kany8scontrolplane_types.go missing printcolumn marker %q", want)
+		}
+	}
+}
+
 type fieldErr struct {
 	what string
 	got  string
@@ -185,4 +212,24 @@ func assertField(t *testing.T, typ reflect.Type, name, wantJSONTag string, valid
 	}
 
 	return f, true
+}
+
+func findRepoRoot(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("go.mod not found from %q", dir)
+		}
+		dir = parent
+	}
 }

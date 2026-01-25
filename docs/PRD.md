@@ -340,7 +340,7 @@ spec:
     - `status.conditions` + `GetConditions/SetConditions` (Cluster API util/conditions と互換)
     - `status.failureReason` / `status.failureMessage`
   - DoD: `make test` が通り、`make manifests` の CRD に status subresource が生成される
-- [ ] (任意/推奨) `kubectl get kany8scontrolplanes` が読みやすくなるよう PrintColumns を追加する
+- [x] (任意/推奨) `kubectl get kany8scontrolplanes` が読みやすくなるよう PrintColumns を追加する
   - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
   - 例: INITIALIZED/ENDPOINT をそれぞれ `.status.initialization.controlPlaneInitialized` / `.spec.controlPlaneEndpoint.host` から表示
   - DoD: `make manifests` 後の CRD に additionalPrinterColumns が入る
