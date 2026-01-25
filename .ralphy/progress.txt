@@ -14,3 +14,5 @@
 - 2026-01-25: Scaffolded `Kany8sControlPlane` API (kubebuilder create api); added a unit test enforcing the scaffold exists; verified `make test` and `make lint`.
 
 - 2026-01-25: Defined `Kany8sControlPlaneSpec` MVP fields (version, resourceGraphDefinitionRef, kroSpec passthrough, controlPlaneEndpoint); added unit tests; verified `make test` and `make lint`.
+
+- 2026-01-25: Defined `Kany8sControlPlaneStatus` MVP fields (initialization.controlPlaneInitialized, conditions accessors, failureReason/failureMessage); added unit tests; verified `make test` and `make lint`.

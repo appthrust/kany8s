@@ -333,7 +333,7 @@ spec:
       - MVP 既定: `apiextensionsv1.JSON` を採用し unknown fields を許容する
     - `spec.controlPlaneEndpoint` (optional; `clusterv1.APIEndpoint`; controller が設定)
   - DoD: `make generate` 後に `spec.version` と `spec.resourceGraphDefinitionRef.name` が CRD 上 required になる
-- [ ] `Kany8sControlPlaneStatus` を MVP 要件どおりに定義する
+- [x] `Kany8sControlPlaneStatus` を MVP 要件どおりに定義する
   - 触る: `api/v1alpha1/kany8scontrolplane_types.go`
   - 追加:
     - `status.initialization.controlPlaneInitialized`

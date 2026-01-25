@@ -5,6 +5,11 @@ import (
 	"testing"
 )
 
+const (
+	metav1ConditionTypeName = "Condition"
+	metav1ConditionPkgPath  = "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 func TestKany8sControlPlaneSpec_MVPFields(t *testing.T) {
 	t.Parallel()
 
@@ -57,6 +62,93 @@ func TestKany8sControlPlaneSpec_MVPFields(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestKany8sControlPlaneStatus_MVPFields(t *testing.T) {
+	t.Parallel()
+
+	statusType := reflect.TypeFor[Kany8sControlPlaneStatus]()
+
+	initField, ok := assertField(t, statusType, "Initialization", "initialization,omitzero", func(f reflect.StructField) error {
+		if f.Type.Kind() != reflect.Struct {
+			return newTypeErr(f.Type.String(), "Kany8sControlPlaneInitializationStatus")
+		}
+		return nil
+	})
+	if ok {
+		initType := initField.Type
+		if initType.Kind() == reflect.Struct {
+			assertField(t, initType, "ControlPlaneInitialized", "controlPlaneInitialized,omitempty", func(f reflect.StructField) error {
+				if f.Type.Kind() != reflect.Bool {
+					return newTypeErr(f.Type.String(), "bool")
+				}
+				return nil
+			})
+		}
+	}
+
+	assertField(t, statusType, "Conditions", "conditions,omitempty", func(f reflect.StructField) error {
+		if f.Type.Kind() != reflect.Slice {
+			return newTypeErr(f.Type.String(), "[]metav1.Condition")
+		}
+		got := f.Type.Elem()
+		if got.Name() != metav1ConditionTypeName || got.PkgPath() != metav1ConditionPkgPath {
+			return newTypeErr(f.Type.String(), "[]metav1.Condition")
+		}
+		return nil
+	})
+
+	assertField(t, statusType, "FailureReason", "failureReason,omitempty", func(f reflect.StructField) error {
+		if f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.String {
+			return newTypeErr(f.Type.String(), "*string")
+		}
+		return nil
+	})
+
+	assertField(t, statusType, "FailureMessage", "failureMessage,omitempty", func(f reflect.StructField) error {
+		if f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.String {
+			return newTypeErr(f.Type.String(), "*string")
+		}
+		return nil
+	})
+}
+
+func TestKany8sControlPlane_ConditionsAccessors(t *testing.T) {
+	t.Parallel()
+
+	typ := reflect.TypeFor[*Kany8sControlPlane]()
+
+	get, ok := typ.MethodByName("GetConditions")
+	if !ok {
+		t.Fatalf("Kany8sControlPlane should implement GetConditions")
+	}
+	if get.Type.NumIn() != 1 || get.Type.NumOut() != 1 {
+		t.Fatalf("GetConditions signature mismatch: got %s", get.Type.String())
+	}
+	getOut := get.Type.Out(0)
+	if getOut.Kind() != reflect.Slice {
+		t.Fatalf("GetConditions return type mismatch: got %s, want []metav1.Condition", getOut.String())
+	}
+	getOutElem := getOut.Elem()
+	if getOutElem.Name() != metav1ConditionTypeName || getOutElem.PkgPath() != metav1ConditionPkgPath {
+		t.Fatalf("GetConditions return type mismatch: got %s, want []metav1.Condition", getOut.String())
+	}
+
+	set, ok := typ.MethodByName("SetConditions")
+	if !ok {
+		t.Fatalf("Kany8sControlPlane should implement SetConditions")
+	}
+	if set.Type.NumIn() != 2 || set.Type.NumOut() != 0 {
+		t.Fatalf("SetConditions signature mismatch: got %s", set.Type.String())
+	}
+	setIn := set.Type.In(1)
+	if setIn.Kind() != reflect.Slice {
+		t.Fatalf("SetConditions arg type mismatch: got %s, want []metav1.Condition", setIn.String())
+	}
+	setInElem := setIn.Elem()
+	if setInElem.Name() != metav1ConditionTypeName || setInElem.PkgPath() != metav1ConditionPkgPath {
+		t.Fatalf("SetConditions arg type mismatch: got %s, want []metav1.Condition", setIn.String())
+	}
 }
 
 type fieldErr struct {
