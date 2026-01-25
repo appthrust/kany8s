@@ -500,7 +500,7 @@ spec:
   - DoD: ClusterClass から参照できる `Template` が作れる
 - [x] `Cluster.spec.topology.version` -> `Kany8sControlPlane.spec.version` の流し込み方針を設計する
   - DoD: version の single source of truth が `Cluster.spec.topology.version` になる
-- [ ] variables/patches -> `kroSpec` マッピング方針を決め、サンプル `ClusterClass` を追加する
+- [x] variables/patches -> `kroSpec` マッピング方針を決め、サンプル `ClusterClass` を追加する
   - 追加: `examples/capi/clusterclass.yaml`
   - DoD: "どの variables が kroSpec のどこに入るか" が例で追える
 

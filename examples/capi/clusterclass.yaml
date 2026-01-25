@@ -1,0 +1,98 @@
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sClusterTemplate
+metadata:
+  name: kany8s-aws
+  namespace: default
+spec:
+  template:
+    spec:
+      kroSpec: {}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sControlPlaneTemplate
+metadata:
+  name: kany8s-eks
+  namespace: default
+spec:
+  template:
+    spec:
+      resourceGraphDefinitionRef:
+        name: eks-control-plane.kro.run
+      kroSpec: {}
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: ClusterClass
+metadata:
+  name: kany8s-eks
+spec:
+  infrastructure:
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+      kind: Kany8sClusterTemplate
+      name: kany8s-aws
+  controlPlane:
+    ref:
+      apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+      kind: Kany8sControlPlaneTemplate
+      name: kany8s-eks
+  variables:
+    - name: region
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: string
+    - name: vpc.subnetIDs
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: array
+          items:
+            type: string
+    - name: vpc.securityGroupIDs
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: array
+          items:
+            type: string
+  patches:
+    - name: kany8sControlPlaneKroSpec
+      definitions:
+        - selector:
+            apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+            kind: Kany8sControlPlaneTemplate
+            matchResources:
+              controlPlane: true
+          jsonPatches:
+            - op: add
+              path: /spec/template/spec/kroSpec/region
+              valueFrom:
+                variable: region
+            - op: add
+              path: /spec/template/spec/kroSpec/vpc/subnetIDs
+              valueFrom:
+                variable: vpc.subnetIDs
+            - op: add
+              path: /spec/template/spec/kroSpec/vpc/securityGroupIDs
+              valueFrom:
+                variable: vpc.securityGroupIDs
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  topology:
+    class: kany8s-eks
+    version: "1.34"
+    variables:
+      - name: region
+        value: ap-northeast-1
+      - name: vpc.subnetIDs
+        value:
+          - subnet-xxxx
+          - subnet-yyyy
+      - name: vpc.securityGroupIDs
+        value:
+          - sg-zzzz
