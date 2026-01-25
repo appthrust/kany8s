@@ -469,7 +469,7 @@ spec:
   - DoD: 親 instance の `status.ready/endpoint` が ControlPlane と一致する
 
 ### 動作確認手順の整備
-- [ ] kind (管理クラスタ) + kro のセットアップ手順を `docs/runbooks/kind-kro.md` にまとめる
+- [x] kind (管理クラスタ) + kro のセットアップ手順を `docs/runbooks/kind-kro.md` にまとめる
   - DoD: "再現環境を作る" 手順がコピペで実行できる
 - [ ] ACK コントローラ導入/認証の前提を `docs/runbooks/ack.md` にまとめる
   - DoD: 最低限 "何をインストールし、どの認証情報が必要か" が明記されている
