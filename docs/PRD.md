@@ -505,7 +505,7 @@ spec:
   - DoD: "どの variables が kroSpec のどこに入るか" が例で追える
 
 ### Topology 動作確認
-- [ ] `clusterctl` で Kany8s provider を扱える packaging 方針を決める
+- [x] `clusterctl` で Kany8s provider を扱える packaging 方針を決める
   - 例: `components.yaml` 生成、Helm chart の採否
   - DoD: "clusterctl init" 相当の手順が 1 つに定まる
 - [ ] ClusterClass 経由で `Cluster` を作成し、Kany8sControlPlane が生成/更新されることを確認する
