@@ -61,7 +61,9 @@ spec:
         spec:
           name: ${schema.metadata.name}
           version: ${schema.spec.version}
-          roleARN: ${clusterRole.status.ackResourceMetadata.arn}
+          # NOTE: keep this optional so the template can be evaluated early;
+          # the actual Cluster creation is still gated by clusterRole.readyWhen.
+          roleARN: ${clusterRole.?status.?ackResourceMetadata.?arn.orValue("")}
           resourcesVPCConfig:
             subnetIDs: ${schema.spec.vpc.subnetIDs}
             securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
