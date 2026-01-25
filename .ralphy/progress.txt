@@ -92,3 +92,5 @@
 - 2026-01-25: Added a chained EKS platform cluster kro RGD sample (`examples/kro/eks/platform-cluster-rgd.yaml`) that composes EKSControlPlane + EKSAddons + PodIdentitySet while projecting control plane `status.ready`/`status.endpoint`; added a devtools test and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-01-25: Added an ACK installation/authentication runbook (`docs/runbooks/ack.md`) plus a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-01-25: Added an e2e troubleshooting command runbook (`docs/runbooks/e2e.md`) plus a devtools test enforcing it; verified `make test` and `make lint`.
