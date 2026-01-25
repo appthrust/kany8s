@@ -301,7 +301,7 @@ spec:
 ## M1: Kany8sControlPlane MVP (CRD + Controller)
 
 ### リポジトリ/開発環境の立ち上げ
-- [ ] Go module + kubebuilder scaffold を生成する
+- [x] Go module + kubebuilder scaffold を生成する
   - コマンド: `go mod init <module>` / `kubebuilder init --domain cluster.x-k8s.io --repo <module>`
   - 成果物: `go.mod`, `main.go`, `config/`, `Makefile`
   - DoD: `make help` が表示でき、`go test ./...` が通る

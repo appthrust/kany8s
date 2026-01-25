@@ -1,0 +1,4 @@
+# Ralphy Progress Log
+
+
+- 2026-01-25: Initialized Go module + kubebuilder scaffolding; verified `make test` and `make lint`.
