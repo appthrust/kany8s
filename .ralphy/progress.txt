@@ -36,3 +36,5 @@
 - 2026-01-25: Added safe kro instance status reader helper (`internal/kro/status.go`) for normalized `ready/endpoint/reason/message`, with unit tests; verified `make test` and `make lint`.
 
 - 2026-01-25: Added endpoint string parser utility (`internal/endpoint/parse.go`) with table-driven unit tests; verified `make test` and `make lint`.
+
+- 2026-01-25: Reflected kro instance `status.endpoint` into `Kany8sControlPlane.spec.controlPlaneEndpoint`; added unit test; verified `make test` and `make lint`.

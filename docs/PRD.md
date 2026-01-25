@@ -385,7 +385,7 @@ spec:
   - 追加: `internal/endpoint/parse.go`
   - 仕様: 入力は `https://host[:port]` または `host[:port]`。port 省略は 443。
   - DoD: `internal/endpoint/parse_test.go` の table-driven test が通る
-- [ ] endpoint を `Kany8sControlPlane.spec.controlPlaneEndpoint` (host/port) に反映する
+- [x] endpoint を `Kany8sControlPlane.spec.controlPlaneEndpoint` (host/port) に反映する
   - 触る: `controllers/kany8scontrolplane_controller.go`
   - DoD: endpoint が parse できたら `spec.controlPlaneEndpoint` が埋まる
 - [ ] endpoint が確定したら `status.initialization.controlPlaneInitialized=true` を設定する

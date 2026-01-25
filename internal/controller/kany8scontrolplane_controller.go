@@ -23,6 +23,7 @@ import (
 	"time"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
+	"github.com/reoring/kany8s/internal/endpoint"
 	"github.com/reoring/kany8s/internal/kro"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -107,6 +108,28 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		log.Error(err, "create or update kro instance")
 		return ctrl.Result{}, err
+	}
+
+	instanceStatus, err := kro.ReadInstanceStatus(instance)
+	if err != nil {
+		log.Error(err, "read kro instance status")
+		return ctrl.Result{}, err
+	}
+	if instanceStatus.Endpoint != "" {
+		cpEndpoint, err := endpoint.Parse(instanceStatus.Endpoint)
+		if err != nil {
+			log.Error(err, "parse kro instance status endpoint", "endpoint", instanceStatus.Endpoint)
+			return ctrl.Result{}, nil
+		}
+
+		if cp.Spec.ControlPlaneEndpoint != cpEndpoint {
+			before := cp.DeepCopy()
+			cp.Spec.ControlPlaneEndpoint = cpEndpoint
+			if err := r.Patch(ctx, cp, client.MergeFrom(before)); err != nil {
+				log.Error(err, "update control plane endpoint")
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil
