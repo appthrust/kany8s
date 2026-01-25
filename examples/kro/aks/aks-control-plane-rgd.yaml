@@ -1,0 +1,40 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aks-control-plane.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AKSControlPlane
+    spec:
+      version: string | required=true description="Kubernetes version"
+      subscriptionID: string | required=true description="Azure subscription ID"
+      resourceGroupName: string | required=true description="Azure resource group name"
+      location: 'string | required=true description="Azure region (for example: eastus)"'
+
+    status:
+      # Normalized status contract for Kany8sControlPlane:
+      # - status.ready: boolean
+      # - status.endpoint: string
+      endpoint: ${cluster.?status.?fqdn.orValue("")}
+      ready: ${int(cluster.?status.?provisioningState.orValue("") == "Succeeded" && cluster.?status.?fqdn.orValue("") != "") == 1}
+
+  resources:
+    # Template target: Azure Service Operator (ASO)
+    # Replace the apiVersion/kind/spec fields as needed for your chosen AKS controller/operator.
+    - id: cluster
+      template:
+        apiVersion: containerservice.azure.com/v1api20231001
+        kind: ManagedCluster
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          location: ${schema.spec.location}
+          owner:
+            subscriptionId: ${schema.spec.subscriptionID}
+            resourceGroupName: ${schema.spec.resourceGroupName}
+          kubernetesVersion: ${schema.spec.version}
+          # NOTE: Fill in agent pools, networking, and auth per your environment.
+
+      readyWhen:
+        - ${cluster.?status.?provisioningState.orValue("") == "Succeeded" && cluster.?status.?fqdn.orValue("") != ""}

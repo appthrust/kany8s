@@ -524,7 +524,7 @@ spec:
 ### Provider/RGD カタログ
 - [x] `docs/rgd-contract.md` を作成し、Kany8s が期待する正規化 status(ready/endpoint/reason/message)を明文化する
   - DoD: provider 実装者が "どの status を出せば良いか" を迷わない
-- [ ] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(スタブでも可)
+- [x] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(スタブでも可)
   - DoD: 新しい provider を追加する最小テンプレがある
 - [ ] RGD の static analysis/kro 既知問題(NetworkPolicy 等)の注意点を `docs/rgd-guidelines.md` にまとめる
   - 参考: `docs/kro.md` の検証結果

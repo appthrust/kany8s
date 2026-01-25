@@ -1,0 +1,38 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gke-control-plane.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: GKEControlPlane
+    spec:
+      version: string | required=true description="Kubernetes version"
+      projectID: string | required=true description="GCP project ID"
+      location: 'string | required=true description="Region or zone (for example: us-central1)"'
+
+    status:
+      # Normalized status contract for Kany8sControlPlane:
+      # - status.ready: boolean
+      # - status.endpoint: string
+      endpoint: ${cluster.?status.?endpoint.orValue("")}
+      ready: ${int(cluster.?status.?endpoint.orValue("") != "") == 1}
+
+  resources:
+    # Template target: Config Connector (KCC)
+    # Replace the apiVersion/kind/spec fields as needed for your chosen GKE controller/operator.
+    - id: cluster
+      template:
+        apiVersion: container.cnrm.cloud.google.com/v1beta1
+        kind: ContainerCluster
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          location: ${schema.spec.location}
+          initialClusterVersion: ${schema.spec.version}
+          projectRef:
+            external: ${schema.spec.projectID}
+          # NOTE: Fill in networking, auth, and node pools per your environment.
+
+      readyWhen:
+        - ${cluster.?status.?endpoint.orValue("") != ""}

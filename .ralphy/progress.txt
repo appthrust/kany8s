@@ -122,3 +122,5 @@
 - 2026-01-26: Documented Kany8s versioning + release flow (tags, release notes, image publishing, bundle generation) in `docs/release.md`; added a devtools test enforcing the runbook exists and includes the key commands; verified `make test` and `make lint`.
 
 - 2026-01-26: Documented the normalized RGD status contract in `docs/rgd-contract.md`; added a devtools test enforcing key contract fields; verified `make test` and `make lint`.
+
+- 2026-01-26: Added stub GKE/AKS control plane kro RGD templates under `examples/kro/` with a devtools test; marked the PRD item complete; verified `make test` and `make lint`.
