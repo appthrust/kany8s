@@ -399,7 +399,7 @@ spec:
   - DoD: reconcile が過剰に回らず、endpoint/ready の変化に追従できる
 
 ### Controller: 動的 GVK の watch 戦略
-- [ ] MVP は `RequeueAfter` ポーリングで進め、まず「status 反映が動く」ことを確認する
+- [x] MVP は `RequeueAfter` ポーリングで進め、まず「status 反映が動く」ことを確認する
   - DoD: kro instance の endpoint/ready が変わると、次回 reconcile で ControlPlane 側が追従する
 - [ ] (拡張) dynamic watch の要否を判断し、採用する場合は実装する
   - 判断基準(例): 反応速度が課題/クラスタ数が多くポーリングが重い/instance の GVK が少数に収まる
