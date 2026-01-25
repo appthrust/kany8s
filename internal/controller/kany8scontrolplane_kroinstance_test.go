@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,5 +79,117 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 	}
 	if got.GetNamespace() != "default" {
 		t.Fatalf("kro instance namespace = %q, want %q", got.GetNamespace(), "default")
+	}
+}
+
+func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+			KroSpec: &apiextensionsv1.JSON{Raw: []byte(`{"region":"ap-northeast-1","version":"0.0"}`)},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).Build()
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}}
+
+	_, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	got := &unstructured.Unstructured{}
+	got.SetGroupVersionKind(instanceGVK)
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get kro instance: %v", err)
+	}
+
+	spec, found, err := unstructured.NestedMap(got.Object, "spec")
+	if err != nil {
+		t.Fatalf("get instance spec: %v", err)
+	}
+	if !found {
+		t.Fatalf("instance spec not found")
+	}
+	if spec["region"] != "ap-northeast-1" {
+		t.Fatalf("instance spec.region = %v, want %q", spec["region"], "ap-northeast-1")
+	}
+	if spec["version"] != "1.34" {
+		t.Fatalf("instance spec.version = %v, want %q", spec["version"], "1.34")
+	}
+
+	if err := unstructured.SetNestedField(got.Object, "9.99", "spec", "version"); err != nil {
+		t.Fatalf("set drifted instance spec.version: %v", err)
+	}
+	if err := unstructured.SetNestedField(got.Object, "us-west-2", "spec", "region"); err != nil {
+		t.Fatalf("set drifted instance spec.region: %v", err)
+	}
+	if err := c.Update(ctx, got); err != nil {
+		t.Fatalf("update drifted instance: %v", err)
+	}
+
+	_, err = r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile after drift: %v", err)
+	}
+
+	got2 := &unstructured.Unstructured{}
+	got2.SetGroupVersionKind(instanceGVK)
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got2); err != nil {
+		t.Fatalf("get kro instance after drift: %v", err)
+	}
+
+	spec2, found, err := unstructured.NestedMap(got2.Object, "spec")
+	if err != nil {
+		t.Fatalf("get instance spec after drift: %v", err)
+	}
+	if !found {
+		t.Fatalf("instance spec not found after drift")
+	}
+	if spec2["region"] != "ap-northeast-1" {
+		t.Fatalf("instance spec.region after drift = %v, want %q", spec2["region"], "ap-northeast-1")
+	}
+	if spec2["version"] != "1.34" {
+		t.Fatalf("instance spec.version after drift = %v, want %q", spec2["version"], "1.34")
 	}
 }

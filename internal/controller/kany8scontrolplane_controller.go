@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/kro"
@@ -71,6 +72,16 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		instance.SetGroupVersionKind(instanceGVK)
 		instance.SetName(cp.Name)
 		instance.SetNamespace(cp.Namespace)
+
+		spec := map[string]any{}
+		if cp.Spec.KroSpec != nil && len(cp.Spec.KroSpec.Raw) > 0 {
+			if err := json.Unmarshal(cp.Spec.KroSpec.Raw, &spec); err != nil {
+				return err
+			}
+		}
+		spec["version"] = cp.Spec.Version
+		instance.Object["spec"] = spec
+
 		return nil
 	})
 	if err != nil {

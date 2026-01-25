@@ -367,7 +367,7 @@ spec:
     - kro instance/RGD ともに `unstructured.Unstructured` で扱い、kro の Go API 依存を持ち込まない
     - patch 方式は `controllerutil.CreateOrUpdate` を採用する(SSA は後で検討)
   - DoD: `metadata.name/namespace` が `Kany8sControlPlane` と一致した instance が作成/更新される
-- [ ] kro instance `spec` の構築ルールを固定し、idempotent に反映する
+- [x] kro instance `spec` の構築ルールを固定し、idempotent に反映する
   - 仕様:
     - `Kany8sControlPlane.spec.kroSpec` を instance `.spec` に展開する
     - `.spec.version` は必ず `Kany8sControlPlane.spec.version` で上書きする
