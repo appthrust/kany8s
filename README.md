@@ -175,6 +175,53 @@ schema:
 - Does **not** write Terraform-like outputs to Secrets for endpoint/initialized (for now)
 - Kubeconfig secret management (`<cluster>-kubeconfig`) is required by the CAPI contract (planned)
 
+## Demo (kind + kro)
+
+This is a local smoke test that exercises the full flow:
+
+`install (kro + Kany8s)` -> `apply RGD` -> `apply Cluster / Kany8sControlPlane`.
+
+Prereqs:
+
+- `kind`, `kubectl`, and `docker`
+- `clusterctl` (only if you want to apply the Cluster API `Cluster` object)
+
+1. Create a kind management cluster:
+
+   - `kind create cluster --name kany8s --wait 60s`
+
+2. Install kro (v0.7.1 tested):
+
+   - `kubectl create namespace kro-system`
+   - `kubectl apply -f https://github.com/kubernetes-sigs/kro/releases/download/v0.7.1/kro-core-install-manifests.yaml`
+   - `kubectl rollout status -n kro-system deploy/kro`
+
+   Note: kro v0.7.1 may require relaxed RBAC for its dynamic controller to watch generated CRDs.
+   See `docs/kro.md` for details and the exact manifest.
+
+3. Install Kany8s CRDs:
+
+   - `make install`
+
+4. Run the controller locally (in another terminal):
+
+   - `make run`
+
+5. Apply the demo RGD (normalized `ready`/`endpoint` status contract):
+
+   - `kubectl apply -f examples/kro/ready-endpoint/rgd.yaml`
+
+6. Apply the sample Cluster + Kany8sControlPlane (requires Cluster API installed):
+
+   - `kubectl apply -f examples/capi/cluster.yaml`
+
+   If you don't have Cluster API installed yet, apply only the `Kany8sControlPlane` object from that file.
+
+7. Observe:
+
+   - `kubectl get kany8scontrolplanes -n default -o wide`
+   - `kubectl get democontrolplanes.kro.run -n default -o wide`
+
 ## Development
 
 ### Prerequisites

@@ -33,3 +33,28 @@ func TestReadmeDocumentsLocalDevLoop(t *testing.T) {
 		}
 	}
 }
+
+func TestReadmeDocumentsInstallApplyFlow(t *testing.T) {
+	root := findRepoRoot(t)
+
+	readmePath := filepath.Join(root, "README.md")
+	readmeBytes, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", readmePath, err)
+	}
+
+	readme := string(readmeBytes)
+	wantSubstrings := []string{
+		"## Demo (kind + kro)",
+		"kind create cluster",
+		"`make install`",
+		"`make run`",
+		"examples/kro/ready-endpoint/rgd.yaml",
+		"examples/capi/cluster.yaml",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(readme, want) {
+			t.Errorf("README.md missing %q", want)
+		}
+	}
+}
