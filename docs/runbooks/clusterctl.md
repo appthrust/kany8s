@@ -6,6 +6,7 @@ This runbook documents the current (MVP) packaging approach for using Kany8s wit
 
 - Use `make build-installer` (kustomize bundle) to produce a single provider manifest.
 - Treat `dist/install.yaml` as Kany8s' clusterctl `ControlPlaneProvider` components.
+- We do not ship a Helm chart; the supported install story is a single YAML bundle.
 
 ## 1. Build the components YAML
 

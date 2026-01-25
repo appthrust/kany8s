@@ -116,3 +116,5 @@
 - 2026-01-26: Enabled ClusterClass/Topology upgrades for `Kany8sControlPlane` by adding required CAPI contract labels to the generated CRD and implementing `status.version` (set once Ready); added a unit test verifying a topology version change propagates to the kro instance; verified `make test` and `make lint`.
 
 - 2026-01-26: Validated `config/default` is ready for `make deploy` by adding a devtools test enforcing kustomize namespace/prefix/resources/metrics patch; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-26: Decided distribution packaging to use the clusterctl `ControlPlaneProvider` components bundle (`dist/install.yaml`) and explicitly documented that Kany8s does not ship a Helm chart; updated the devtools runbook assertion; verified `make test` and `make lint`.

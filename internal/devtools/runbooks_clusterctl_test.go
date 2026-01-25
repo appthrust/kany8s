@@ -19,6 +19,7 @@ func TestRunbooksClusterctlExists(t *testing.T) {
 	runbook := string(runbookBytes)
 	wantSubstrings := []string{
 		"# clusterctl",
+		"We do not ship a Helm chart",
 		"make build-installer",
 		"dist/install.yaml",
 		"ControlPlaneProvider",

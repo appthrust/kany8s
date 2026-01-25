@@ -516,7 +516,7 @@ spec:
 ### 配布/リリース
 - [x] `config/default` を整備し `make deploy` でインストールできるようにする
   - DoD: kind などの検証クラスタに 1 コマンドでデプロイできる
-- [ ] Helm chart を作るか、clusterctl provider として `components.yaml` を提供するかを決める
+- [x] Helm chart を作るか、clusterctl provider として `components.yaml` を提供するかを決める
   - DoD: "利用者がどうインストールするか" が 1 つに決まる
 - [ ] バージョニングとリリースフロー(タグ/リリースノート/イメージ公開)を `docs/release.md` にまとめる
   - DoD: リリース作業が手順書どおりに実行できる
