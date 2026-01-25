@@ -522,7 +522,7 @@ spec:
   - DoD: リリース作業が手順書どおりに実行できる
 
 ### Provider/RGD カタログ
-- [ ] `docs/rgd-contract.md` を作成し、Kany8s が期待する正規化 status(ready/endpoint/reason/message)を明文化する
+- [x] `docs/rgd-contract.md` を作成し、Kany8s が期待する正規化 status(ready/endpoint/reason/message)を明文化する
   - DoD: provider 実装者が "どの status を出せば良いか" を迷わない
 - [ ] GKE/AKS 向けの "ControlPlane RGD 雛形" を `examples/kro/` に追加する(スタブでも可)
   - DoD: 新しい provider を追加する最小テンプレがある
