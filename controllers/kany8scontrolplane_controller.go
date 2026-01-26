@@ -36,7 +36,7 @@ type Kany8sControlPlaneReconciler struct {
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes/finalizers,verbs=update
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=kro.run,resources=resourcegraphdefinitions,verbs=get;list;watch
-// +kubebuilder:rbac:groups=kro.run,resources=*,verbs=get;create;update
+// +kubebuilder:rbac:groups=kro.run,resources=*,verbs=create;get;list;watch;update;patch
 
 func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
