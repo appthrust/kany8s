@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": [
+    "bun",
+    "git",
+    "zig"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'devbox env: roboppoi (TS/Bun) ready'"
+    ]
+  }
+}
