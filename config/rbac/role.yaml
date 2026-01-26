@@ -1,11 +1,36 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: kany8s
-    app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - kany8scontrolplanes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - kany8scontrolplanes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - kro.run
+  resources:
+  - '*'
+  verbs:
+  - create
+  - get
+  - update
+- apiGroups:
+  - kro.run
+  resources:
+  - resourcegraphdefinitions
+  verbs:
+  - get
+  - list
+  - watch
