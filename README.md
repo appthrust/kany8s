@@ -33,7 +33,7 @@ This keeps the controller provider-agnostic: **no “if EKS then … else if GKE
 A Cluster API `Cluster` will look like this:
 
 ```yaml
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
   name: demo-cluster
@@ -59,7 +59,7 @@ Kany8s is designed to be consumed via Cluster API **ClusterTopology** (**Cluster
 A typical topology setup will look like:
 
 ```yaml
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: ClusterClass
 metadata:
   name: kany8s-eks
@@ -78,7 +78,7 @@ spec:
 ```
 
 ```yaml
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
   name: demo-cluster

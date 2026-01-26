@@ -196,7 +196,7 @@ Kany8s の UX は "YAML + kubectl/clusterctl" を中心とする。
 `Cluster`:
 
 ```yaml
-apiVersion: cluster.x-k8s.io/v1beta1
+apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
 metadata:
   name: demo-cluster
@@ -241,7 +241,7 @@ spec:
 ### 11.1 システム要求
 
 - 管理クラスタ上で動作する Kubernetes controller として提供する
-- CAPI v1beta1 `Cluster` と ControlPlane provider contract に準拠する
+- CAPI v1beta2 `Cluster` と ControlPlane provider contract に準拠する
 - RGD は cluster-scoped 前提、kro instance は `Kany8sControlPlane` と同一 namespace に作成する
 
 ### 11.2 kro 実装制約への適合 (kro v0.7.1 検証より)
@@ -453,7 +453,7 @@ spec:
   - 注意: kro v0.7.1 の "文字列テンプレート" の落とし穴があるため、必要なら CEL 1式で連結する (`docs/kro.md`)
   - DoD: endpoint が欠落せず、常に string として出力される
 - [x] RGD instance の `status.ready` を "欠落しにくい" 形で materialize する
-  - 例: `${int(cluster.status.status == "ACTIVE" && cluster.status.endpoint != "") == 1}` (kro v0.7.1 の bool 欠落回避)
+  - 例: `${int((cluster.status.status == "ACTIVE" && cluster.status.endpoint != "") ? 1 : 0) == 1}` (kro v0.7.1 の bool 欠落回避)
   - DoD: ready が常に boolean として出力される
 - [x] Role -> Cluster の依存を `${clusterRole.status.ackResourceMetadata.arn}` 参照で DAG 化する
   - DoD: Role 未作成の race で ACK Terminal に落ちる確率を下げられる

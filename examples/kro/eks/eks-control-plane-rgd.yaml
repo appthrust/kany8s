@@ -14,7 +14,7 @@ spec:
 
     status:
       endpoint: ${cluster.?status.?endpoint.orValue("")}
-      ready: ${int(cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") == 1}
+      ready: '${int((cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? 1 : 0) == 1}'
 
   resources:
     - id: clusterRole

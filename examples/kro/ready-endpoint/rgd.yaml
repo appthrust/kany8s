@@ -14,7 +14,7 @@ spec:
       port: integer | default=6443 minimum=1 maximum=65535
     status:
       endpoint: ${service.metadata.name + "." + service.metadata.namespace + ".svc.cluster.local:" + string(service.spec.ports[0].port)}
-      ready: ${int(deployment.?status.?availableReplicas.orValue(0) > 0) == 1}
+      ready: ${int(deployment.?status.?availableReplicas.orValue(0)) > 0}
 
   resources:
     - id: deployment

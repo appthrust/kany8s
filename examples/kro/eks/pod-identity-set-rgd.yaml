@@ -11,7 +11,7 @@ spec:
       clusterName: string | required=true description="EKS cluster name"
 
     status:
-      ready: ${int(externalDNSAssociation.?status.?status.orValue("") == "ACTIVE" && awsLoadBalancerControllerAssociation.?status.?status.orValue("") == "ACTIVE") == 1}
+      ready: '${int((externalDNSAssociation.?status.?status.orValue("") == "ACTIVE" && awsLoadBalancerControllerAssociation.?status.?status.orValue("") == "ACTIVE") ? 1 : 0) == 1}'
 
   resources:
     - id: externalDNSRole

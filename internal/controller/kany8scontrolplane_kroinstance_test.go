@@ -946,6 +946,119 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenReadyButEndpointMissing(t *tes
 	}
 }
 
+func TestKany8sControlPlaneReconciler_RequeuesAndSetsFailureWhenEndpointInvalid(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":    true,
+			"endpoint": "http://api.demo.example.com:6443",
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
+		t.Fatalf("RequeueAfter = %s, want %s", res.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	readyCond := meta.FindStatusCondition(got.Status.Conditions, conditionTypeReady)
+	if readyCond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if readyCond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", readyCond.Status, metav1.ConditionFalse)
+	}
+	if readyCond.Reason != reasonInvalidEndpoint {
+		t.Fatalf("Ready condition reason = %q, want %q", readyCond.Reason, reasonInvalidEndpoint)
+	}
+
+	if got.Status.FailureReason == nil {
+		t.Fatalf("expected failureReason to be set")
+	}
+	if *got.Status.FailureReason != reasonInvalidEndpoint {
+		t.Fatalf("failureReason = %q, want %q", *got.Status.FailureReason, reasonInvalidEndpoint)
+	}
+	if got.Status.FailureMessage == nil {
+		t.Fatalf("expected failureMessage to be set")
+	}
+	if !strings.Contains(*got.Status.FailureMessage, "unsupported scheme") {
+		t.Fatalf("failureMessage = %q, want to contain %q", *got.Status.FailureMessage, "unsupported scheme")
+	}
+
+	if got.Spec.ControlPlaneEndpoint.Host != "" {
+		t.Fatalf("control plane endpoint host = %q, want empty", got.Spec.ControlPlaneEndpoint.Host)
+	}
+	if got.Spec.ControlPlaneEndpoint.Port != 0 {
+		t.Fatalf("control plane endpoint port = %d, want 0", got.Spec.ControlPlaneEndpoint.Port)
+	}
+	if got.Status.Initialization.ControlPlaneInitialized {
+		t.Fatalf("control plane initialized = %v, want %v", got.Status.Initialization.ControlPlaneInitialized, false)
+	}
+}
+
 func TestKany8sControlPlaneReconciler_SetsReadyConditionAndClearsFailureFieldsWhenReady(t *testing.T) {
 	t.Parallel()
 

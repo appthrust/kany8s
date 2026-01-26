@@ -17,7 +17,7 @@ spec:
       # - status.ready: boolean
       # - status.endpoint: string
       endpoint: ${cluster.?status.?fqdn.orValue("")}
-      ready: ${int(cluster.?status.?provisioningState.orValue("") == "Succeeded" && cluster.?status.?fqdn.orValue("") != "") == 1}
+      ready: '${int((cluster.?status.?provisioningState.orValue("") == "Succeeded" && cluster.?status.?fqdn.orValue("") != "") ? 1 : 0) == 1}'
 
   resources:
     # Template target: Azure Service Operator (ASO)

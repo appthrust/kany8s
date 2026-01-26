@@ -15,7 +15,7 @@ spec:
 
     status:
       endpoint: ${controlPlane.?status.?endpoint.orValue("")}
-      ready: ${int(controlPlane.?status.?ready.orValue(false) == true) == 1}
+      ready: '${int((controlPlane.?status.?ready.orValue(false)) ? 1 : 0) == 1}'
 
   resources:
     - id: controlPlane

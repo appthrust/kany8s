@@ -451,7 +451,7 @@ $ kubectl get issueoptionalresourcestatuses iors1 -o jsonpath='{.status}'
 
 ---
 
-## v0.7.1: boolean status field (`== 1` comparison) is missing until RGD update (but `int(...) == 1` works)
+## v0.7.1: boolean status field can be missing until RGD update (but `int(<number>) == 1` works)
 
 ### Environment
 
@@ -468,7 +468,7 @@ $ kubectl get issueoptionalresourcestatuses iors1 -o jsonpath='{.status}'
 
 - `dbReady` が instance status に出力されない(欠落する)
 - 同じ式を `string(...)` で string 化したもの(`dbOkStr`)は `"true"` で出力される
-- `int(...) == 1` のように **明示的に cast** すると boolean が出力される
+- `int(<number>) == 1` のように **数値を明示的に cast** すると boolean が出力される (`int(<bool>)` は kro に reject される)
 - ただし RGD を更新して再 reconcile させると、欠落していた `dbReady` が出力される
 
 ### Reproduction
@@ -609,4 +609,4 @@ true true true 1
 ### Workaround
 
 - `dbReady` を使わず `dbReadyReplicas` を出して `> 0` 判定する
-- boolean を直接出す場合は `int(...) == 1` のように cast を入れる(この例では `dbOkInt`)
+- boolean を直接出す場合は `int(<number>) == 1` のように「数値側に cast」を入れる(この例では `dbOkInt`)。`int(<bool>)` は kro に reject される

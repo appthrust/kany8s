@@ -46,7 +46,8 @@ If you reference external CRDs (ACK / Config Connector / ASO, etc.), note that m
 ### Boolean materialization quirks
 
 - Some boolean status expressions may not materialize as fields.
-- Workarounds include using a numeric intermediate and converting (e.g. `int(<expr>) == 1`) so the field is reliably present.
+- Workarounds include casting a numeric operand (e.g. `int(<number>) == 1`) so the boolean field is reliably present.
+- Note: kro v0.7.1 rejects `int(<bool>)`; use a ternary to convert booleans if needed (e.g. `int((<bool>) ? 1 : 0) == 1`).
 
 ### `NetworkPolicy` can block readiness
 

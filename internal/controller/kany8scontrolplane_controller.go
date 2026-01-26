@@ -55,6 +55,7 @@ const (
 
 	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
 	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
+	reasonInvalidEndpoint                 = "InvalidEndpoint"
 
 	rgdResolveRequeueAfter = 30 * time.Second
 )
@@ -150,24 +151,27 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		cpEndpoint, err := endpoint.Parse(instanceStatus.Endpoint)
 		if err != nil {
 			log.Error(err, "parse kro instance status endpoint", "endpoint", instanceStatus.Endpoint)
-			return ctrl.Result{}, nil
-		}
-
-		if cp.Spec.ControlPlaneEndpoint != cpEndpoint {
-			before := cp.DeepCopy()
-			cp.Spec.ControlPlaneEndpoint = cpEndpoint
-			if err := r.Patch(ctx, cp, client.MergeFrom(before)); err != nil {
-				log.Error(err, "update control plane endpoint")
-				return ctrl.Result{}, err
+			instanceStatus.Ready = false
+			instanceStatus.Reason = reasonInvalidEndpoint
+			instanceStatus.Message = fmt.Sprintf("invalid status.endpoint %q: %v", instanceStatus.Endpoint, err)
+			controlPlaneReady = false
+		} else {
+			if cp.Spec.ControlPlaneEndpoint != cpEndpoint {
+				before := cp.DeepCopy()
+				cp.Spec.ControlPlaneEndpoint = cpEndpoint
+				if err := r.Patch(ctx, cp, client.MergeFrom(before)); err != nil {
+					log.Error(err, "update control plane endpoint")
+					return ctrl.Result{}, err
+				}
 			}
-		}
 
-		if !cp.Status.Initialization.ControlPlaneInitialized {
-			before := cp.DeepCopy()
-			cp.Status.Initialization.ControlPlaneInitialized = true
-			if err := r.Status().Patch(ctx, cp, client.MergeFrom(before)); err != nil {
-				log.Error(err, "update control plane initialized")
-				return ctrl.Result{}, err
+			if !cp.Status.Initialization.ControlPlaneInitialized {
+				before := cp.DeepCopy()
+				cp.Status.Initialization.ControlPlaneInitialized = true
+				if err := r.Status().Patch(ctx, cp, client.MergeFrom(before)); err != nil {
+					log.Error(err, "update control plane initialized")
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
