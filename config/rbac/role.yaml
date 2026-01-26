@@ -11,12 +11,22 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - controlplane.cluster.x-k8s.io
   resources:
   - kany8scontrolplanes/finalizers
   verbs:
+  - update
+- apiGroups:
+  - controlplane.cluster.x-k8s.io
+  resources:
+  - kany8scontrolplanes/status
+  verbs:
+  - get
+  - patch
   - update
 - apiGroups:
   - kro.run
