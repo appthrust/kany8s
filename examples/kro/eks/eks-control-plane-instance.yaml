@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: EKSControlPlane
+metadata:
+  name: demo-eks
+  namespace: default
+spec:
+  region: ap-northeast-1
+  version: "1.34"
+  vpc:
+    subnetIDs:
+      - subnet-xxxx
+      - subnet-yyyy
+    securityGroupIDs:
+      - sg-zzzz
