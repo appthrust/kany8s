@@ -39,11 +39,11 @@ metadata:
   name: demo-cluster
 spec:
   infrastructureRef:
-    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+    apiGroup: infrastructure.cluster.x-k8s.io
     kind: Kany8sCluster
     name: demo-cluster
   controlPlaneRef:
-    apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+    apiGroup: controlplane.cluster.x-k8s.io
     kind: Kany8sControlPlane
     name: demo-cluster
 ```
