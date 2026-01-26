@@ -86,6 +86,14 @@ test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expect
 	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
 	$(MAKE) cleanup-test-e2e
 
+.PHONY: test-acceptance
+test-acceptance: ## Run acceptance test script (kind + kro + demo flow).
+	bash hack/acceptance-test.sh
+
+.PHONY: test-acceptance-keep
+test-acceptance-keep: ## Run acceptance test script and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test.sh
+
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
