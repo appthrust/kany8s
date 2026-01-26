@@ -1,0 +1,6 @@
+/.roboppoi/
+/bin/
+/dist/
+/*.log
+/.idea/
+/.vscode/
