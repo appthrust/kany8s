@@ -1,0 +1,75 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-control-plane
+spec:
+  # Reference RGD for AWS/EKS using ACK.
+  # Prereqs:
+  # - ack-iam-controller (Role)
+  # - ack-eks-controller (Cluster)
+  schema:
+    apiVersion: v1alpha1
+    kind: EKSControlPlane
+    spec:
+      region: string | required=true
+      version: string | required=true
+
+      # EKS Cluster IAM Role policies (AWS managed policies).
+      clusterRolePolicies: '[]string | default=["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"]'
+
+      vpc:
+        subnetIDs: '[]string | required=true'
+        securityGroupIDs: '[]string | required=true'
+        endpointPrivateAccess: boolean | default=true
+        endpointPublicAccess: boolean | default=true
+        publicAccessCIDRs: '[]string | default=["0.0.0.0/0"]'
+
+    status:
+      # Always materialize as string ("" until Cluster reports it).
+      endpoint: ${cluster.?status.?endpoint.orValue("")}
+
+      # Always materialize as boolean.
+      # NOTE: kro v0.7.1 may drop boolean status fields unless an explicit cast
+      # exists in the expression (see docs/issues.md).
+      ready: '${int((string(cluster.?status.?status.orValue("")) == "ACTIVE" && string(cluster.?status.?endpoint.orValue("")) != "") ? 1 : 0) == 1}'
+
+  resources:
+    - id: clusterRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+          policies: ${schema.spec.clusterRolePolicies}
+      readyWhen:
+        - ${clusterRole.?status.?ackResourceMetadata.?arn.orValue("") != ""}
+
+    - id: cluster
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}
+          version: ${schema.spec.version}
+          # NOTE: keep this optional so the template can be evaluated early;
+          # the actual Cluster creation is still gated by clusterRole.readyWhen.
+          roleARN: ${clusterRole.?status.?ackResourceMetadata.?arn.orValue("")}
+          resourcesVPCConfig:
+            subnetIDs: ${schema.spec.vpc.subnetIDs}
+            securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
+            endpointPrivateAccess: ${schema.spec.vpc.endpointPrivateAccess}
+            endpointPublicAccess: ${schema.spec.vpc.endpointPublicAccess}
+            publicAccessCIDRs: ${schema.spec.vpc.publicAccessCIDRs}
+      readyWhen:
+        - ${string(cluster.?status.?status.orValue("")) == "ACTIVE"}
+        - ${string(cluster.?status.?endpoint.orValue("")) != ""}
