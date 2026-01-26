@@ -43,10 +43,15 @@ kubectl describe kany8scontrolplane -n default demo-cluster
 # kro objects
 kubectl get rgd -o wide
 
+# Resolve the generated kro instance kind from the RGD schema.
+RGD_NAME=<rgd-name>
+KRO_INSTANCE_KIND=$(kubectl get rgd ${RGD_NAME} -o jsonpath='{.spec.schema.kind}')
+
 # The kro instance GVK is resolved from the RGD schema.
 # Expected behavior: Kany8s creates exactly one instance (name/namespace matches the Kany8sControlPlane).
-kubectl get <kroInstanceKind> -n default demo-cluster -o wide
-kubectl describe <kroInstanceKind> -n default demo-cluster
+kubectl get "${KRO_INSTANCE_KIND}" -n default demo-cluster -o wide
+kubectl get "${KRO_INSTANCE_KIND}" -n default demo-cluster -o jsonpath='{.status.ready}{" "}{.status.endpoint}{"\n"}'
+kubectl describe "${KRO_INSTANCE_KIND}" -n default demo-cluster
 
 # When the kro instance exposes ready+endpoint, Kany8s should:
 # - set `Kany8sControlPlane.spec.controlPlaneEndpoint`

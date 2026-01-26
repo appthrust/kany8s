@@ -43,11 +43,19 @@ kubectl apply -f <provider-rgd.yaml>
 # 4) Cluster apply
 kubectl apply -f examples/capi/cluster.yaml
 
-# Observe
+# Observe (Ready / endpoint / describe)
 kubectl get rgd -o wide
 kubectl get clusters -A -o wide
 kubectl get kany8scontrolplanes -A -o wide
+
+# kro instance (status.ready + status.endpoint)
+RGD_NAME=eks-control-plane
+KRO_INSTANCE_KIND=$(kubectl get rgd ${RGD_NAME} -o jsonpath='{.spec.schema.kind}')
+kubectl get "${KRO_INSTANCE_KIND}" -n default demo-cluster -o jsonpath='{.status.ready}{" "}{.status.endpoint}{"\n"}'
+kubectl describe "${KRO_INSTANCE_KIND}" -n default demo-cluster
+
 kubectl describe kany8scontrolplane -n default demo-cluster
+kubectl describe cluster -n default demo-cluster
 ```
 
 ## Concept
