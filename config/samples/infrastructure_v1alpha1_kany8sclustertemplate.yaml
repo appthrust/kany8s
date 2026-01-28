@@ -4,6 +4,8 @@ metadata:
   labels:
     app.kubernetes.io/name: kany8s
     app.kubernetes.io/managed-by: kustomize
-  name: kany8sclustertemplate-sample
+  name: demo-cluster-template
 spec:
-  # TODO(user): Add fields here
+  template:
+    spec:
+      kroSpec: {}

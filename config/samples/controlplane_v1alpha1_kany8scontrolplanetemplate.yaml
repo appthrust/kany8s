@@ -4,6 +4,11 @@ metadata:
   labels:
     app.kubernetes.io/name: kany8s
     app.kubernetes.io/managed-by: kustomize
-  name: kany8scontrolplanetemplate-sample
+  name: demo-control-plane-template
 spec:
-  # TODO(user): Add fields here
+  template:
+    spec:
+      resourceGraphDefinitionRef:
+        # Apply `examples/kro/ready-endpoint/rgd.yaml` first.
+        name: demo-control-plane.kro.run
+      kroSpec: {}
