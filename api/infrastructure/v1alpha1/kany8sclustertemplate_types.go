@@ -17,49 +17,42 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Kany8sClusterTemplateSpec defines the desired state of Kany8sClusterTemplate
+// Kany8sClusterTemplateSpec defines the desired state of Kany8sClusterTemplate.
 type Kany8sClusterTemplateSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
-
-	// foo is an example field of Kany8sClusterTemplate. Edit kany8sclustertemplate_types.go to remove/update
-	// +optional
-	Foo *string `json:"foo,omitempty"`
+	// template describes the desired state of Kany8sClusterTemplate.
+	// +required
+	Template Kany8sClusterTemplateResource `json:"template"`
 }
 
-// Kany8sClusterTemplateStatus defines the observed state of Kany8sClusterTemplate.
-type Kany8sClusterTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-
-	// conditions represent the current state of the Kany8sClusterTemplate resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
-	// +listType=map
-	// +listMapKey=type
+// Kany8sClusterTemplateResource describes the data needed to create a
+// Kany8sCluster from a ClusterClass template.
+type Kany8sClusterTemplateResource struct {
+	// metadata is the standard object's metadata.
 	// +optional
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	ObjectMeta clusterv1.ObjectMeta `json:"metadata,omitempty,omitzero"`
+
+	// spec is the desired state of Kany8sClusterTemplateResource.
+	// +required
+	Spec Kany8sClusterTemplateResourceSpec `json:"spec"`
+}
+
+// Kany8sClusterTemplateResourceSpec defines the desired state of a Kany8sCluster
+// created from a template.
+type Kany8sClusterTemplateResourceSpec struct {
+	// kroSpec is an arbitrary, provider-specific object.
+	// +optional
+	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
 
 // Kany8sClusterTemplate is the Schema for the kany8sclustertemplates API
 type Kany8sClusterTemplate struct {
@@ -72,10 +65,6 @@ type Kany8sClusterTemplate struct {
 	// spec defines the desired state of Kany8sClusterTemplate
 	// +required
 	Spec Kany8sClusterTemplateSpec `json:"spec"`
-
-	// status defines the observed state of Kany8sClusterTemplate
-	// +optional
-	Status Kany8sClusterTemplateStatus `json:"status,omitzero"`
 }
 
 // +kubebuilder:object:root=true

@@ -74,6 +74,11 @@ func TestInfrastructureKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
 	typesGo := string(typesBytes)
 	wantSubstrings := []string{
 		"type Kany8sClusterTemplateSpec struct",
+		"Template Kany8sClusterTemplateResource",
+		"type Kany8sClusterTemplateResource struct",
+		"ObjectMeta clusterv1.ObjectMeta",
+		"type Kany8sClusterTemplateResourceSpec struct",
+		"KroSpec *apiextensionsv1.JSON",
 		"type Kany8sClusterTemplate struct",
 		"type Kany8sClusterTemplateList struct",
 	}
@@ -81,6 +86,16 @@ func TestInfrastructureKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
 		if !strings.Contains(typesGo, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(typesPath), want)
 		}
+	}
+
+	if strings.Contains(typesGo, "Foo *string") {
+		t.Errorf("%s should not define the scaffold example field Foo", filepath.ToSlash(typesPath))
+	}
+	if strings.Contains(typesGo, "+kubebuilder:subresource:status") {
+		t.Errorf("%s should not enable the status subresource (template resources are not reconciled)", filepath.ToSlash(typesPath))
+	}
+	if strings.Contains(typesGo, "type Kany8sClusterTemplateStatus struct") {
+		t.Errorf("%s should not define a status type (template resources are not reconciled)", filepath.ToSlash(typesPath))
 	}
 }
 
@@ -142,10 +157,19 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 		"name: kany8sclustertemplates.infrastructure.cluster.x-k8s.io",
 		"kind: Kany8sClusterTemplate",
 		"plural: kany8sclustertemplates",
+		"template:",
+		"kroSpec:",
+		"- template",
 	}
 	for _, want := range wantInfraClusterTemplateSubstrings {
 		if !strings.Contains(infraClusterTemplateCRD, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(infraClusterTemplateCRDPath), want)
 		}
+	}
+	if strings.Contains(infraClusterTemplateCRD, "foo:") {
+		t.Errorf("%s should not include the scaffold example spec field foo", filepath.ToSlash(infraClusterTemplateCRDPath))
+	}
+	if strings.Contains(infraClusterTemplateCRD, "subresources:") {
+		t.Errorf("%s should not enable the status subresource for templates", filepath.ToSlash(infraClusterTemplateCRDPath))
 	}
 }

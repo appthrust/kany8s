@@ -134,3 +134,5 @@
 - 2026-01-28: Implemented CAPI v1beta2 InfrastructureCluster `status.initialization.provisioned` for `Kany8sCluster` and set it in the infra controller; updated unit + devtools tests; regenerated manifests/deepcopy; verified `make test` and `make lint`.
 
 - 2026-01-28: Scaffolded infrastructure `Kany8sClusterTemplate` API via kubebuilder; added devtools tests asserting the scaffold + generated CRD base; regenerated manifests; verified `make test` and `make lint`.
+
+- 2026-01-28: Aligned infrastructure `Kany8sClusterTemplate` to ClusterClass template conventions (spec.template with metadata + kroSpec); extended devtools assertions; regenerated manifests/deepcopy; verified `make test` and `make lint`.
