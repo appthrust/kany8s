@@ -109,7 +109,7 @@ func TestGeneratedManagerRoleIncludesSecretsRBAC(t *testing.T) {
 		t.Fatalf("parse %q: %v", rolePath, err)
 	}
 
-	found := false
+	foundRequired := false
 	for _, rule := range role.Rules {
 		if !slices.Contains(rule.APIGroups, "") {
 			continue
@@ -117,21 +117,25 @@ func TestGeneratedManagerRoleIncludesSecretsRBAC(t *testing.T) {
 		if !slices.Contains(rule.Resources, "secrets") {
 			continue
 		}
-		missing := false
-		for _, verb := range []string{"create", "get", "list", "patch", "update", "watch"} {
-			if !slices.Contains(rule.Verbs, verb) {
-				missing = true
-				break
+
+		for _, disallowed := range []string{"list", "watch"} {
+			if slices.Contains(rule.Verbs, disallowed) {
+				t.Errorf("%s secrets RBAC should not include verb %q", filepath.ToSlash(rolePath), disallowed)
 			}
 		}
-		if missing {
-			continue
+
+		missing := []string{}
+		for _, verb := range []string{"create", "get", "patch", "update"} {
+			if !slices.Contains(rule.Verbs, verb) {
+				missing = append(missing, verb)
+			}
 		}
-		found = true
-		break
+		if len(missing) == 0 {
+			foundRequired = true
+		}
 	}
-	if !found {
-		t.Errorf("%s missing RBAC rule for core secrets with create/get/list/watch/update/patch", filepath.ToSlash(rolePath))
+	if !foundRequired {
+		t.Errorf("%s missing RBAC rule for core secrets with create/get/update/patch", filepath.ToSlash(rolePath))
 	}
 }
 
