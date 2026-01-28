@@ -44,4 +44,12 @@ resources:
   kind: Kany8sCluster
   path: github.com/reoring/kany8s/api/infrastructure/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: cluster.x-k8s.io
+  group: infrastructure
+  kind: Kany8sClusterTemplate
+  path: github.com/reoring/kany8s/api/infrastructure/v1alpha1
+  version: v1alpha1
 version: "3"

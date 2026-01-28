@@ -4,4 +4,5 @@ resources:
 - controlplane_v1alpha1_kany8scontrolplanetemplate.yaml
 - controlplane_v1alpha1_kany8sclustertemplate.yaml
 - infrastructure_v1alpha1_kany8scluster.yaml
+- infrastructure_v1alpha1_kany8sclustertemplate.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

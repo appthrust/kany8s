@@ -62,6 +62,28 @@ func TestKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
 	}
 }
 
+func TestInfrastructureKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	typesPath := filepath.Join(root, "api", "infrastructure", "v1alpha1", "kany8sclustertemplate_types.go")
+	typesBytes, err := os.ReadFile(typesPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", typesPath, err)
+	}
+
+	typesGo := string(typesBytes)
+	wantSubstrings := []string{
+		"type Kany8sClusterTemplateSpec struct",
+		"type Kany8sClusterTemplate struct",
+		"type Kany8sClusterTemplateList struct",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(typesGo, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(typesPath), want)
+		}
+	}
+}
+
 func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 	root := findRepoRoot(t)
 
@@ -106,6 +128,24 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 	for _, want := range wantClusterTemplateSubstrings {
 		if !strings.Contains(clusterTemplateCRD, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(clusterTemplateCRDPath), want)
+		}
+	}
+
+	infraClusterTemplateCRDPath := filepath.Join(root, "config", "crd", "bases", "infrastructure.cluster.x-k8s.io_kany8sclustertemplates.yaml")
+	infraClusterTemplateCRDBytes, err := os.ReadFile(infraClusterTemplateCRDPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", infraClusterTemplateCRDPath, err)
+	}
+	infraClusterTemplateCRD := string(infraClusterTemplateCRDBytes)
+	wantInfraClusterTemplateSubstrings := []string{
+		"kind: CustomResourceDefinition",
+		"name: kany8sclustertemplates.infrastructure.cluster.x-k8s.io",
+		"kind: Kany8sClusterTemplate",
+		"plural: kany8sclustertemplates",
+	}
+	for _, want := range wantInfraClusterTemplateSubstrings {
+		if !strings.Contains(infraClusterTemplateCRD, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(infraClusterTemplateCRDPath), want)
 		}
 	}
 }
