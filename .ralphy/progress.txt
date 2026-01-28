@@ -142,3 +142,5 @@
 - 2026-01-28: Deprecated the controlplane-group `Kany8sClusterTemplate` in `docs/design.md` (use the infrastructure-group template going forward); added a devtools test enforcing the note; verified `make test` and `make lint`.
 
 - 2026-01-28: Removed the deprecated controlplane-group `Kany8sClusterTemplate` API (types, generated CRD base, samples, and PROJECT entry); updated docs/tests; regenerated manifests/deepcopy; verified `make test` and `make lint`.
+
+- 2026-01-28: Made invalid `Kany8sControlPlane.spec.kroSpec` non-fatal (surface via Conditions + Warning Event) and added unit test coverage; verified `make test` and `make lint`.

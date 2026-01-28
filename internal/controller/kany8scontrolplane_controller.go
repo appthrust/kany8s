@@ -55,6 +55,7 @@ const (
 
 	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
 	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
+	reasonInvalidKroSpec                  = "InvalidKroSpec"
 	reasonInvalidEndpoint                 = "InvalidEndpoint"
 
 	rgdResolveRequeueAfter = 30 * time.Second
@@ -111,6 +112,12 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	instance.SetName(cp.Name)
 	instance.SetNamespace(cp.Namespace)
 
+	instanceSpec, err := buildKroInstanceSpec(cp)
+	if err != nil {
+		log.Error(err, "invalid kroSpec")
+		return r.reconcileInvalidKroSpec(ctx, cp, err)
+	}
+
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
 		instance.SetGroupVersionKind(instanceGVK)
 		instance.SetName(cp.Name)
@@ -118,15 +125,7 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err := controllerutil.SetControllerReference(cp, instance, r.Scheme); err != nil {
 			return err
 		}
-
-		spec := map[string]any{}
-		if cp.Spec.KroSpec != nil && len(cp.Spec.KroSpec.Raw) > 0 {
-			if err := json.Unmarshal(cp.Spec.KroSpec.Raw, &spec); err != nil {
-				return err
-			}
-		}
-		spec["version"] = cp.Spec.Version
-		instance.Object["spec"] = spec
+		instance.Object["spec"] = instanceSpec
 
 		return nil
 	})
@@ -312,6 +311,49 @@ func (r *Kany8sControlPlaneReconciler) reconcileConditionsAndFailure(ctx context
 	}
 
 	return r.Status().Patch(ctx, cp, client.MergeFrom(before))
+}
+
+func buildKroInstanceSpec(cp *controlplanev1alpha1.Kany8sControlPlane) (map[string]any, error) {
+	if cp == nil {
+		return nil, fmt.Errorf("control plane is nil")
+	}
+
+	spec := map[string]any{}
+	if cp.Spec.KroSpec != nil && len(cp.Spec.KroSpec.Raw) > 0 {
+		var v any
+		if err := json.Unmarshal(cp.Spec.KroSpec.Raw, &v); err != nil {
+			return nil, fmt.Errorf("parse spec.kroSpec: %w", err)
+		}
+		if v == nil {
+			return nil, fmt.Errorf("spec.kroSpec must be a JSON object, got null")
+		}
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("spec.kroSpec must be a JSON object, got %T", v)
+		}
+		spec = obj
+	}
+
+	spec["version"] = cp.Spec.Version
+	return spec, nil
+}
+
+func (r *Kany8sControlPlaneReconciler) reconcileInvalidKroSpec(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, kroSpecErr error) (ctrl.Result, error) {
+	message := kroSpecErr.Error()
+
+	prev := meta.FindStatusCondition(cp.Status.Conditions, conditionTypeReady)
+	shouldEmit := prev == nil || prev.Status != metav1.ConditionFalse || prev.Reason != reasonInvalidKroSpec || prev.Message != message
+
+	instanceStatus := kro.InstanceStatus{Ready: false, Reason: reasonInvalidKroSpec, Message: message}
+	if err := r.reconcileConditionsAndFailure(ctx, cp, instanceStatus, false); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if shouldEmit && r.Recorder != nil {
+		r.Recorder.Event(cp, corev1.EventTypeWarning, reasonInvalidKroSpec, message)
+	}
+
+	return ctrl.Result{}, nil
 }
 
 func (r *Kany8sControlPlaneReconciler) requeueWithRGDResolutionCondition(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, resolveErr error) (ctrl.Result, error) {

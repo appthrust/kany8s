@@ -288,6 +288,129 @@ func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
 	}
 }
 
+func TestKany8sControlPlaneReconciler_SurfacesInvalidKroSpecViaConditionsAndEvent(t *testing.T) {
+	t.Parallel()
+
+	const wantReason = "InvalidKroSpec"
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+			KroSpec: &apiextensionsv1.JSON{Raw: []byte(`["not-an-object"]`)},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd).WithStatusSubresource(cp).Build()
+
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 0 {
+		t.Fatalf("RequeueAfter = %s, want 0", res.RequeueAfter)
+	}
+
+	got := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	creatingCond := meta.FindStatusCondition(got.Status.Conditions, conditionTypeCreating)
+	if creatingCond == nil {
+		t.Fatalf("expected Creating condition")
+	}
+	if creatingCond.Status != metav1.ConditionTrue {
+		t.Fatalf("Creating condition status = %q, want %q", creatingCond.Status, metav1.ConditionTrue)
+	}
+	if creatingCond.Reason != wantReason {
+		t.Fatalf("Creating condition reason = %q, want %q", creatingCond.Reason, wantReason)
+	}
+	if !strings.Contains(creatingCond.Message, "spec.kroSpec must be a JSON object") {
+		t.Fatalf("Creating condition message = %q, want to contain %q", creatingCond.Message, "spec.kroSpec must be a JSON object")
+	}
+
+	readyCond := meta.FindStatusCondition(got.Status.Conditions, conditionTypeReady)
+	if readyCond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if readyCond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", readyCond.Status, metav1.ConditionFalse)
+	}
+	if readyCond.Reason != wantReason {
+		t.Fatalf("Ready condition reason = %q, want %q", readyCond.Reason, wantReason)
+	}
+	if !strings.Contains(readyCond.Message, "spec.kroSpec must be a JSON object") {
+		t.Fatalf("Ready condition message = %q, want to contain %q", readyCond.Message, "spec.kroSpec must be a JSON object")
+	}
+
+	if got.Status.FailureReason == nil {
+		t.Fatalf("expected failureReason to be set")
+	}
+	if *got.Status.FailureReason != wantReason {
+		t.Fatalf("failureReason = %q, want %q", *got.Status.FailureReason, wantReason)
+	}
+	if got.Status.FailureMessage == nil {
+		t.Fatalf("expected failureMessage to be set")
+	}
+	if !strings.Contains(*got.Status.FailureMessage, "spec.kroSpec must be a JSON object") {
+		t.Fatalf("failureMessage = %q, want to contain %q", *got.Status.FailureMessage, "spec.kroSpec must be a JSON object")
+	}
+
+	instance := &unstructured.Unstructured{}
+	instance.SetGroupVersionKind(instanceGVK)
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, instance); err == nil {
+		t.Fatalf("expected kro instance to not be created")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, wantReason) {
+			t.Fatalf("event = %q, want to contain %q", evt, wantReason)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
+	}
+}
+
 func TestKany8sControlPlaneReconciler_SetsControlPlaneEndpointFromKroInstanceStatus(t *testing.T) {
 	t.Parallel()
 
