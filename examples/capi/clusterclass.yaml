@@ -1,4 +1,4 @@
-apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
 kind: Kany8sClusterTemplate
 metadata:
   name: kany8s-aws
@@ -27,7 +27,7 @@ metadata:
 spec:
   infrastructure:
     ref:
-      apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
       kind: Kany8sClusterTemplate
       name: kany8s-aws
   controlPlane:

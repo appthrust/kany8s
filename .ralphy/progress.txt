@@ -136,3 +136,5 @@
 - 2026-01-28: Scaffolded infrastructure `Kany8sClusterTemplate` API via kubebuilder; added devtools tests asserting the scaffold + generated CRD base; regenerated manifests; verified `make test` and `make lint`.
 
 - 2026-01-28: Aligned infrastructure `Kany8sClusterTemplate` to ClusterClass template conventions (spec.template with metadata + kroSpec); extended devtools assertions; regenerated manifests/deepcopy; verified `make test` and `make lint`.
+
+- 2026-01-28: Updated the ClusterClass example to reference the infrastructure-group `Kany8sClusterTemplate`; tightened the devtools example assertion; verified `make test` and `make lint`.

@@ -50,6 +50,7 @@ func TestExamplesCAPIClusterClassSampleExists(t *testing.T) {
 	wantSubstrings := []string{
 		"kind: ClusterClass",
 		"apiVersion: cluster.x-k8s.io/v1beta2",
+		"apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1",
 		"kind: Kany8sControlPlaneTemplate",
 		"kind: Kany8sClusterTemplate",
 		"variables:",
