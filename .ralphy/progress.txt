@@ -148,3 +148,5 @@
 - 2026-01-28: Clarified `spec.kroSpec` expectations in `docs/design.md` (must be a JSON object because the controller injects `spec.version`); added a devtools test; verified `make test` and `make lint`.
 
 - 2026-01-28: Reserved `Kany8sControlPlane.status.failureReason/failureMessage` for terminal/controller-detected errors (cleared during normal provisioning); updated controller logic, unit tests, and `docs/rgd-contract.md`; verified `make test` and `make lint`.
+
+- 2026-01-28: Clarified the RGD contract required-vs-runtime behavior (RGD authors must provide fields; controller tolerates missing fields) in `docs/rgd-contract.md`; extended devtools coverage and marked the PRD item complete; verified `make test` and `make lint`.

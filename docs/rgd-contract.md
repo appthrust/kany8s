@@ -6,6 +6,12 @@ This document defines the minimal contract an RGD instance (a custom resource cr
 
 Kany8s reads the following fields from the RGD instance `status`.
 
+Note:
+
+- For RGD authors: treat `status.ready` and `status.endpoint` as required outputs of your RGD instance.
+- Runtime behavior: the Kany8s controller tolerates missing fields by treating them as "not ready" (`ready=false`, empty endpoint) so it can keep reconciling safely even if kro status materialization is imperfect.
+  - See `docs/rgd-guidelines.md` for pitfalls and recommended patterns.
+
 - `status.ready` (required, boolean)
   - Meaning: "the managed control plane is Ready" (control-plane ready, not addons ready).
   - MUST always be present as a boolean (avoid missing-field pitfalls).
