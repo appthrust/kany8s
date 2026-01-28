@@ -32,9 +32,9 @@ kro reserves `status.conditions` and `status.state`. Do not use them for the abo
   - `Kany8sControlPlane.spec.controlPlaneEndpoint`
   - `Kany8sControlPlane.status.initialization.controlPlaneInitialized`
   - `Kany8sControlPlane.status.conditions`
-  - `Kany8sControlPlane.status.failureReason` / `Kany8sControlPlane.status.failureMessage`
 
-If `status.ready=false`, Kany8s may surface `status.reason`/`status.message` as failure details.
+Kany8s surfaces `status.reason` / `status.message` primarily via Conditions (e.g., Ready/Creating).
+`Kany8sControlPlane.status.failureReason` / `failureMessage` are reserved for terminal, controller-detected errors (for example: invalid `spec.kroSpec`, invalid `status.endpoint`) and are cleared during normal provisioning.
 
 ## Example
 

@@ -296,21 +296,35 @@ func (r *Kany8sControlPlaneReconciler) reconcileConditionsAndFailure(ctx context
 			Message: message,
 		})
 
-		if instanceStatus.Reason != "" {
-			reasonCopy := instanceStatus.Reason
-			cp.Status.FailureReason = &reasonCopy
+		if isTerminalFailureReason(instanceStatus.Reason) {
+			if instanceStatus.Reason != "" {
+				reasonCopy := instanceStatus.Reason
+				cp.Status.FailureReason = &reasonCopy
+			} else {
+				cp.Status.FailureReason = nil
+			}
+			if instanceStatus.Message != "" {
+				messageCopy := instanceStatus.Message
+				cp.Status.FailureMessage = &messageCopy
+			} else {
+				cp.Status.FailureMessage = nil
+			}
 		} else {
 			cp.Status.FailureReason = nil
-		}
-		if instanceStatus.Message != "" {
-			messageCopy := instanceStatus.Message
-			cp.Status.FailureMessage = &messageCopy
-		} else {
 			cp.Status.FailureMessage = nil
 		}
 	}
 
 	return r.Status().Patch(ctx, cp, client.MergeFrom(before))
+}
+
+func isTerminalFailureReason(reason string) bool {
+	switch reason {
+	case reasonInvalidKroSpec, reasonInvalidEndpoint:
+		return true
+	default:
+		return false
+	}
 }
 
 func buildKroInstanceSpec(cp *controlplanev1alpha1.Kany8sControlPlane) (map[string]any, error) {

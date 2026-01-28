@@ -749,7 +749,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenRGDInvalid(t *testing.T) {
 	}
 }
 
-func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndFailureFieldsWhenNotReady(t *testing.T) {
+func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndClearsFailureFieldsWhenNotReady(t *testing.T) {
 	t.Parallel()
 
 	scheme := runtime.NewScheme()
@@ -856,17 +856,11 @@ func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndFailureFieldsWhenN
 		t.Fatalf("Ready condition message = %q, want %q", readyCond.Message, defaultNotReadyMessage)
 	}
 
-	if got.Status.FailureReason == nil {
-		t.Fatalf("expected failureReason to be set")
+	if got.Status.FailureReason != nil {
+		t.Fatalf("expected failureReason to be cleared during provisioning, got %q", *got.Status.FailureReason)
 	}
-	if *got.Status.FailureReason != provisioningReason {
-		t.Fatalf("failureReason = %q, want %q", *got.Status.FailureReason, provisioningReason)
-	}
-	if got.Status.FailureMessage == nil {
-		t.Fatalf("expected failureMessage to be set")
-	}
-	if *got.Status.FailureMessage != defaultNotReadyMessage {
-		t.Fatalf("failureMessage = %q, want %q", *got.Status.FailureMessage, defaultNotReadyMessage)
+	if got.Status.FailureMessage != nil {
+		t.Fatalf("expected failureMessage to be cleared during provisioning, got %q", *got.Status.FailureMessage)
 	}
 }
 
