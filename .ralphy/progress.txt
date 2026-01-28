@@ -158,3 +158,5 @@
 - 2026-01-28: Treated missing kubeconfig source Secret as a wait (RequeueAfter + nil error) and surfaced source Secret get failures via a dedicated Condition + Warning Event; added unit tests; verified `make test` and `make lint`.
 
 - 2026-01-28: Validated kubeconfig bytes before copying into the CAPI `<cluster>-kubeconfig` Secret; reject invalid kubeconfig via Condition + Warning Event and avoid overwriting the target secret; added unit tests; verified `make test` and `make lint`.
+
+- 2026-01-28: Prevented silent dynamicwatch event loss on a full channel by coalescing + flushing pending events and exposing a Prometheus counter for backpressure; added unit tests; verified `make test` and `make lint`.
