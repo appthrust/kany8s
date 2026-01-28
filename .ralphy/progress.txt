@@ -160,3 +160,5 @@
 - 2026-01-28: Validated kubeconfig bytes before copying into the CAPI `<cluster>-kubeconfig` Secret; reject invalid kubeconfig via Condition + Warning Event and avoid overwriting the target secret; added unit tests; verified `make test` and `make lint`.
 
 - 2026-01-28: Prevented silent dynamicwatch event loss on a full channel by coalescing + flushing pending events and exposing a Prometheus counter for backpressure; added unit tests; verified `make test` and `make lint`.
+
+- 2026-01-28: Retried dynamicwatch setup when `InstanceWatcher.EnsureWatch` fails by requeueing even after the control plane is Ready; added unit test coverage; verified `make test` and `make lint`.

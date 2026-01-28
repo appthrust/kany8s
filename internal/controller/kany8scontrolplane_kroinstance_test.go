@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -974,6 +975,104 @@ func TestKany8sControlPlaneReconciler_RequeuesUntilReadyAndThenStops(t *testing.
 	if !got.Status.Initialization.ControlPlaneInitialized {
 		t.Fatalf("control plane initialized = %v, want %v", got.Status.Initialization.ControlPlaneInitialized, true)
 	}
+}
+
+func TestKany8sControlPlaneReconciler_RequeuesWhenEnsureWatchFailsEvenIfReady(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":    true,
+			"endpoint": "https://api.demo.example.com:6443",
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+
+	var called bool
+	var gotGVK schema.GroupVersionKind
+	ensureErr := errors.New("boom")
+	r := &Kany8sControlPlaneReconciler{
+		Client: c,
+		Scheme: scheme,
+		InstanceWatcher: ensureWatchFunc(func(ctx context.Context, gvk schema.GroupVersionKind) error {
+			called = true
+			gotGVK = gvk
+			return ensureErr
+		}),
+	}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if !called {
+		t.Fatalf("expected EnsureWatch to be called")
+	}
+	if gotGVK != instanceGVK {
+		t.Fatalf("EnsureWatch gvk = %s, want %s", gotGVK.String(), instanceGVK.String())
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter > 0 when EnsureWatch fails")
+	}
+}
+
+type ensureWatchFunc func(ctx context.Context, gvk schema.GroupVersionKind) error
+
+func (f ensureWatchFunc) EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) error {
+	return f(ctx, gvk)
 }
 
 func TestKany8sControlPlaneReconciler_RequeuesWhenReadyButEndpointMissing(t *testing.T) {

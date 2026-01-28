@@ -43,6 +43,11 @@ type Watcher struct {
 	nextChannelFullLog time.Time
 }
 
+// Ensurer abstracts EnsureWatch for easier testing and composition.
+type Ensurer interface {
+	EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) error
+}
+
 func New(dynClient dynamic.Interface, events chan<- event.GenericEvent) *Watcher {
 	return &Watcher{
 		factory:   dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynClient, 0*time.Second, "", nil),

@@ -62,7 +62,8 @@ const (
 	reasonKubeconfigSourceSecretGetFailed = "KubeconfigSourceSecretGetFailed"
 	reasonInvalidKubeconfig               = "InvalidKubeconfig"
 
-	rgdResolveRequeueAfter = 30 * time.Second
+	rgdResolveRequeueAfter  = 30 * time.Second
+	ensureWatchRequeueAfter = 30 * time.Second
 )
 
 // Kany8sControlPlaneReconciler reconciles a Kany8sControlPlane object
@@ -71,7 +72,7 @@ type Kany8sControlPlaneReconciler struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
-	InstanceWatcher *dynamicwatch.Watcher
+	InstanceWatcher dynamicwatch.Ensurer
 }
 
 // +kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=kany8scontrolplanes,verbs=get;list;watch;create;update;patch;delete
@@ -105,8 +106,11 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		log.Error(err, "resolve kro instance GVK")
 		return r.requeueWithRGDResolutionCondition(ctx, cp, err)
 	}
+
+	var ensureWatchErr error
 	if r.InstanceWatcher != nil {
 		if err := r.InstanceWatcher.EnsureWatch(ctx, instanceGVK); err != nil {
+			ensureWatchErr = err
 			log.Error(err, "ensure dynamic watch for kro instance", "gvk", instanceGVK.String())
 		}
 	}
@@ -189,6 +193,9 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	if kubeconfigRes.RequeueAfter != 0 {
 		return kubeconfigRes, nil
+	}
+	if ensureWatchErr != nil {
+		return ctrl.Result{RequeueAfter: ensureWatchRequeueAfter}, nil
 	}
 
 	return ctrl.Result{}, nil
