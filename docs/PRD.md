@@ -795,4 +795,4 @@ Kany8s が infra 側も提供する場合、次のどちらを目指すかで CR
 - [x] [P2] (Issue #13) endpoint をログ/メッセージに生で出さない（マスク or 省略）。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: endpoint に認証情報が混入してもログに漏れない。Run: `make test`.
 - [x] [P2] (Issue #11) Secret RBAC を必要最小限に寄せる（少なくとも `list/watch` を外す）。Touch: RBAC markers in `internal/controller/kany8scontrolplane_controller.go` -> regenerate via `make manifests`。DoD: `config/rbac/role.yaml` の secrets verbs が最小化される。Run: `make test`.
 - [x] [P3] (Issue #12/#3) scaffold 由来の TODO コメント/空テストを整理する（削除 or 実装に合わせて書き換え）。Touch: `internal/controller/kany8scontrolplane_controller.go`, `internal/controller/infrastructure/kany8scluster_controller.go`, `internal/controller/infrastructure/kany8scluster_controller_test.go`。DoD: TODO/空テストが残らず、テストの意図が明確になる。Run: `make test`.
-- [ ] [P3] (issues.md) 誤検知/誤提案の注記を追記する（Issue #6/#7/#9 は対応不要、Issue #1/#5 の `RequeueAfter` + error 提案は無効など）。Touch: `issues.md`。DoD: docs と実装の現状が一致する。
+- [x] [P3] (issues.md) 誤検知/誤提案の注記を追記する（Issue #6/#7/#9 は対応不要、Issue #1/#5 の `RequeueAfter` + error 提案は無効など）。Touch: `issues.md`。DoD: docs と実装の現状が一致する。
