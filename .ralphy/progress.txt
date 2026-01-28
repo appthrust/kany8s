@@ -130,3 +130,5 @@
 - 2026-01-26: Enabled kubebuilder multi-group support and scaffolded the `Kany8sCluster` infrastructure API; defined a minimal `Kany8sCluster` CRD contract (`spec.kroSpec`, `status.conditions`, failure reason/message) with CAPI v1beta2 contract label; added devtools tests + generated CRD/RBAC manifests; verified `make test` and `make lint`.
 
 - 2026-01-26: Implemented `Kany8sCluster` infrastructure controller to set the Ready condition True (unblocking CAPI `InfrastructureReady`); added a unit test; verified `make test` and `make lint`.
+
+- 2026-01-28: Implemented CAPI v1beta2 InfrastructureCluster `status.initialization.provisioned` for `Kany8sCluster` and set it in the infra controller; updated unit + devtools tests; regenerated manifests/deepcopy; verified `make test` and `make lint`.

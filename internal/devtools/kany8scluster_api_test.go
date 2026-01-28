@@ -19,9 +19,11 @@ func TestKany8sClusterAPIScaffoldExists(t *testing.T) {
 	typesGo := string(typesBytes)
 	wantSubstrings := []string{
 		"type Kany8sClusterSpec struct",
+		"type Kany8sClusterInitializationStatus struct",
 		"type Kany8sClusterStatus struct",
 		"type Kany8sCluster struct",
 		"KroSpec *apiextensionsv1.JSON",
+		"Provisioned bool",
 		"Conditions []metav1.Condition",
 		"// +kubebuilder:subresource:status",
 		"cluster.x-k8s.io/v1beta2=v1alpha1",
@@ -57,6 +59,7 @@ func TestGeneratedCRDBasesContainExpectedSchemaForKany8sCluster(t *testing.T) {
 		"subresources:",
 		"status: {}",
 		"x-kubernetes-preserve-unknown-fields: true",
+		"provisioned:",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(crd, want) {

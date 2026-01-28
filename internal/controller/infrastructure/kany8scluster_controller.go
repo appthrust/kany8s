@@ -56,6 +56,7 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	before := kc.DeepCopy()
+	kc.Status.Initialization.Provisioned = true
 	conditions.Set(kc, metav1.Condition{
 		Type:    "Ready",
 		Status:  metav1.ConditionTrue,

@@ -129,6 +129,17 @@ spec:
                   reconciling infrastructure and will contain a succinct reason for the
                   failure.
                 type: string
+              initialization:
+                description: initialization holds fields related to infrastructure
+                  initialization.
+                properties:
+                  provisioned:
+                    description: |-
+                      provisioned denotes whether the infrastructure has been provisioned.
+
+                      This field is required by the Cluster API v1beta2 InfrastructureCluster contract.
+                    type: boolean
+                type: object
             type: object
         required:
         - spec

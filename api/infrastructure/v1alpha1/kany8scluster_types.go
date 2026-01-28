@@ -31,6 +31,16 @@ type Kany8sClusterSpec struct {
 	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`
 }
 
+// Kany8sClusterInitializationStatus defines fields related to infrastructure
+// initialization.
+type Kany8sClusterInitializationStatus struct {
+	// provisioned denotes whether the infrastructure has been provisioned.
+	//
+	// This field is required by the Cluster API v1beta2 InfrastructureCluster contract.
+	// +optional
+	Provisioned bool `json:"provisioned,omitempty"`
+}
+
 // Kany8sClusterStatus defines the observed state of Kany8sCluster.
 type Kany8sClusterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -38,6 +48,10 @@ type Kany8sClusterStatus struct {
 
 	// For Kubernetes API conventions, see:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+
+	// initialization holds fields related to infrastructure initialization.
+	// +optional
+	Initialization Kany8sClusterInitializationStatus `json:"initialization,omitzero"`
 
 	// conditions represent the current state of the Kany8sCluster resource.
 	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
