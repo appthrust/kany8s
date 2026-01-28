@@ -481,7 +481,7 @@ stringData:
 
 - ClusterClass/Topology の infra template API group
   - `infrastructure.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` を正とする。
-  - `controlplane.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` は deprecated（互換のため一時的に残すが、移行完了後に削除予定）。
+  - `controlplane.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` は deprecated として一時的に残していたが、移行完了のため removed。
 
 ---
 

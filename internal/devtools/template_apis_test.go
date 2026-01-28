@@ -39,26 +39,44 @@ func TestKany8sControlPlaneTemplateAPIScaffoldExists(t *testing.T) {
 	}
 }
 
-func TestKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
+func TestControlplaneKany8sClusterTemplateRemoved(t *testing.T) {
 	root := findRepoRoot(t)
 
 	typesPath := filepath.Join(root, "api", "v1alpha1", "kany8sclustertemplate_types.go")
-	typesBytes, err := os.ReadFile(typesPath)
+	requireFileDoesNotExist(t, typesPath)
+
+	crdBasePath := filepath.Join(root, "config", "crd", "bases", "controlplane.cluster.x-k8s.io_kany8sclustertemplates.yaml")
+	requireFileDoesNotExist(t, crdBasePath)
+
+	crdKustomizationPath := filepath.Join(root, "config", "crd", "kustomization.yaml")
+	crdKustomizationBytes, err := os.ReadFile(crdKustomizationPath)
 	if err != nil {
-		t.Fatalf("read %q: %v", typesPath, err)
+		t.Fatalf("read %q: %v", crdKustomizationPath, err)
+	}
+	if strings.Contains(string(crdKustomizationBytes), "bases/controlplane.cluster.x-k8s.io_kany8sclustertemplates.yaml") {
+		t.Errorf("%s should not reference the removed controlplane Kany8sClusterTemplate CRD base", filepath.ToSlash(crdKustomizationPath))
 	}
 
-	typesGo := string(typesBytes)
-	wantSubstrings := []string{
-		"type Kany8sClusterTemplateSpec struct",
-		"type Kany8sClusterTemplate struct",
-		"type Kany8sClusterTemplateResource struct",
-		"ObjectMeta clusterv1.ObjectMeta",
+	samplePath := filepath.Join(root, "config", "samples", "controlplane_v1alpha1_kany8sclustertemplate.yaml")
+	requireFileDoesNotExist(t, samplePath)
+
+	samplesKustomizationPath := filepath.Join(root, "config", "samples", "kustomization.yaml")
+	samplesKustomizationBytes, err := os.ReadFile(samplesKustomizationPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", samplesKustomizationPath, err)
 	}
-	for _, want := range wantSubstrings {
-		if !strings.Contains(typesGo, want) {
-			t.Errorf("%s missing %q", filepath.ToSlash(typesPath), want)
-		}
+	if strings.Contains(string(samplesKustomizationBytes), "controlplane_v1alpha1_kany8sclustertemplate.yaml") {
+		t.Errorf("%s should not reference the removed controlplane Kany8sClusterTemplate sample", filepath.ToSlash(samplesKustomizationPath))
+	}
+
+	projectPath := filepath.Join(root, "PROJECT")
+	projectBytes, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", projectPath, err)
+	}
+	compact := strings.NewReplacer(" ", "", "\t", "").Replace(string(projectBytes))
+	if strings.Contains(compact, "kind:Kany8sClusterTemplate\npath:github.com/reoring/kany8s/api/v1alpha1") {
+		t.Errorf("%s should not list the removed controlplane Kany8sClusterTemplate resource", filepath.ToSlash(projectPath))
 	}
 }
 
@@ -127,25 +145,6 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 		t.Errorf("%s should not require spec.template.spec.version (topology-controlled)", filepath.ToSlash(controlPlaneTemplateCRDPath))
 	}
 
-	clusterTemplateCRDPath := filepath.Join(root, "config", "crd", "bases", "controlplane.cluster.x-k8s.io_kany8sclustertemplates.yaml")
-	clusterTemplateCRDBytes, err := os.ReadFile(clusterTemplateCRDPath)
-	if err != nil {
-		t.Fatalf("read %q: %v", clusterTemplateCRDPath, err)
-	}
-	clusterTemplateCRD := string(clusterTemplateCRDBytes)
-	wantClusterTemplateSubstrings := []string{
-		"kind: CustomResourceDefinition",
-		"name: kany8sclustertemplates.controlplane.cluster.x-k8s.io",
-		"kind: Kany8sClusterTemplate",
-		"plural: kany8sclustertemplates",
-		"- template",
-	}
-	for _, want := range wantClusterTemplateSubstrings {
-		if !strings.Contains(clusterTemplateCRD, want) {
-			t.Errorf("%s missing %q", filepath.ToSlash(clusterTemplateCRDPath), want)
-		}
-	}
-
 	infraClusterTemplateCRDPath := filepath.Join(root, "config", "crd", "bases", "infrastructure.cluster.x-k8s.io_kany8sclustertemplates.yaml")
 	infraClusterTemplateCRDBytes, err := os.ReadFile(infraClusterTemplateCRDPath)
 	if err != nil {
@@ -171,5 +170,16 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 	}
 	if strings.Contains(infraClusterTemplateCRD, "subresources:") {
 		t.Errorf("%s should not enable the status subresource for templates", filepath.ToSlash(infraClusterTemplateCRDPath))
+	}
+}
+
+func requireFileDoesNotExist(t *testing.T, path string) {
+	t.Helper()
+	_, err := os.Stat(path)
+	if err == nil {
+		t.Fatalf("%s should not exist", filepath.ToSlash(path))
+	}
+	if !os.IsNotExist(err) {
+		t.Fatalf("stat %q: %v", path, err)
 	}
 }

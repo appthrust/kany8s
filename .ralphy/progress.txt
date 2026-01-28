@@ -140,3 +140,5 @@
 - 2026-01-28: Updated the ClusterClass example to reference the infrastructure-group `Kany8sClusterTemplate`; tightened the devtools example assertion; verified `make test` and `make lint`.
 
 - 2026-01-28: Deprecated the controlplane-group `Kany8sClusterTemplate` in `docs/design.md` (use the infrastructure-group template going forward); added a devtools test enforcing the note; verified `make test` and `make lint`.
+
+- 2026-01-28: Removed the deprecated controlplane-group `Kany8sClusterTemplate` API (types, generated CRD base, samples, and PROJECT entry); updated docs/tests; regenerated manifests/deepcopy; verified `make test` and `make lint`.

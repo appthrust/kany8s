@@ -21,7 +21,7 @@ func TestDesignDocDeprecatesControlplaneKany8sClusterTemplate(t *testing.T) {
 		"Kany8sClusterTemplate",
 		"infrastructure.cluster.x-k8s.io",
 		"controlplane.cluster.x-k8s.io",
-		"deprecated",
+		"removed",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(design, want) {
