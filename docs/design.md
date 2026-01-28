@@ -479,6 +479,10 @@ stringData:
 - Infrastructure provider の扱い
   - CAPI の `Cluster.spec.infrastructureRef` をどう満たすか（Kany8s が infra も提供するか、既存 provider と併用するか）
 
+- ClusterClass/Topology の infra template API group
+  - `infrastructure.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` を正とする。
+  - `controlplane.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` は deprecated（互換のため一時的に残すが、移行完了後に削除予定）。
+
 ---
 
 ## 参考（CAPT の該当箇所）
