@@ -24,6 +24,46 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	validKubeconfigV1 = `apiVersion: v1
+kind: Config
+clusters:
+- name: demo
+  cluster:
+    server: https://api.demo.example.com:6443
+    certificate-authority-data: ZHVtbXk=
+users:
+- name: demo
+  user:
+    token: dummy-v1
+contexts:
+- name: demo
+  context:
+    cluster: demo
+    user: demo
+current-context: demo
+`
+
+	validKubeconfigV2 = `apiVersion: v1
+kind: Config
+clusters:
+- name: demo
+  cluster:
+    server: https://api.demo.example.com:6443
+    certificate-authority-data: ZHVtbXk=
+users:
+- name: demo
+  user:
+    token: dummy-v2
+contexts:
+- name: demo
+  context:
+    cluster: demo
+    user: demo
+current-context: demo
+`
+)
+
 func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStatus(t *testing.T) {
 	t.Parallel()
 
@@ -78,7 +118,7 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			kubeconfig.DataKey: []byte("kubeconfig-bytes"),
+			kubeconfig.DataKey: []byte(validKubeconfigV1),
 		},
 	}
 
@@ -122,8 +162,8 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 	if got.Labels[kubeconfig.ClusterNameLabelKey] != demoName {
 		t.Fatalf("secret label %q = %q, want %q", kubeconfig.ClusterNameLabelKey, got.Labels[kubeconfig.ClusterNameLabelKey], demoName)
 	}
-	if string(got.Data[kubeconfig.DataKey]) != "kubeconfig-bytes" {
-		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(got.Data[kubeconfig.DataKey]), "kubeconfig-bytes")
+	if string(got.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
+		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(got.Data[kubeconfig.DataKey]), validKubeconfigV1)
 	}
 
 	var ownerFound bool
@@ -205,7 +245,7 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			kubeconfig.DataKey: []byte("kubeconfig-v1"),
+			kubeconfig.DataKey: []byte(validKubeconfigV1),
 		},
 	}
 
@@ -252,8 +292,8 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err != nil {
 		t.Fatalf("get kubeconfig secret: %v", err)
 	}
-	if string(target.Data[kubeconfig.DataKey]) != "kubeconfig-v1" {
-		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), "kubeconfig-v1")
+	if string(target.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
+		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), validKubeconfigV1)
 	}
 	if target.Type != kubeconfig.SecretType {
 		t.Fatalf("secret type = %q, want %q", target.Type, kubeconfig.SecretType)
@@ -267,7 +307,7 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 	if err := c.Get(ctx, client.ObjectKey{Name: "provider-kubeconfig", Namespace: demoNamespace}, patchedSource); err != nil {
 		t.Fatalf("get source secret: %v", err)
 	}
-	patchedSource.Data[kubeconfig.DataKey] = []byte("kubeconfig-v2")
+	patchedSource.Data[kubeconfig.DataKey] = []byte(validKubeconfigV2)
 	if err := c.Update(ctx, patchedSource); err != nil {
 		t.Fatalf("update source secret: %v", err)
 	}
@@ -281,8 +321,8 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target2); err != nil {
 		t.Fatalf("get kubeconfig secret after update: %v", err)
 	}
-	if string(target2.Data[kubeconfig.DataKey]) != "kubeconfig-v2" {
-		t.Fatalf("secret data[%q] after update = %q, want %q", kubeconfig.DataKey, string(target2.Data[kubeconfig.DataKey]), "kubeconfig-v2")
+	if string(target2.Data[kubeconfig.DataKey]) != validKubeconfigV2 {
+		t.Fatalf("secret data[%q] after update = %q, want %q", kubeconfig.DataKey, string(target2.Data[kubeconfig.DataKey]), validKubeconfigV2)
 	}
 }
 
@@ -380,7 +420,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 			Namespace: demoNamespace,
 		},
 		Data: map[string][]byte{
-			kubeconfig.DataKey: []byte("kubeconfig-bytes"),
+			kubeconfig.DataKey: []byte(validKubeconfigV1),
 		},
 	}
 	if err := c.Create(ctx, source); err != nil {
@@ -398,8 +438,145 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err != nil {
 		t.Fatalf("get kubeconfig secret: %v", err)
 	}
-	if string(target.Data[kubeconfig.DataKey]) != "kubeconfig-bytes" {
-		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), "kubeconfig-bytes")
+	if string(target.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
+		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), validKubeconfigV1)
+	}
+}
+
+func TestKany8sControlPlaneReconciler_DoesNotOverwriteTargetSecretWithInvalidKubeconfig(t *testing.T) {
+	t.Parallel()
+
+	const reasonInvalidKubeconfig = "InvalidKubeconfig"
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatalf("add client-go scheme: %v", err)
+	}
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      demoName,
+			Namespace: demoNamespace,
+			UID:       types.UID("00000000-0000-0000-0000-000000000000"),
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      demoName,
+			"namespace": demoNamespace,
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":    true,
+			"endpoint": "https://api.demo.example.com:6443",
+			"kubeconfigSecretRef": map[string]any{
+				"name":      "provider-kubeconfig",
+				"namespace": demoNamespace,
+			},
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	// Seed an existing target secret with a valid kubeconfig.
+	existingTarget, err := kubeconfig.NewSecret(demoName, demoNamespace, []byte(validKubeconfigV1))
+	if err != nil {
+		t.Fatalf("NewSecret: %v", err)
+	}
+
+	source := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "provider-kubeconfig",
+			Namespace: demoNamespace,
+		},
+		Data: map[string][]byte{
+			kubeconfig.DataKey: []byte("not a kubeconfig"),
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source, existingTarget).WithStatusSubresource(cp).Build()
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: demoName, Namespace: demoNamespace}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
+		t.Fatalf("RequeueAfter = %s, want %s", res.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
+	}
+
+	target := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err != nil {
+		t.Fatalf("get target kubeconfig secret: %v", err)
+	}
+	if string(target.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
+		t.Fatalf("target secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), validKubeconfigV1)
+	}
+
+	gotCP := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: demoName, Namespace: demoNamespace}, gotCP); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+
+	cond := meta.FindStatusCondition(gotCP.Status.Conditions, conditionTypeKubeconfigSecretReconciled)
+	if cond == nil {
+		t.Fatalf("expected %s condition", conditionTypeKubeconfigSecretReconciled)
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != reasonInvalidKubeconfig {
+		t.Fatalf("condition reason = %q, want %q", cond.Reason, reasonInvalidKubeconfig)
+	}
+	if !strings.Contains(cond.Message, "invalid kubeconfig") {
+		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "invalid kubeconfig")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, reasonInvalidKubeconfig) {
+			t.Fatalf("event = %q, want to contain %q", evt, reasonInvalidKubeconfig)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
 	}
 }
 
