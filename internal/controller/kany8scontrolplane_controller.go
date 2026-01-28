@@ -158,10 +158,10 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if instanceStatus.Endpoint != "" {
 		cpEndpoint, err := endpoint.Parse(instanceStatus.Endpoint)
 		if err != nil {
-			log.Error(err, "parse kro instance status endpoint", "endpoint", instanceStatus.Endpoint)
+			log.Error(err, "parse kro instance status endpoint")
 			instanceStatus.Ready = false
 			instanceStatus.Reason = reasonInvalidEndpoint
-			instanceStatus.Message = fmt.Sprintf("invalid status.endpoint %q: %v", instanceStatus.Endpoint, err)
+			instanceStatus.Message = fmt.Sprintf("invalid status.endpoint: %v", err)
 			controlPlaneReady = false
 		} else {
 			if cp.Spec.ControlPlaneEndpoint != cpEndpoint {

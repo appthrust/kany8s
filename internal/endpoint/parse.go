@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -23,7 +24,13 @@ func Parse(raw string) (clusterv1.APIEndpoint, error) {
 
 	u, err := url.Parse(candidate)
 	if err != nil {
-		return clusterv1.APIEndpoint{}, fmt.Errorf("parse endpoint: %w", err)
+		// net/url includes the raw URL string in its errors (e.g. `parse "<url>": ...`).
+		// Avoid leaking credentials or other sensitive data by returning only the underlying error.
+		var uerr *url.Error
+		if errors.As(err, &uerr) {
+			return clusterv1.APIEndpoint{}, fmt.Errorf("parse endpoint: %v", uerr.Err)
+		}
+		return clusterv1.APIEndpoint{}, fmt.Errorf("parse endpoint: %v", err)
 	}
 
 	if u.Scheme != "https" {

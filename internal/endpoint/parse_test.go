@@ -1,6 +1,7 @@
 package endpoint
 
 import (
+	"strings"
 	"testing"
 
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
@@ -113,5 +114,27 @@ func TestParse(t *testing.T) {
 				t.Fatalf("Parse returned %#v, want %#v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParse_ErrorDoesNotLeakRawEndpoint(t *testing.T) {
+	t.Parallel()
+
+	input := "user:pass@example.com/%zz"
+	candidate := "https://" + input
+
+	_, err := Parse(input)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	if strings.Contains(err.Error(), input) {
+		t.Fatalf("error %q contains raw input %q", err.Error(), input)
+	}
+	if strings.Contains(err.Error(), candidate) {
+		t.Fatalf("error %q contains raw candidate %q", err.Error(), candidate)
+	}
+	if strings.Contains(err.Error(), "user:pass") {
+		t.Fatalf("error %q contains credentials", err.Error())
 	}
 }

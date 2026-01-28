@@ -1206,6 +1206,8 @@ func TestKany8sControlPlaneReconciler_RequeuesAndSetsFailureWhenEndpointInvalid(
 	}}
 	rgd.SetGroupVersionKind(rgdGVK)
 
+	sensitiveEndpoint := "https://user:pass@api.demo.example.com:6443/%zz"
+
 	instance := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": instanceGVK.GroupVersion().String(),
 		"kind":       instanceGVK.Kind,
@@ -1218,7 +1220,7 @@ func TestKany8sControlPlaneReconciler_RequeuesAndSetsFailureWhenEndpointInvalid(
 		},
 		"status": map[string]any{
 			"ready":    true,
-			"endpoint": "http://api.demo.example.com:6443",
+			"endpoint": sensitiveEndpoint,
 		},
 	}}
 	instance.SetGroupVersionKind(instanceGVK)
@@ -1260,8 +1262,23 @@ func TestKany8sControlPlaneReconciler_RequeuesAndSetsFailureWhenEndpointInvalid(
 	if got.Status.FailureMessage == nil {
 		t.Fatalf("expected failureMessage to be set")
 	}
-	if !strings.Contains(*got.Status.FailureMessage, "unsupported scheme") {
-		t.Fatalf("failureMessage = %q, want to contain %q", *got.Status.FailureMessage, "unsupported scheme")
+	if !strings.Contains(*got.Status.FailureMessage, "invalid URL escape") {
+		t.Fatalf("failureMessage = %q, want to contain %q", *got.Status.FailureMessage, "invalid URL escape")
+	}
+	if strings.Contains(*got.Status.FailureMessage, sensitiveEndpoint) {
+		t.Fatalf("failureMessage leaked raw endpoint: %q", *got.Status.FailureMessage)
+	}
+	if strings.Contains(*got.Status.FailureMessage, "user:pass") {
+		t.Fatalf("failureMessage leaked credentials: %q", *got.Status.FailureMessage)
+	}
+	if readyCond.Message == "" {
+		t.Fatalf("expected Ready condition message to be set")
+	}
+	if strings.Contains(readyCond.Message, sensitiveEndpoint) {
+		t.Fatalf("Ready condition message leaked raw endpoint: %q", readyCond.Message)
+	}
+	if strings.Contains(readyCond.Message, "user:pass") {
+		t.Fatalf("Ready condition message leaked credentials: %q", readyCond.Message)
 	}
 
 	if got.Spec.ControlPlaneEndpoint.Host != "" {
