@@ -50,6 +50,7 @@ const (
 	conditionTypeResourceGraphDefinitionResolved = "ResourceGraphDefinitionResolved"
 	conditionTypeCreating                        = "Creating"
 	conditionTypeReady                           = "Ready"
+	conditionTypeKubeconfigSecretReconciled      = "KubeconfigSecretReconciled"
 
 	defaultNotReadyMessage = "waiting for control plane to become ready"
 
@@ -57,6 +58,7 @@ const (
 	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
 	reasonInvalidKroSpec                  = "InvalidKroSpec"
 	reasonInvalidEndpoint                 = "InvalidEndpoint"
+	reasonKubeconfigSourceSecretGetFailed = "KubeconfigSourceSecretGetFailed"
 
 	rgdResolveRequeueAfter = 30 * time.Second
 )
@@ -140,7 +142,8 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	if err := r.reconcileKubeconfigSecret(ctx, cp, instance); err != nil {
+	kubeconfigRes, err := r.reconcileKubeconfigSecret(ctx, cp, instance)
+	if err != nil {
 		log.Error(err, "reconcile kubeconfig secret")
 		return ctrl.Result{}, err
 	}
@@ -182,29 +185,32 @@ func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if !controlPlaneReady {
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
+	if kubeconfigRes.RequeueAfter != 0 {
+		return kubeconfigRes, nil
+	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, instance *unstructured.Unstructured) error {
+func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Context, cp *controlplanev1alpha1.Kany8sControlPlane, instance *unstructured.Unstructured) (ctrl.Result, error) {
 	if cp == nil {
-		return fmt.Errorf("control plane is nil")
+		return ctrl.Result{}, fmt.Errorf("control plane is nil")
 	}
 	if instance == nil {
-		return fmt.Errorf("kro instance is nil")
+		return ctrl.Result{}, fmt.Errorf("kro instance is nil")
 	}
 
 	sourceName, found, err := unstructured.NestedString(instance.Object, "status", "kubeconfigSecretRef", "name")
 	if err != nil {
-		return fmt.Errorf("read status.kubeconfigSecretRef.name: %w", err)
+		return ctrl.Result{}, fmt.Errorf("read status.kubeconfigSecretRef.name: %w", err)
 	}
 	if !found || sourceName == "" {
-		return nil
+		return ctrl.Result{}, nil
 	}
 
 	sourceNamespace, foundNamespace, err := unstructured.NestedString(instance.Object, "status", "kubeconfigSecretRef", "namespace")
 	if err != nil {
-		return fmt.Errorf("read status.kubeconfigSecretRef.namespace: %w", err)
+		return ctrl.Result{}, fmt.Errorf("read status.kubeconfigSecretRef.namespace: %w", err)
 	}
 	if !foundNamespace || sourceNamespace == "" {
 		sourceNamespace = cp.Namespace
@@ -212,17 +218,26 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Con
 
 	sourceSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Name: sourceName, Namespace: sourceNamespace}, sourceSecret); err != nil {
-		return err
+		if errors.IsNotFound(err) {
+			// Wait for the provider-specific source Secret to be created.
+			return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+		}
+
+		message := fmt.Sprintf("get source secret %s/%s: %v", sourceNamespace, sourceName, err)
+		if err := r.reconcileKubeconfigSecretCondition(ctx, cp, metav1.ConditionFalse, reasonKubeconfigSourceSecretGetFailed, message, corev1.EventTypeWarning); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
 	kc, ok := sourceSecret.Data[kubeconfig.DataKey]
 	if !ok {
-		return fmt.Errorf("source secret %s/%s missing data[%q]", sourceNamespace, sourceName, kubeconfig.DataKey)
+		return ctrl.Result{}, fmt.Errorf("source secret %s/%s missing data[%q]", sourceNamespace, sourceName, kubeconfig.DataKey)
 	}
 
 	targetName, err := kubeconfig.SecretName(cp.Name)
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
 	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: targetName, Namespace: cp.Namespace}}
@@ -242,7 +257,47 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Con
 		return nil
 	})
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := r.reconcileKubeconfigSecretCondition(ctx, cp, metav1.ConditionTrue, "Reconciled", "kubeconfig secret reconciled", corev1.EventTypeNormal); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecretCondition(
+	ctx context.Context,
+	cp *controlplanev1alpha1.Kany8sControlPlane,
+	status metav1.ConditionStatus,
+	reason string,
+	message string,
+	eventType string,
+) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+
+	cond := metav1.Condition{
+		Type:               conditionTypeKubeconfigSecretReconciled,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: cp.Generation,
+	}
+
+	prev := meta.FindStatusCondition(cp.Status.Conditions, cond.Type)
+	shouldEmit := prev == nil || prev.Status != cond.Status || prev.Reason != cond.Reason || prev.Message != cond.Message
+
+	before := cp.DeepCopy()
+	meta.SetStatusCondition(&cp.Status.Conditions, cond)
+	if err := r.Status().Patch(ctx, cp, client.MergeFrom(before)); err != nil {
 		return err
+	}
+
+	if shouldEmit && r.Recorder != nil {
+		r.Recorder.Event(cp, eventType, reason, message)
 	}
 
 	return nil

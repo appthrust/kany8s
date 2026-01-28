@@ -785,3 +785,14 @@ Kany8s が infra 側も提供する場合、次のどちらを目指すかで CR
 - [x] [P2] Clarify RGD contract vs runtime behavior: update `docs/rgd-contract.md` to state fields are required for RGD authors but controller tolerates missing fields; point to `docs/rgd-guidelines.md`, then `make test` (commit: `docs: clarify RGD required fields vs runtime behavior`).
 - [x] [P2] Document kro dynamic RBAC rationale and a future tightening approach: add a section to `docs/design.md` (or new `docs/security.md`), then `make test` (commit: `docs: explain kro RBAC tradeoffs`).
 - [x] [P3] Clean up kubebuilder samples: replace `config/samples/*` TODO manifests with minimal working examples or redirect to `examples/`, then `make test` (commit: `docs: refresh samples to match examples`).
+
+## issues.md 実装レビュー (2026-01-28) フォローアップ TODO
+
+- [x] [P0] (Issue #1/#5) kubeconfig source Secret 取得エラーを "待機" と "失敗" に分離する: `IsNotFound` は `RequeueAfter` + `nil` error で待機（`RequeueAfter` + non-nil error は無効なので使わない）、権限/その他エラーは Conditions/Events で可観測にする。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: Secret 未作成時に過剰なエラー再試行/ログスパムにならず、作成後に追従する。Run: `make test`.
+- [ ] [P1] (Issue #8) kubeconfig bytes を target Secret へコピーする前に検証する（無効 kubeconfig は拒否して Failure/Condition に反映）。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: 破損/不正 kubeconfig が target Secret に書き込まれない。Run: `make test`.
+- [ ] [P1] (Issue #2) dynamic watch のイベント喪失を無言で起こさない: channel full 時の drop をログ/メトリクス化し、必要なら coalescing/バッファ見直し/バックプレッシャを導入する。Touch: `internal/dynamicwatch/watcher.go`（+ 連携箇所）。DoD: drop が観測でき、通常負荷で status 変化を取り逃がさない。Run: `make test`.
+- [ ] [P1] (Issue #10) `InstanceWatcher.EnsureWatch` 失敗を握りつぶさない: watch が壊れても "Ready 後に二度と reconcile されない" 事態を避ける（watch setup の retry / fallback periodic requeue など）。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: watch 不能でも一定時間内に追従が再開する。Run: `make test`.
+- [ ] [P2] (Issue #13) endpoint をログ/メッセージに生で出さない（マスク or 省略）。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: endpoint に認証情報が混入してもログに漏れない。Run: `make test`.
+- [ ] [P2] (Issue #11) Secret RBAC を必要最小限に寄せる（少なくとも `list/watch` を外す）。Touch: RBAC markers in `internal/controller/kany8scontrolplane_controller.go` -> regenerate via `make manifests`。DoD: `config/rbac/role.yaml` の secrets verbs が最小化される。Run: `make test`.
+- [ ] [P3] (Issue #12/#3) scaffold 由来の TODO コメント/空テストを整理する（削除 or 実装に合わせて書き換え）。Touch: `internal/controller/kany8scontrolplane_controller.go`, `internal/controller/infrastructure/kany8scluster_controller.go`, `internal/controller/infrastructure/kany8scluster_controller_test.go`。DoD: TODO/空テストが残らず、テストの意図が明確になる。Run: `make test`.
+- [ ] [P3] (issues.md) 誤検知/誤提案の注記を追記する（Issue #6/#7/#9 は対応不要、Issue #1/#5 の `RequeueAfter` + error 提案は無効など）。Touch: `issues.md`。DoD: docs と実装の現状が一致する。

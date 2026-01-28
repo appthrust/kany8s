@@ -154,3 +154,5 @@
 - 2026-01-28: Documented kro dynamic RBAC rationale and a future tightening approach in `docs/design.md`; added a devtools test enforcing key terms; verified `make test` and `make lint`.
 
 - 2026-01-28: Replaced kubebuilder `config/samples/*` TODO placeholders with minimal working sample manifests; added a devtools test; verified `make test` and `make lint`.
+
+- 2026-01-28: Treated missing kubeconfig source Secret as a wait (RequeueAfter + nil error) and surfaced source Secret get failures via a dedicated Condition + Warning Event; added unit tests; verified `make test` and `make lint`.
