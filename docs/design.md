@@ -107,6 +107,27 @@
 **Consequence**
 - Topology を使わない場合（`Cluster.spec.controlPlaneRef` 直指定）は `Kany8sControlPlane.spec.version` をユーザーが明示する。
 
+### 3.8 (MVP) RBAC: kro instance の GVK は動的 (dynamic GVK)
+
+**Decision**
+
+- Kany8s manager は kro instance を動的に作成/更新するため、`kro.run` group に対して `resources=*` の広い RBAC を許可する（MVP）。
+  - 例: `+kubebuilder:rbac:groups=kro.run,resources=*,verbs=create;delete;get;list;watch;update;patch`
+
+**Rationale**
+
+- Kany8s は参照する RGD の `spec.schema.apiVersion` / `spec.schema.kind` から instance GVK を実行時に解決し、その GVK の instance を `unstructured.Unstructured` として扱う。
+- そのため、コンパイル時に「どの Custom Resource（= plural resources）へ RBAC を付けるべきか」を列挙しにくい。
+
+**Tradeoffs**
+
+- RBAC が広い=強い権限になる。運用では「誰が RGD を作れるか」「誰が `resourceGraphDefinitionRef` を指せるか」を制限する前提。
+
+**future tightening approach**
+
+- Approve/allowlist した RGD（または instance kind）の集合に絞り、明示的な `resources=<plural>` へ段階的に絞る。
+- provider カタログが増えるたびに、インストール bundle（`make build-installer` 等）側で ClusterRole を更新する運用に寄せる。
+
 ## 4. アーキテクチャ概要
 
 ### 4.1 コンポーネント

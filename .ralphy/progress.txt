@@ -150,3 +150,5 @@
 - 2026-01-28: Reserved `Kany8sControlPlane.status.failureReason/failureMessage` for terminal/controller-detected errors (cleared during normal provisioning); updated controller logic, unit tests, and `docs/rgd-contract.md`; verified `make test` and `make lint`.
 
 - 2026-01-28: Clarified the RGD contract required-vs-runtime behavior (RGD authors must provide fields; controller tolerates missing fields) in `docs/rgd-contract.md`; extended devtools coverage and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-28: Documented kro dynamic RBAC rationale and a future tightening approach in `docs/design.md`; added a devtools test enforcing key terms; verified `make test` and `make lint`.
