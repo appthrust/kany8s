@@ -59,6 +59,7 @@ const (
 	reasonResourceGraphDefinitionInvalid    = "ResourceGraphDefinitionInvalid"
 	reasonInvalidKroSpec                    = "InvalidKroSpec"
 	reasonInvalidEndpoint                   = "InvalidEndpoint"
+	reasonKubeconfigSourceSecretNotFound    = "KubeconfigSourceSecretNotFound"
 	reasonKubeconfigSourceSecretGetFailed   = "KubeconfigSourceSecretGetFailed"
 	reasonKubeconfigSourceSecretDataMissing = "KubeconfigSourceSecretDataMissing"
 	reasonInvalidKubeconfig                 = "InvalidKubeconfig"
@@ -229,6 +230,10 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Con
 	sourceSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Name: sourceName, Namespace: sourceNamespace}, sourceSecret); err != nil {
 		if errors.IsNotFound(err) {
+			message := fmt.Sprintf("waiting for source secret %s/%s to be created", sourceNamespace, sourceName)
+			if err := r.reconcileKubeconfigSecretCondition(ctx, cp, metav1.ConditionFalse, reasonKubeconfigSourceSecretNotFound, message, corev1.EventTypeNormal); err != nil {
+				return ctrl.Result{}, err
+			}
 			// Wait for the provider-specific source Secret to be created.
 			return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 		}

@@ -329,6 +329,8 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFound(t *testing.T) {
 	t.Parallel()
 
+	const reasonSourceSecretNotFound = "KubeconfigSourceSecretNotFound"
+
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
@@ -358,6 +360,14 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 			},
 		},
 	}
+	// Seed the kubeconfig condition as True so we can ensure it does not stay stale.
+	cp.Status.Conditions = []metav1.Condition{{
+		Type:               conditionTypeKubeconfigSecretReconciled,
+		Status:             metav1.ConditionTrue,
+		Reason:             "Reconciled",
+		Message:            "kubeconfig secret reconciled",
+		ObservedGeneration: cp.Generation,
+	}}
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -396,7 +406,8 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 	instance.SetGroupVersionKind(instanceGVK)
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
-	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
 
 	ctx := context.Background()
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: demoName, Namespace: demoNamespace}}
@@ -409,9 +420,50 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 		t.Fatalf("RequeueAfter = %s, want %s", res.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
 	}
 
+	gotCP := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: demoName, Namespace: demoNamespace}, gotCP); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+	cond := meta.FindStatusCondition(gotCP.Status.Conditions, conditionTypeKubeconfigSecretReconciled)
+	if cond == nil {
+		t.Fatalf("expected %s condition", conditionTypeKubeconfigSecretReconciled)
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != reasonSourceSecretNotFound {
+		t.Fatalf("condition reason = %q, want %q", cond.Reason, reasonSourceSecretNotFound)
+	}
+	if !strings.Contains(cond.Message, "waiting for source secret") {
+		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "waiting for source secret")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, reasonSourceSecretNotFound) {
+			t.Fatalf("event = %q, want to contain %q", evt, reasonSourceSecretNotFound)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
+	}
+
 	target := &corev1.Secret{}
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err == nil || !apierrors.IsNotFound(err) {
 		t.Fatalf("expected target secret to not exist yet")
+	}
+
+	// Subsequent reconciles while still NotFound should not spam events.
+	resAgain, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile again: %v", err)
+	}
+	if resAgain.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
+		t.Fatalf("RequeueAfter (2nd) = %s, want %s", resAgain.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
+	}
+	select {
+	case evt := <-recorder.Events:
+		t.Fatalf("unexpected event recorded: %q", evt)
+	default:
 	}
 
 	source := &corev1.Secret{
