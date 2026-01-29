@@ -522,7 +522,7 @@ MVP の位置づけ:
 - 既存実装との差分: `internal/controller/kany8scontrolplane_controller.go` は kro instance 依存のため、self-managed は別 kind/controller として実装する（既存の managed path を壊さない）。
 
 ### 設計/契約 (MVP 既定)
-- [ ] self-managed の責務/境界を設計として固定する
+- [x] self-managed の責務/境界を設計として固定する
   - 既定:
     - control plane provider: `Kany8sKubeadmControlPlane` (new)
     - managed control plane provider: 既存どおり `Kany8sControlPlane` + kro/RGD

@@ -10,7 +10,7 @@ import (
 func TestReadmeDocumentsLocalDevLoop(t *testing.T) {
 	root := findRepoRoot(t)
 
-	readmePath := filepath.Join(root, "README.md")
+	readmePath := filepath.Join(root, "docs", "README.md")
 	readmeBytes, err := os.ReadFile(readmePath)
 	if err != nil {
 		t.Fatalf("read %q: %v", readmePath, err)
@@ -29,7 +29,7 @@ func TestReadmeDocumentsLocalDevLoop(t *testing.T) {
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(readme, want) {
-			t.Errorf("README.md missing %q", want)
+			t.Errorf("docs/README.md missing %q", want)
 		}
 	}
 }
@@ -37,7 +37,7 @@ func TestReadmeDocumentsLocalDevLoop(t *testing.T) {
 func TestReadmeDocumentsInstallApplyFlow(t *testing.T) {
 	root := findRepoRoot(t)
 
-	readmePath := filepath.Join(root, "README.md")
+	readmePath := filepath.Join(root, "docs", "README.md")
 	readmeBytes, err := os.ReadFile(readmePath)
 	if err != nil {
 		t.Fatalf("read %q: %v", readmePath, err)
@@ -54,7 +54,7 @@ func TestReadmeDocumentsInstallApplyFlow(t *testing.T) {
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(readme, want) {
-			t.Errorf("README.md missing %q", want)
+			t.Errorf("docs/README.md missing %q", want)
 		}
 	}
 }

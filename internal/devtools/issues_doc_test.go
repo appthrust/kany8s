@@ -10,7 +10,7 @@ import (
 func TestIssuesDocHasReviewFollowupNotes(t *testing.T) {
 	root := findRepoRoot(t)
 
-	issuesPath := filepath.Join(root, "issues.md")
+	issuesPath := filepath.Join(root, "docs", "issues.md")
 	issuesBytes, err := os.ReadFile(issuesPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", issuesPath, err)
@@ -26,7 +26,7 @@ func TestIssuesDocHasReviewFollowupNotes(t *testing.T) {
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(issues, want) {
-			t.Errorf("issues.md missing %q", want)
+			t.Errorf("docs/issues.md missing %q", want)
 		}
 	}
 }

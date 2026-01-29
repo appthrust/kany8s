@@ -505,6 +505,22 @@ stringData:
   - `infrastructure.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` を正とする。
   - `controlplane.cluster.x-k8s.io/v1alpha1` の `Kany8sClusterTemplate` は deprecated として一時的に残していたが、移行完了のため removed。
 
+## 10. self-managed (kubeadm) の責務/境界 (MVP 既定)
+
+Kany8s は managed control plane と self-managed control plane を **別の ControlPlane API** として扱う。
+
+- managed control plane: 既存の `Kany8sControlPlane` + kro/RGD
+- self-managed control plane: `Kany8sKubeadmControlPlane` (new; KubeadmControlPlane/KCP 互換の最小)
+
+### 10.1 endpoint / kubeconfig / certificates の source of truth と owner
+
+- endpoint source of truth: infrastructure provider の `spec.controlPlaneEndpoint` を優先する（Kany8s は推測値で上書きしない）。
+  - `Kany8sKubeadmControlPlane` controller は infra cluster の endpoint を読み、`Kany8sKubeadmControlPlane.spec.controlPlaneEndpoint` へ反映する。
+- `<cluster>-kubeconfig` Secret: Kany8s が生成・維持する（CAPI contract を満たす）。
+  - owner: `Cluster` (OwnerReference)
+- certificates: Cluster API の `util/secret` naming/format に合わせて生成・管理し、CABPK の bootstrap data 生成で利用できるようにする。
+  - owner: `Cluster` (OwnerReference)
+
 ---
 
 ## 参考（CAPT の該当箇所）
