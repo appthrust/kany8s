@@ -562,7 +562,7 @@ MVP の位置づけ:
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sKubeadmControlPlane --controller --resource=false`
   - 成果物: `internal/controller/kany8skubeadmcontrolplane_controller.go`
   - DoD: `make test` が通る（ロジック追加前でも OK）
-- [ ] 参照 `Cluster` を取得する（ownerRef ベース）
+- [x] 参照 `Cluster` を取得する（ownerRef ベース）
   - MVP 既定: `util.GetOwnerCluster` で解決し、未解決は Conditions/Event + `RequeueAfter` で待機
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`
   - DoD: `Cluster` 未作成/ownerRef 未設定でも panic せず、理由が `kubectl describe` で追える
