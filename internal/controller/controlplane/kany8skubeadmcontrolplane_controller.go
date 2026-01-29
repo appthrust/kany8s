@@ -166,8 +166,14 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
-	if err := r.reconcileInfraMachine(ctx, cp, owner, clusterOwnerRef); err != nil {
+	infraRef, err := r.reconcileInfraMachine(ctx, cp, owner, clusterOwnerRef)
+	if err != nil {
 		log.Error(err, "reconcile infra machine")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
+	if err := r.reconcileControlPlaneMachine(ctx, cp, owner, clusterOwnerRef, infraRef); err != nil {
+		log.Error(err, "reconcile control plane Machine")
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
@@ -258,24 +264,24 @@ func mergeBootstrapFiles(base []bootstrapv1.File, inject []bootstrapv1.File) []b
 	return out
 }
 
-func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane, cluster *clusterv1.Cluster, clusterOwnerRef metav1.OwnerReference) error {
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane, cluster *clusterv1.Cluster, clusterOwnerRef metav1.OwnerReference) (clusterv1.ContractVersionedObjectReference, error) {
 	if cp == nil {
-		return fmt.Errorf("control plane is nil")
+		return clusterv1.ContractVersionedObjectReference{}, fmt.Errorf("control plane is nil")
 	}
 	if cluster == nil {
-		return fmt.Errorf("cluster is nil")
+		return clusterv1.ContractVersionedObjectReference{}, fmt.Errorf("cluster is nil")
 	}
 
 	if !cp.Spec.MachineTemplate.InfrastructureRef.IsDefined() {
-		return fmt.Errorf("machineTemplate.infrastructureRef is not set")
+		return clusterv1.ContractVersionedObjectReference{}, fmt.Errorf("machineTemplate.infrastructureRef is not set")
 	}
 
 	machineTemplate, err := external.GetObjectFromContractVersionedRef(ctx, r.Client, cp.Spec.MachineTemplate.InfrastructureRef, cluster.Namespace)
 	if err != nil {
-		return err
+		return clusterv1.ContractVersionedObjectReference{}, err
 	}
 	if machineTemplate == nil {
-		return fmt.Errorf("machineTemplate.infrastructureRef resolved to nil")
+		return clusterv1.ContractVersionedObjectReference{}, fmt.Errorf("machineTemplate.infrastructureRef resolved to nil")
 	}
 
 	infraMachineName := fmt.Sprintf("%s-control-plane-0", cluster.Name)
@@ -292,12 +298,15 @@ func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.
 		ClusterName: cluster.Name,
 	})
 	if err != nil {
-		return err
+		return clusterv1.ContractVersionedObjectReference{}, err
 	}
 	if generatedInfraMachine == nil {
-		return fmt.Errorf("generated infra machine is nil")
+		return clusterv1.ContractVersionedObjectReference{}, fmt.Errorf("generated infra machine is nil")
 	}
 	generatedInfraMachine.SetOwnerReferences([]metav1.OwnerReference{clusterOwnerRef})
+
+	infraGVK := generatedInfraMachine.GroupVersionKind()
+	infraRef := clusterv1.ContractVersionedObjectReference{APIGroup: infraGVK.Group, Kind: infraGVK.Kind, Name: infraMachineName}
 
 	existing := &unstructured.Unstructured{}
 	existing.SetAPIVersion(generatedInfraMachine.GetAPIVersion())
@@ -305,9 +314,62 @@ func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.
 	key := client.ObjectKey{Name: infraMachineName, Namespace: cluster.Namespace}
 	if err := r.Get(ctx, key, existing); err != nil {
 		if !apierrors.IsNotFound(err) {
-			return err
+			return clusterv1.ContractVersionedObjectReference{}, err
 		}
 		if err := r.Create(ctx, generatedInfraMachine); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				return infraRef, nil
+			}
+			return clusterv1.ContractVersionedObjectReference{}, err
+		}
+		return infraRef, nil
+	}
+
+	return infraRef, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileControlPlaneMachine(
+	ctx context.Context,
+	cp *controlplanev1alpha1.Kany8sKubeadmControlPlane,
+	cluster *clusterv1.Cluster,
+	clusterOwnerRef metav1.OwnerReference,
+	infraRef clusterv1.ContractVersionedObjectReference,
+) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+	if cluster == nil {
+		return fmt.Errorf("cluster is nil")
+	}
+	if cluster.Name == "" {
+		return fmt.Errorf("cluster name is empty")
+	}
+	if !infraRef.IsDefined() {
+		return fmt.Errorf("infrastructureRef is not set")
+	}
+
+	name := fmt.Sprintf("%s-control-plane-0", cluster.Name)
+	key := client.ObjectKey{Name: name, Namespace: cluster.Namespace}
+
+	bootstrapRef := clusterv1.ContractVersionedObjectReference{APIGroup: bootstrapv1.GroupVersion.Group, Kind: "KubeadmConfig", Name: name}
+
+	existing := &clusterv1.Machine{}
+	if err := r.Get(ctx, key, existing); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		created := &clusterv1.Machine{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: cluster.Namespace}}
+		created.Labels = map[string]string{
+			clusterv1.ClusterNameLabel:         cluster.Name,
+			clusterv1.MachineControlPlaneLabel: "true",
+		}
+		created.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+		created.Spec.ClusterName = cluster.Name
+		created.Spec.Version = cp.Spec.Version
+		created.Spec.Bootstrap = clusterv1.Bootstrap{ConfigRef: bootstrapRef}
+		created.Spec.InfrastructureRef = infraRef
+		if err := r.Create(ctx, created); err != nil {
 			if apierrors.IsAlreadyExists(err) {
 				return nil
 			}
@@ -316,7 +378,19 @@ func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.
 		return nil
 	}
 
-	return nil
+	before := existing.DeepCopy()
+	if existing.Labels == nil {
+		existing.Labels = map[string]string{}
+	}
+	existing.Labels[clusterv1.ClusterNameLabel] = cluster.Name
+	existing.Labels[clusterv1.MachineControlPlaneLabel] = "true"
+	existing.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+	existing.Spec.ClusterName = cluster.Name
+	existing.Spec.Version = cp.Spec.Version
+	existing.Spec.Bootstrap.ConfigRef = bootstrapRef
+	existing.Spec.InfrastructureRef = infraRef
+
+	return r.Patch(ctx, existing, client.MergeFrom(before))
 }
 
 func (r *Kany8sKubeadmControlPlaneReconciler) reconcileClusterKubeconfigSecret(ctx context.Context, cluster *clusterv1.Cluster, clusterOwnerRef metav1.OwnerReference, endpoint clusterv1.APIEndpoint) error {

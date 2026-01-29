@@ -597,7 +597,7 @@ MVP の位置づけ:
     - `secret.Certificates.AsFiles()` を `spec.files` に注入（CA 等）
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`, (必要なら) `internal/capi/kubeadmconfig.go` (new)
   - DoD: `KubeadmConfig` が作成され、CABPK が bootstrap data を生成できる
-- [ ] control plane `Machine` を作成し、infra/bootstrap を参照させる
+- [x] control plane `Machine` を作成し、infra/bootstrap を参照させる
   - 仕様(目安):
     - `spec.clusterName=<cluster>`
     - `spec.version=<kubernetes version>`
