@@ -608,7 +608,7 @@ MVP の位置づけ:
   - DoD: Machine が作成され、CAPD/CABPK/CAPI core により node が起動する
 
 ### Controller: readiness / Conditions
-- [ ] `controlPlaneInitialized` と `Ready` の意味を self-managed 向けに固定し、Conditions を揃える
+- [x] `controlPlaneInitialized` と `Ready` の意味を self-managed 向けに固定し、Conditions を揃える
   - MVP 既定:
     - Initialized: 少なくとも 1 台の control plane Machine が `Ready=True` になった
     - Ready: endpoint が解決でき、Initialized=true である

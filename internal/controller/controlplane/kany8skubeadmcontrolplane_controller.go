@@ -46,11 +46,18 @@ import (
 
 const (
 	conditionTypeOwnerClusterResolved = "OwnerClusterResolved"
+	conditionTypeReady                = "Ready"
+	conditionTypeCreating             = "Creating"
 
 	reasonOwnerClusterNotSet    = "OwnerClusterNotSet"
 	reasonOwnerClusterNotFound  = "OwnerClusterNotFound"
 	reasonOwnerClusterResolved  = "OwnerClusterResolved"
 	reasonOwnerClusterGetFailed = "OwnerClusterGetFailed"
+
+	reasonWaitingForInfrastructureEndpoint    = "WaitingForInfrastructureEndpoint"
+	reasonWaitingForControlPlaneMachineReady  = "WaitingForControlPlaneMachineReady"
+	reasonWaitingForControlPlaneMachineCreate = "WaitingForControlPlaneMachineCreated"
+	reasonControlPlaneReady                   = "Ready"
 )
 
 // Kany8sKubeadmControlPlaneReconciler reconciles a Kany8sKubeadmControlPlane object
@@ -144,7 +151,7 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 	}
 	if !foundHost || host == "" || !foundPort || port <= 0 {
 		log.V(1).Info("infrastructure controlPlaneEndpoint not set yet")
-		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+		return r.requeueNotReady(ctx, cp, reasonWaitingForInfrastructureEndpoint, "waiting for infrastructure controlPlaneEndpoint to be set")
 	}
 
 	desired := clusterv1.APIEndpoint{Host: host, Port: int32(port)}
@@ -177,7 +184,133 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
+	return r.reconcileReadiness(ctx, cp, owner)
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileReadiness(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane, cluster *clusterv1.Cluster) (ctrl.Result, error) {
+	if cp == nil {
+		return ctrl.Result{}, fmt.Errorf("control plane is nil")
+	}
+	if cluster == nil {
+		return ctrl.Result{}, fmt.Errorf("cluster is nil")
+	}
+
+	endpointResolved := cp.Spec.ControlPlaneEndpoint.Host != "" && cp.Spec.ControlPlaneEndpoint.Port > 0
+	if !endpointResolved {
+		return r.requeueNotReady(ctx, cp, reasonWaitingForInfrastructureEndpoint, "waiting for infrastructure controlPlaneEndpoint to be set")
+	}
+
+	machineReady, err := r.hasReadyControlPlaneMachine(ctx, cluster)
+	if err != nil {
+		message := fmt.Sprintf("list control plane Machines: %v", err)
+		return r.requeueNotReady(ctx, cp, reasonWaitingForControlPlaneMachineCreate, message)
+	}
+
+	if machineReady && !cp.Status.Initialization.ControlPlaneInitialized {
+		if err := r.reconcileControlPlaneInitialized(ctx, cp); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	if !cp.Status.Initialization.ControlPlaneInitialized {
+		return r.requeueNotReady(ctx, cp, reasonWaitingForControlPlaneMachineReady, "waiting for a control plane Machine to become Ready")
+	}
+
+	if err := r.reconcileReadyConditions(ctx, cp, metav1.ConditionTrue, reasonControlPlaneReady, "control plane is ready"); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) requeueNotReady(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane, reason string, message string) (ctrl.Result, error) {
+	if err := r.reconcileReadyConditions(ctx, cp, metav1.ConditionFalse, reason, message); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) hasReadyControlPlaneMachine(ctx context.Context, cluster *clusterv1.Cluster) (bool, error) {
+	if cluster == nil {
+		return false, fmt.Errorf("cluster is nil")
+	}
+	if cluster.Name == "" {
+		return false, fmt.Errorf("cluster name is empty")
+	}
+
+	var machines clusterv1.MachineList
+	if err := r.List(ctx, &machines,
+		client.InNamespace(cluster.Namespace),
+		client.MatchingLabels{
+			clusterv1.ClusterNameLabel:         cluster.Name,
+			clusterv1.MachineControlPlaneLabel: "true",
+		},
+	); err != nil {
+		return false, err
+	}
+
+	for i := range machines.Items {
+		m := &machines.Items[i]
+		if meta.IsStatusConditionTrue(m.Status.Conditions, conditionTypeReady) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileControlPlaneInitialized(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+	if cp.Status.Initialization.ControlPlaneInitialized {
+		return nil
+	}
+
+	before := cp.DeepCopy()
+	cp.Status.Initialization.ControlPlaneInitialized = true
+	return r.Status().Patch(ctx, cp, client.MergeFrom(before))
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileReadyConditions(
+	ctx context.Context,
+	cp *controlplanev1alpha1.Kany8sKubeadmControlPlane,
+	status metav1.ConditionStatus,
+	reason string,
+	message string,
+) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+
+	before := cp.DeepCopy()
+
+	readyCond := metav1.Condition{
+		Type:               conditionTypeReady,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: cp.Generation,
+	}
+	meta.SetStatusCondition(&cp.Status.Conditions, readyCond)
+
+	if status == metav1.ConditionTrue {
+		meta.RemoveStatusCondition(&cp.Status.Conditions, conditionTypeCreating)
+		if cp.Spec.Version != "" && cp.Status.Version != cp.Spec.Version {
+			cp.Status.Version = cp.Spec.Version
+		}
+	} else {
+		creatingCond := metav1.Condition{
+			Type:               conditionTypeCreating,
+			Status:             metav1.ConditionTrue,
+			Reason:             reason,
+			Message:            message,
+			ObservedGeneration: cp.Generation,
+		}
+		meta.SetStatusCondition(&cp.Status.Conditions, creatingCond)
+	}
+
+	cp.Status.FailureReason = nil
+	cp.Status.FailureMessage = nil
+
+	return r.Status().Patch(ctx, cp, client.MergeFrom(before))
 }
 
 func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInitialControlPlaneKubeadmConfig(
