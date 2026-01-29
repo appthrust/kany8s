@@ -486,8 +486,8 @@ func TestKany8sControlPlaneReconciler_SetsControlPlaneEndpointFromKroInstanceSta
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
 		t.Fatalf("get control plane: %v", err)
 	}
-	if got.Spec.ControlPlaneEndpoint.Host != "api.demo.example.com" {
-		t.Fatalf("control plane endpoint host = %q, want %q", got.Spec.ControlPlaneEndpoint.Host, "api.demo.example.com")
+	if got.Spec.ControlPlaneEndpoint.Host != demoEndpointHost {
+		t.Fatalf("control plane endpoint host = %q, want %q", got.Spec.ControlPlaneEndpoint.Host, demoEndpointHost)
 	}
 	if got.Spec.ControlPlaneEndpoint.Port != 6443 {
 		t.Fatalf("control plane endpoint port = %d, want %d", got.Spec.ControlPlaneEndpoint.Port, 6443)
@@ -966,8 +966,8 @@ func TestKany8sControlPlaneReconciler_RequeuesUntilReadyAndThenStops(t *testing.
 	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
 		t.Fatalf("get control plane: %v", err)
 	}
-	if got.Spec.ControlPlaneEndpoint.Host != "api.demo.example.com" {
-		t.Fatalf("control plane endpoint host = %q, want %q", got.Spec.ControlPlaneEndpoint.Host, "api.demo.example.com")
+	if got.Spec.ControlPlaneEndpoint.Host != demoEndpointHost {
+		t.Fatalf("control plane endpoint host = %q, want %q", got.Spec.ControlPlaneEndpoint.Host, demoEndpointHost)
 	}
 	if got.Spec.ControlPlaneEndpoint.Port != 6443 {
 		t.Fatalf("control plane endpoint port = %d, want %d", got.Spec.ControlPlaneEndpoint.Port, 6443)

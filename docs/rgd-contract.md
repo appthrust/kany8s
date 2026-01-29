@@ -28,6 +28,10 @@ Note:
 - `status.message` (optional, string)
   - Human-friendly message describing the current state.
 
+- `status.kubeconfigSecretRef` (optional, object)
+  - Meaning: reference to a provider-specific "source" Secret that contains a kubeconfig in `data.value`.
+  - If set, Kany8s copies `data.value` into the CAPI-compatible `<cluster>-kubeconfig` Secret and reports progress via the `KubeconfigSecretReconciled` Condition.
+
 ### Reserved Status Fields
 
 kro reserves `status.conditions` and `status.state`. Do not use them for the above contract; use the dedicated fields listed here.
@@ -38,6 +42,10 @@ kro reserves `status.conditions` and `status.state`. Do not use them for the abo
   - `Kany8sControlPlane.spec.controlPlaneEndpoint`
   - `Kany8sControlPlane.status.initialization.controlPlaneInitialized`
   - `Kany8sControlPlane.status.conditions`
+
+- Kany8s sets `Ready=True` only when:
+  - `status.ready=true` and `status.endpoint` is present, and
+  - if `status.kubeconfigSecretRef` is set, the kubeconfig Secret has been reconciled (`KubeconfigSecretReconciled=True`).
 
 Kany8s surfaces `status.reason` / `status.message` primarily via Conditions (e.g., Ready/Creating).
 `Kany8sControlPlane.status.failureReason` / `failureMessage` are reserved for terminal, controller-detected errors (for example: invalid `spec.kroSpec`, invalid `status.endpoint`) and are cleared during normal provisioning.

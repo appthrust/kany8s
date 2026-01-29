@@ -176,3 +176,5 @@
 - 2026-01-29: Treated missing kubeconfig source Secret `data["value"]` as a wait (Condition + Warning Event + RequeueAfter) instead of a hard error; added unit test coverage; verified `make test` and `make lint`.
 
 - 2026-01-29: Kept `KubeconfigSecretReconciled` fresh while waiting for a missing kubeconfig source Secret (set Condition=False on NotFound; emit events only on change); added unit test coverage; verified `make test` and `make lint`.
+
+- 2026-01-29: Gated `Kany8sControlPlane` `Ready=True` on kubeconfig Secret reconciliation when `status.kubeconfigSecretRef` is set (surface waits via Ready=False/Creating=True + `KubeconfigSecretReconciled=False`); documented semantics in `docs/rgd-contract.md` and added unit tests; verified `make test` and `make lint`.

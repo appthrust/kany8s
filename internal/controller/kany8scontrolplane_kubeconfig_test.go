@@ -420,37 +420,15 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 		t.Fatalf("RequeueAfter = %s, want %s", res.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
 	}
 
-	gotCP := &controlplanev1alpha1.Kany8sControlPlane{}
-	if err := c.Get(ctx, client.ObjectKey{Name: demoName, Namespace: demoNamespace}, gotCP); err != nil {
-		t.Fatalf("get control plane: %v", err)
-	}
-	cond := meta.FindStatusCondition(gotCP.Status.Conditions, conditionTypeKubeconfigSecretReconciled)
-	if cond == nil {
-		t.Fatalf("expected %s condition", conditionTypeKubeconfigSecretReconciled)
-	}
-	if cond.Status != metav1.ConditionFalse {
-		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
-	}
-	if cond.Reason != reasonSourceSecretNotFound {
-		t.Fatalf("condition reason = %q, want %q", cond.Reason, reasonSourceSecretNotFound)
-	}
-	if !strings.Contains(cond.Message, "waiting for source secret") {
-		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "waiting for source secret")
-	}
+	gotCP := mustGetControlPlane(t, c, demoName, demoNamespace)
+	requireControlPlaneEndpoint(t, gotCP, "api.demo.example.com", 6443)
+	requireControlPlaneInitialized(t, gotCP, true)
+	requireStatusCondition(t, gotCP, conditionTypeKubeconfigSecretReconciled, metav1.ConditionFalse, reasonSourceSecretNotFound, "waiting for source secret")
+	requireStatusCondition(t, gotCP, conditionTypeReady, metav1.ConditionFalse, reasonSourceSecretNotFound, "waiting for source secret")
+	requireStatusCondition(t, gotCP, conditionTypeCreating, metav1.ConditionTrue, reasonSourceSecretNotFound, "waiting for source secret")
+	requireRecordedEventContains(t, recorder, reasonSourceSecretNotFound)
 
-	select {
-	case evt := <-recorder.Events:
-		if !strings.Contains(evt, reasonSourceSecretNotFound) {
-			t.Fatalf("event = %q, want to contain %q", evt, reasonSourceSecretNotFound)
-		}
-	case <-time.After(1 * time.Second):
-		t.Fatalf("expected an event to be recorded")
-	}
-
-	target := &corev1.Secret{}
-	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err == nil || !apierrors.IsNotFound(err) {
-		t.Fatalf("expected target secret to not exist yet")
-	}
+	requireSecretNotFound(t, c, "demo-kubeconfig", demoNamespace)
 
 	// Subsequent reconciles while still NotFound should not spam events.
 	resAgain, err := r.Reconcile(ctx, req)
@@ -460,11 +438,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 	if resAgain.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
 		t.Fatalf("RequeueAfter (2nd) = %s, want %s", resAgain.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
 	}
-	select {
-	case evt := <-recorder.Events:
-		t.Fatalf("unexpected event recorded: %q", evt)
-	default:
-	}
+	requireNoRecordedEvent(t, recorder)
 
 	source := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -487,12 +461,11 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 		t.Fatalf("RequeueAfter after source creation = %s, want 0", res2.RequeueAfter)
 	}
 
-	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err != nil {
-		t.Fatalf("get kubeconfig secret: %v", err)
-	}
-	if string(target.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
-		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), validKubeconfigV1)
-	}
+	gotCP2 := mustGetControlPlane(t, c, demoName, demoNamespace)
+	requireStatusCondition(t, gotCP2, conditionTypeReady, metav1.ConditionTrue, "", "")
+	requireStatusConditionAbsent(t, gotCP2, conditionTypeCreating)
+	requireStatusCondition(t, gotCP2, conditionTypeKubeconfigSecretReconciled, metav1.ConditionTrue, "", "")
+	requireSecretDataEquals(t, c, "demo-kubeconfig", demoNamespace, kubeconfig.DataKey, validKubeconfigV1)
 }
 
 func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsMissingDataKey(t *testing.T) {
@@ -928,4 +901,111 @@ func (c *getErrorClient) Get(ctx context.Context, key client.ObjectKey, obj clie
 		return c.Err
 	}
 	return c.Client.Get(ctx, key, obj, opts...)
+}
+
+func mustGetControlPlane(t *testing.T, c client.Client, name, namespace string) *controlplanev1alpha1.Kany8sControlPlane {
+	t.Helper()
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(context.Background(), client.ObjectKey{Name: name, Namespace: namespace}, cp); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+	return cp
+}
+
+func requireControlPlaneEndpoint(t *testing.T, cp *controlplanev1alpha1.Kany8sControlPlane, host string, port int32) {
+	t.Helper()
+
+	if cp.Spec.ControlPlaneEndpoint.Host != host {
+		t.Fatalf("control plane endpoint host = %q, want %q", cp.Spec.ControlPlaneEndpoint.Host, host)
+	}
+	if cp.Spec.ControlPlaneEndpoint.Port != port {
+		t.Fatalf("control plane endpoint port = %d, want %d", cp.Spec.ControlPlaneEndpoint.Port, port)
+	}
+}
+
+func requireControlPlaneInitialized(t *testing.T, cp *controlplanev1alpha1.Kany8sControlPlane, want bool) {
+	t.Helper()
+
+	if cp.Status.Initialization.ControlPlaneInitialized != want {
+		t.Fatalf("control plane initialized = %v, want %v", cp.Status.Initialization.ControlPlaneInitialized, want)
+	}
+}
+
+func requireStatusCondition(
+	t *testing.T,
+	cp *controlplanev1alpha1.Kany8sControlPlane,
+	condType string,
+	wantStatus metav1.ConditionStatus,
+	wantReason string,
+	wantMessageContains string,
+) {
+	t.Helper()
+
+	cond := meta.FindStatusCondition(cp.Status.Conditions, condType)
+	if cond == nil {
+		t.Fatalf("expected %s condition", condType)
+	}
+	if cond.Status != wantStatus {
+		t.Fatalf("%s condition status = %q, want %q", condType, cond.Status, wantStatus)
+	}
+	if wantReason != "" && cond.Reason != wantReason {
+		t.Fatalf("%s condition reason = %q, want %q", condType, cond.Reason, wantReason)
+	}
+	if wantMessageContains != "" && !strings.Contains(cond.Message, wantMessageContains) {
+		t.Fatalf("%s condition message = %q, want to contain %q", condType, cond.Message, wantMessageContains)
+	}
+}
+
+func requireStatusConditionAbsent(t *testing.T, cp *controlplanev1alpha1.Kany8sControlPlane, condType string) {
+	t.Helper()
+
+	cond := meta.FindStatusCondition(cp.Status.Conditions, condType)
+	if cond != nil {
+		t.Fatalf("expected %s condition to be absent", condType)
+	}
+}
+
+func requireRecordedEventContains(t *testing.T, recorder *record.FakeRecorder, wantContains string) {
+	t.Helper()
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, wantContains) {
+			t.Fatalf("event = %q, want to contain %q", evt, wantContains)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
+	}
+}
+
+func requireNoRecordedEvent(t *testing.T, recorder *record.FakeRecorder) {
+	t.Helper()
+
+	select {
+	case evt := <-recorder.Events:
+		t.Fatalf("unexpected event recorded: %q", evt)
+	default:
+	}
+}
+
+func requireSecretNotFound(t *testing.T, c client.Client, name, namespace string) {
+	t.Helper()
+
+	secret := &corev1.Secret{}
+	if err := c.Get(context.Background(), client.ObjectKey{Name: name, Namespace: namespace}, secret); err == nil || !apierrors.IsNotFound(err) {
+		t.Fatalf("expected secret %s/%s to not exist yet", namespace, name)
+	}
+}
+
+func requireSecretDataEquals(t *testing.T, c client.Client, name, namespace string, key string, want string) {
+	t.Helper()
+
+	secret := &corev1.Secret{}
+	if err := c.Get(context.Background(), client.ObjectKey{Name: name, Namespace: namespace}, secret); err != nil {
+		t.Fatalf("get secret %s/%s: %v", namespace, name, err)
+	}
+	if string(secret.Data[key]) != want {
+		t.Fatalf("secret %s/%s data[%q] = %q, want %q", namespace, name, key, string(secret.Data[key]), want)
+	}
 }
