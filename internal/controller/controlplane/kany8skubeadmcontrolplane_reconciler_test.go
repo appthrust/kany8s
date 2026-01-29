@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/constants"
 	"github.com/reoring/kany8s/internal/kubeconfig"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,6 +41,93 @@ const (
 	kcpTestClusterName       = "demo-cluster"
 	kcpOwnerKindCluster      = "Cluster"
 )
+
+func kcpTestMustAddToScheme(t *testing.T, scheme *runtime.Scheme, add func(*runtime.Scheme) error, name string) {
+	t.Helper()
+	if err := add(scheme); err != nil {
+		t.Fatalf("add %s scheme: %v", name, err)
+	}
+}
+
+func kcpTestMustReconcile(t *testing.T, r *Kany8sKubeadmControlPlaneReconciler, ctx context.Context, req ctrl.Request) ctrl.Result {
+	t.Helper()
+	res, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	return res
+}
+
+func kcpTestMustRequeueAfter(t *testing.T, got ctrl.Result, want time.Duration) {
+	t.Helper()
+	if got.RequeueAfter != want {
+		t.Fatalf("RequeueAfter = %s, want %s", got.RequeueAfter, want)
+	}
+}
+
+func kcpTestMustGet(t *testing.T, c client.Client, ctx context.Context, key client.ObjectKey, obj client.Object, what string) {
+	t.Helper()
+	if err := c.Get(ctx, key, obj); err != nil {
+		t.Fatalf("get %s: %v", what, err)
+	}
+}
+
+func kcpTestMustNotFound(t *testing.T, c client.Client, ctx context.Context, key client.ObjectKey, obj client.Object, what string) {
+	t.Helper()
+	if err := c.Get(ctx, key, obj); err == nil {
+		t.Fatalf("expected %s to not exist", what)
+	} else if !apierrors.IsNotFound(err) {
+		t.Fatalf("get %s: %v", what, err)
+	}
+}
+
+func kcpTestMustCondition(t *testing.T, conditions []metav1.Condition, condType string, wantStatus metav1.ConditionStatus, wantReason string) {
+	t.Helper()
+	cond := meta.FindStatusCondition(conditions, condType)
+	if cond == nil {
+		t.Fatalf("expected %q condition", condType)
+	}
+	if cond.Status != wantStatus {
+		t.Fatalf("%s condition status = %q, want %q", condType, cond.Status, wantStatus)
+	}
+	if wantReason != "" && cond.Reason != wantReason {
+		t.Fatalf("%s condition reason = %q, want %q", condType, cond.Reason, wantReason)
+	}
+}
+
+func kcpTestMustEndpointEmpty(t *testing.T, ep clusterv1.APIEndpoint) {
+	t.Helper()
+	if ep.Host != "" || ep.Port != 0 {
+		t.Fatalf("spec.controlPlaneEndpoint = %s:%d, want empty", ep.Host, ep.Port)
+	}
+}
+
+func kcpTestMustEndpoint(t *testing.T, ep clusterv1.APIEndpoint, host string, port int32) {
+	t.Helper()
+	if ep.Host != host {
+		t.Fatalf("spec.controlPlaneEndpoint.host = %q, want %q", ep.Host, host)
+	}
+	if ep.Port != port {
+		t.Fatalf("spec.controlPlaneEndpoint.port = %d, want %d", ep.Port, port)
+	}
+}
+
+func kcpTestMustSetInfraEndpoint(t *testing.T, c client.Client, ctx context.Context, key client.ObjectKey, host string, port int64) {
+	t.Helper()
+
+	infra := &unstructured.Unstructured{}
+	infra.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1beta1")
+	infra.SetKind("DockerCluster")
+	if err := c.Get(ctx, key, infra); err != nil {
+		t.Fatalf("get infra cluster: %v", err)
+	}
+	if err := unstructured.SetNestedField(infra.Object, map[string]any{"host": host, "port": port}, "spec", "controlPlaneEndpoint"); err != nil {
+		t.Fatalf("set infra endpoint: %v", err)
+	}
+	if err := c.Update(ctx, infra); err != nil {
+		t.Fatalf("update infra cluster: %v", err)
+	}
+}
 
 func TestKany8sKubeadmControlPlaneReconciler_RequeuesWhenOwnerClusterNotSet(t *testing.T) {
 	t.Parallel()
@@ -293,6 +382,126 @@ func TestKany8sKubeadmControlPlaneReconciler_SetsControlPlaneEndpointFromInfrast
 	}
 	if got.Spec.ControlPlaneEndpoint.Port != 6443 {
 		t.Fatalf("spec.controlPlaneEndpoint.port = %d, want %d", got.Spec.ControlPlaneEndpoint.Port, 6443)
+	}
+}
+
+func TestKany8sKubeadmControlPlaneReconciler_MinimalFlow_WaitsForEndpointThenCreatesResources(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	kcpTestMustAddToScheme(t, scheme, clientgoscheme.AddToScheme, "core")
+	kcpTestMustAddToScheme(t, scheme, controlplanev1alpha1.AddToScheme, "Kany8sKubeadmControlPlane")
+	kcpTestMustAddToScheme(t, scheme, clusterv1.AddToScheme, "Cluster")
+	kcpTestMustAddToScheme(t, scheme, bootstrapv1.AddToScheme, "KubeadmConfig")
+	kcpTestMustAddToScheme(t, scheme, apiextensionsv1.AddToScheme, "apiextensions")
+
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: kcpTestClusterName, Namespace: "default", UID: types.UID("1")}}
+	cluster.Spec.InfrastructureRef = clusterv1.ContractVersionedObjectReference{
+		APIGroup: "infrastructure.cluster.x-k8s.io",
+		Kind:     "DockerCluster",
+		Name:     kcpTestClusterName,
+	}
+
+	cp := &controlplanev1alpha1.Kany8sKubeadmControlPlane{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"}}
+	cp.Spec.Version = kcpTestKubernetesVersion
+	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
+	cp.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       kcpOwnerKindCluster,
+		Name:       kcpTestClusterName,
+		UID:        cluster.UID,
+	}}
+
+	infraCluster := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerCluster",
+		"metadata": map[string]any{
+			"name":      kcpTestClusterName,
+			"namespace": "default",
+		},
+		"spec": map[string]any{},
+	}}
+
+	infraClusterCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerCluster"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"metadata": map[string]any{
+					"labels": map[string]any{
+						"template-label": "true",
+					},
+				},
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(cp, cluster, infraCluster, infraClusterCRD, infraMachineTemplate, infraMachineTemplateCRD).
+		WithStatusSubresource(cp).
+		Build()
+	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}}
+
+	res := kcpTestMustReconcile(t, r, ctx, req)
+	kcpTestMustRequeueAfter(t, res, constants.ControlPlaneNotReadyRequeueAfter)
+
+	got := &controlplanev1alpha1.Kany8sKubeadmControlPlane{}
+	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got, "control plane")
+	kcpTestMustEndpointEmpty(t, got.Spec.ControlPlaneEndpoint)
+	kcpTestMustCondition(t, got.Status.Conditions, conditionTypeReady, metav1.ConditionFalse, reasonWaitingForInfrastructureEndpoint)
+
+	kcpTestMustNotFound(t, c, ctx, client.ObjectKey{Name: "demo-cluster-kubeconfig", Namespace: "default"}, &corev1.Secret{}, "kubeconfig Secret")
+	kcpTestMustNotFound(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, &bootstrapv1.KubeadmConfig{}, "KubeadmConfig")
+	kcpTestMustNotFound(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, &clusterv1.Machine{}, "Machine")
+	{
+		infraMachine := &unstructured.Unstructured{}
+		infraMachine.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1beta1")
+		infraMachine.SetKind("DockerMachine")
+		kcpTestMustNotFound(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, infraMachine, "infraMachine")
+	}
+
+	kcpTestMustSetInfraEndpoint(t, c, ctx, client.ObjectKey{Name: kcpTestClusterName, Namespace: "default"}, "127.0.0.1", 6443)
+
+	res = kcpTestMustReconcile(t, r, ctx, req)
+	kcpTestMustRequeueAfter(t, res, constants.ControlPlaneNotReadyRequeueAfter)
+
+	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got, "control plane")
+	kcpTestMustEndpoint(t, got.Spec.ControlPlaneEndpoint, "127.0.0.1", 6443)
+	kcpTestMustCondition(t, got.Status.Conditions, conditionTypeReady, metav1.ConditionFalse, reasonWaitingForControlPlaneMachineReady)
+
+	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-kubeconfig", Namespace: "default"}, &corev1.Secret{}, "kubeconfig Secret")
+	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, &bootstrapv1.KubeadmConfig{}, "KubeadmConfig")
+	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, &clusterv1.Machine{}, "Machine")
+	{
+		infraMachine := &unstructured.Unstructured{}
+		infraMachine.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1beta1")
+		infraMachine.SetKind("DockerMachine")
+		kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, infraMachine, "infraMachine")
 	}
 }
 

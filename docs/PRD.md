@@ -626,7 +626,7 @@ MVP の位置づけ:
   - DoD: `make manifests` で生成される `config/rbac/role.yaml` に必要 verbs が含まれる
 
 ### テスト
-- [ ] fake client unit test で self-managed controller の最小フローを固定する
+- [x] fake client unit test で self-managed controller の最小フローを固定する
   - 追加: `internal/controller/kany8skubeadmcontrolplane_controller_test.go`
   - シナリオ例:
     - infra endpoint 未設定 -> Condition=Waiting + `RequeueAfter`

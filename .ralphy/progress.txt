@@ -210,3 +210,5 @@
 - 2026-01-29: Registered Cluster API core + CABPK schemes in the manager (`cmd/main.go`) and added a devtools test to enforce it; verified `make test` and `make lint`.
 
 - 2026-01-29: Added manager RBAC for `Kany8sKubeadmControlPlane` dependencies (Clusters, Machines, KubeadmConfigs, infrastructure `*`); updated RBAC devtools assertions and regenerated manifests; verified `make test` and `make lint`.
+
+- 2026-01-29: Added a fake-client minimal-flow unit test for `Kany8sKubeadmControlPlane` (wait for infra endpoint -> create kubeconfig/KubeadmConfig/Machine/infraMachine); verified `make test` and `make lint`.
