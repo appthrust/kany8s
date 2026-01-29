@@ -637,7 +637,7 @@ MVP の位置づけ:
 - [x] CAPD + kubeadm の self-managed サンプル manifests を追加する
   - 追加: `examples/self-managed-docker/` (new)
   - DoD: `kubectl apply -f` で control plane resources が揃い、Cluster API が provisioning を開始できる
-- [ ] self-managed (CAPD + kubeadm) の runbook を追加する
+- [x] self-managed (CAPD + kubeadm) の runbook を追加する
   - 追加: `docs/runbooks/capd-kubeadm.md`
   - DoD: kind 上で `Cluster Available=True` までの手順がコピペで再現できる
 - [ ] self-managed acceptance test を追加する（`RemoteConnectionProbe=True` / `Cluster Available=True`）

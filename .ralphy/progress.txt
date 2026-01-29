@@ -214,3 +214,5 @@
 - 2026-01-29: Added a fake-client minimal-flow unit test for `Kany8sKubeadmControlPlane` (wait for infra endpoint -> create kubeconfig/KubeadmConfig/Machine/infraMachine); verified `make test` and `make lint`.
 
 - 2026-01-29: Added CAPD+kubeadm self-managed Docker sample manifests under `examples/self-managed-docker/` with a devtools test enforcing key resources; verified `make test` and `make lint`.
+
+- 2026-01-29: Added a CAPD+kubeadm self-managed runbook (`docs/runbooks/capd-kubeadm.md`) plus a devtools test enforcing key commands; marked the PRD item complete; verified `make test` and `make lint`.
