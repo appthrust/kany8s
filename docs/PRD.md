@@ -572,7 +572,7 @@ MVP の位置づけ:
   - DoD: CAPD の LB endpoint が設定されたら `Kany8sKubeadmControlPlane.spec.controlPlaneEndpoint` が埋まる
 
 ### Controller: 証明書 (cluster certificates)
-- [ ] Cluster certificates を `util/secret` の naming/format で生成・維持する
+- [x] Cluster certificates を `util/secret` の naming/format で生成・維持する
   - MVP 既定: `secret.NewCertificatesForInitialControlPlane` + `LookupOrGenerate` を利用し、Secrets を `cluster.x-k8s.io/cluster-name` label + `type=cluster.x-k8s.io/secret` で作成する
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`, (必要なら) `internal/certs/` (new)
   - DoD: `default/<cluster>-ca` などが生成され、以後 reconcile で上書き/再生成しない（idempotent）

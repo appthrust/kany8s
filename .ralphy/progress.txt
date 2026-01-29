@@ -194,3 +194,5 @@
 - 2026-01-29: Implemented `Kany8sKubeadmControlPlane` owner `Cluster` resolution via `util.GetOwnerCluster` (wait/requeue with a surfaced Condition when missing); added unit tests; verified `make test` and `make lint`.
 
 - 2026-01-29: Implemented infra cluster endpoint resolution for `Kany8sKubeadmControlPlane` by reading the referenced infra cluster `spec.controlPlaneEndpoint` via Cluster API contract-versioned external get; added unit tests; verified `make test` and `make lint`.
+
+- 2026-01-29: Implemented self-managed cluster certificate Secret generation for `Kany8sKubeadmControlPlane` using Cluster API `util/secret` (`NewCertificatesForInitialControlPlane` + `LookupOrGenerate`); added unit tests covering generated `<cluster>-ca/etcd/proxy/sa` Secrets; verified `make test` and `make lint`.

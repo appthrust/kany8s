@@ -29,9 +29,11 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
+	capisecret "sigs.k8s.io/cluster-api/util/secret"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -97,6 +99,23 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 
 	if err := r.reconcileOwnerClusterResolvedCondition(ctx, cp, metav1.ConditionTrue, reasonOwnerClusterResolved, "owner Cluster resolved", corev1.EventTypeNormal); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	var clusterConfig *bootstrapv1.ClusterConfiguration
+	if cp.Spec.KubeadmConfigSpec != nil {
+		clusterConfig = &cp.Spec.KubeadmConfigSpec.ClusterConfiguration
+	}
+	certificates := capisecret.NewCertificatesForInitialControlPlane(clusterConfig)
+	clusterKey := client.ObjectKey{Name: owner.Name, Namespace: owner.Namespace}
+	clusterOwnerRef := metav1.OwnerReference{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       "Cluster",
+		Name:       owner.Name,
+		UID:        owner.UID,
+	}
+	if err := certificates.LookupOrGenerate(ctx, r.Client, clusterKey, clusterOwnerRef); err != nil {
+		log.Error(err, "reconcile cluster certificates")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
 	if !owner.Spec.InfrastructureRef.IsDefined() {
