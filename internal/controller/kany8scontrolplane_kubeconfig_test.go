@@ -443,6 +443,169 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 	}
 }
 
+func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsMissingDataKey(t *testing.T) {
+	t.Parallel()
+
+	const reasonMissingDataKey = "KubeconfigSourceSecretDataMissing"
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatalf("add client-go scheme: %v", err)
+	}
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "EKSControlPlane"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("EKSControlPlaneList"), &unstructured.UnstructuredList{})
+
+	cp := &controlplanev1alpha1.Kany8sControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      demoName,
+			Namespace: demoNamespace,
+			UID:       types.UID("00000000-0000-0000-0000-000000000000"),
+		},
+		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+			Version: "1.34",
+			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+				Name: "eks-control-plane",
+			},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": "eks-control-plane",
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      demoName,
+			"namespace": demoNamespace,
+		},
+		"spec": map[string]any{
+			"version": "1.34",
+		},
+		"status": map[string]any{
+			"ready":    true,
+			"endpoint": "https://api.demo.example.com:6443",
+			"kubeconfigSecretRef": map[string]any{
+				"name":      "provider-kubeconfig",
+				"namespace": demoNamespace,
+			},
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	// Source Secret exists but is not populated yet.
+	source := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "provider-kubeconfig", Namespace: demoNamespace}}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source).WithStatusSubresource(cp).Build()
+	recorder := record.NewFakeRecorder(16)
+	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
+
+	ctx := context.Background()
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: demoName, Namespace: demoNamespace}}
+
+	res1, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res1.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
+		t.Fatalf("RequeueAfter = %s, want %s", res1.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
+	}
+
+	target := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err == nil || !apierrors.IsNotFound(err) {
+		t.Fatalf("expected target secret to not exist yet")
+	}
+
+	gotCP := &controlplanev1alpha1.Kany8sControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: demoName, Namespace: demoNamespace}, gotCP); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+	cond := meta.FindStatusCondition(gotCP.Status.Conditions, conditionTypeKubeconfigSecretReconciled)
+	if cond == nil {
+		t.Fatalf("expected %s condition", conditionTypeKubeconfigSecretReconciled)
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != reasonMissingDataKey {
+		t.Fatalf("condition reason = %q, want %q", cond.Reason, reasonMissingDataKey)
+	}
+	if !strings.Contains(cond.Message, "missing data") {
+		t.Fatalf("condition message = %q, want to contain %q", cond.Message, "missing data")
+	}
+
+	select {
+	case evt := <-recorder.Events:
+		if !strings.Contains(evt, reasonMissingDataKey) {
+			t.Fatalf("event = %q, want to contain %q", evt, reasonMissingDataKey)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected an event to be recorded")
+	}
+
+	// Subsequent reconciles while still missing data should not spam events.
+	res2, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile again: %v", err)
+	}
+	if res2.RequeueAfter != constants.ControlPlaneNotReadyRequeueAfter {
+		t.Fatalf("RequeueAfter (2nd) = %s, want %s", res2.RequeueAfter, constants.ControlPlaneNotReadyRequeueAfter)
+	}
+	select {
+	case evt := <-recorder.Events:
+		t.Fatalf("unexpected event recorded: %q", evt)
+	default:
+	}
+
+	// Populate the key and ensure we reconcile the target Secret.
+	patchedSource := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "provider-kubeconfig", Namespace: demoNamespace}, patchedSource); err != nil {
+		t.Fatalf("get source secret: %v", err)
+	}
+	if patchedSource.Data == nil {
+		patchedSource.Data = map[string][]byte{}
+	}
+	patchedSource.Data[kubeconfig.DataKey] = []byte(validKubeconfigV1)
+	if err := c.Update(ctx, patchedSource); err != nil {
+		t.Fatalf("update source secret: %v", err)
+	}
+
+	res3, err := r.Reconcile(ctx, req)
+	if err != nil {
+		t.Fatalf("reconcile after populating source: %v", err)
+	}
+	if res3.RequeueAfter != 0 {
+		t.Fatalf("RequeueAfter after populate = %s, want 0", res3.RequeueAfter)
+	}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo-kubeconfig", Namespace: demoNamespace}, target); err != nil {
+		t.Fatalf("get kubeconfig secret: %v", err)
+	}
+	if string(target.Data[kubeconfig.DataKey]) != validKubeconfigV1 {
+		t.Fatalf("secret data[%q] = %q, want %q", kubeconfig.DataKey, string(target.Data[kubeconfig.DataKey]), validKubeconfigV1)
+	}
+}
+
 func TestKany8sControlPlaneReconciler_DoesNotOverwriteTargetSecretWithInvalidKubeconfig(t *testing.T) {
 	t.Parallel()
 

@@ -172,3 +172,5 @@
 - 2026-01-28: Updated `issues.md` with follow-up notes for false positives and corrected controller-runtime requeue semantics; added a devtools test enforcing the notes; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-01-29: Disabled controller-runtime cache for core Secrets to allow kubeconfig Secret reconciliation without `secrets` list/watch RBAC; added a devtools test asserting the manager cache configuration; verified `make test` and `make lint`.
+
+- 2026-01-29: Treated missing kubeconfig source Secret `data["value"]` as a wait (Condition + Warning Event + RequeueAfter) instead of a hard error; added unit test coverage; verified `make test` and `make lint`.

@@ -55,12 +55,13 @@ const (
 
 	defaultNotReadyMessage = "waiting for control plane to become ready"
 
-	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
-	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
-	reasonInvalidKroSpec                  = "InvalidKroSpec"
-	reasonInvalidEndpoint                 = "InvalidEndpoint"
-	reasonKubeconfigSourceSecretGetFailed = "KubeconfigSourceSecretGetFailed"
-	reasonInvalidKubeconfig               = "InvalidKubeconfig"
+	reasonResourceGraphDefinitionNotFound   = "ResourceGraphDefinitionNotFound"
+	reasonResourceGraphDefinitionInvalid    = "ResourceGraphDefinitionInvalid"
+	reasonInvalidKroSpec                    = "InvalidKroSpec"
+	reasonInvalidEndpoint                   = "InvalidEndpoint"
+	reasonKubeconfigSourceSecretGetFailed   = "KubeconfigSourceSecretGetFailed"
+	reasonKubeconfigSourceSecretDataMissing = "KubeconfigSourceSecretDataMissing"
+	reasonInvalidKubeconfig                 = "InvalidKubeconfig"
 
 	rgdResolveRequeueAfter  = 30 * time.Second
 	ensureWatchRequeueAfter = 30 * time.Second
@@ -241,7 +242,11 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(ctx context.Con
 
 	kc, ok := sourceSecret.Data[kubeconfig.DataKey]
 	if !ok {
-		return ctrl.Result{}, fmt.Errorf("source secret %s/%s missing data[%q]", sourceNamespace, sourceName, kubeconfig.DataKey)
+		message := fmt.Sprintf("source secret %s/%s missing data[%q]", sourceNamespace, sourceName, kubeconfig.DataKey)
+		if err := r.reconcileKubeconfigSecretCondition(ctx, cp, metav1.ConditionFalse, reasonKubeconfigSourceSecretDataMissing, message, corev1.EventTypeWarning); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 	if _, err := clientcmd.Load(kc); err != nil {
 		message := fmt.Sprintf("source secret %s/%s contains invalid kubeconfig: %v", sourceNamespace, sourceName, err)
