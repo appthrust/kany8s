@@ -554,7 +554,7 @@ MVP の位置づけ:
     - `status.failureReason/failureMessage` (terminal のみ)
   - Touch: `api/v1alpha1/kany8skubeadmcontrolplane_types.go`
   - DoD: `make test` が通り、`make manifests` の CRD に status subresource が生成される
-- [ ] `make generate` / `make manifests` を実行し `config/crd/bases/` の更新を確認する
+- [x] `make generate` / `make manifests` を実行し `config/crd/bases/` の更新を確認する
   - DoD: `config/crd/bases/controlplane.cluster.x-k8s.io_kany8skubeadmcontrolplanes.yaml` が生成される
 
 ### Controller: Cluster/infra endpoint 解決と self-managed の足場

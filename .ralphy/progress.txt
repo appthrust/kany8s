@@ -186,3 +186,5 @@
 - 2026-01-29: Defined `Kany8sKubeadmControlPlaneSpec` MVP fields (version, replicas default=1, machineTemplate.infrastructureRef, kubeadmConfigSpec, controlPlaneEndpoint); updated sample + devtools assertions and regenerated manifests/deepcopy; verified `make test` and `make lint`.
 
 - 2026-01-29: Defined `Kany8sKubeadmControlPlaneStatus` (version, initialization.controlPlaneInitialized, conditions accessors, failureReason/failureMessage); added devtools assertions; verified `make test` and `make lint`.
+
+- 2026-01-29: Confirmed `make generate` + `make manifests` produce no diff and the generated `Kany8sKubeadmControlPlane` CRD base is up to date; marked the PRD item complete; verified `make test` and `make lint`.
