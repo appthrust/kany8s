@@ -771,7 +771,16 @@ Kany8s が infra 側も提供する場合、次のどちらを目指すかで CR
 
 # TODO
 
+## Next (Open)
 
+- [x] [P0] Fix Secret RBAC minimization without breaking controller-runtime cache: Secrets の `list/watch` を外したまま動かすなら cache bypass が必要（`DisableFor: []{&corev1.Secret{}}` or `mgr.GetAPIReader()` の利用）。Touch: `cmd/main.go`（+ 必要なら `internal/controller/kany8scontrolplane_controller.go`）。DoD: `config/rbac/role.yaml` の secrets verbs を最小化した状態でも kubeconfig Secret reconcile がハングしない。Run: `make test`。
+- [ ] [P1] Treat kubeconfig source Secret `data["value"]` 欠落を非致命にする: hard error ではなく Condition/Event + `RequeueAfter` で待機/復帰できるようにする。Touch: `internal/controller/kany8scontrolplane_controller.go`, `internal/controller/kany8scontrolplane_kubeconfig_test.go`。DoD: data key が後から追加されたら target Secret が追従し、ログスパムにならない。Run: `make test`。
+- [ ] [P2] Keep `KubeconfigSecretReconciled` Condition fresh while waiting: source Secret NotFound 時に Condition を `False` (Waiting) にして stale を避ける（event は変化時のみ）。Touch: `internal/controller/kany8scontrolplane_controller.go`, `internal/controller/kany8scontrolplane_kubeconfig_test.go`。DoD: 以前 True だった Condition が NotFound 待機中に True のまま残らない。Run: `make test`。
+- [ ] [P2] Decide readiness semantics for kubeconfig: `Ready=True` が endpoint のみで良いか / kubeconfig secret reconcile も含めるかを明文化し、Conditions/テストを揃える。Touch: `docs/rgd-contract.md`（or `docs/design.md`）, `internal/controller/kany8scontrolplane_controller.go`, tests。DoD: Ready/Conditions の意味が一貫する。Run: `make test`。
+
+## Done (Archive)
+
+### CRD / Domain Model Review (2026-01-28) TODO
 
 - [x] [P0] Implement CAPI v1beta2 InfrastructureCluster provisioned contract: add `status.initialization.provisioned` to `api/infrastructure/v1alpha1/kany8scluster_types.go`, set it in `internal/controller/infrastructure/kany8scluster_controller.go`, update `internal/controller/infrastructure/kany8scluster_reconciler_test.go` + `internal/devtools/kany8scluster_api_test.go`, run `make manifests generate test` (commit: `feat: implement InfrastructureCluster provisioned contract`).
 - [x] [P0] Scaffold infra template API via kubebuilder: `kubebuilder create api --group infrastructure --version v1alpha1 --kind Kany8sClusterTemplate --resource --controller=false` and commit the scaffold + generated artifacts (`PROJECT`, deepcopy, CRDs) (commit: `feat: scaffold infrastructure Kany8sClusterTemplate`).
@@ -786,7 +795,7 @@ Kany8s が infra 側も提供する場合、次のどちらを目指すかで CR
 - [x] [P2] Document kro dynamic RBAC rationale and a future tightening approach: add a section to `docs/design.md` (or new `docs/security.md`), then `make test` (commit: `docs: explain kro RBAC tradeoffs`).
 - [x] [P3] Clean up kubebuilder samples: replace `config/samples/*` TODO manifests with minimal working examples or redirect to `examples/`, then `make test` (commit: `docs: refresh samples to match examples`).
 
-## issues.md 実装レビュー (2026-01-28) フォローアップ TODO
+### issues.md 実装レビュー (2026-01-28) フォローアップ TODO
 
 - [x] [P0] (Issue #1/#5) kubeconfig source Secret 取得エラーを "待機" と "失敗" に分離する: `IsNotFound` は `RequeueAfter` + `nil` error で待機（`RequeueAfter` + non-nil error は無効なので使わない）、権限/その他エラーは Conditions/Events で可観測にする。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: Secret 未作成時に過剰なエラー再試行/ログスパムにならず、作成後に追従する。Run: `make test`.
 - [x] [P1] (Issue #8) kubeconfig bytes を target Secret へコピーする前に検証する（無効 kubeconfig は拒否して Failure/Condition に反映）。Touch: `internal/controller/kany8scontrolplane_controller.go`。DoD: 破損/不正 kubeconfig が target Secret に書き込まれない。Run: `make test`.

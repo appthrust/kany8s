@@ -170,3 +170,5 @@
 - 2026-01-28: Cleaned up kubebuilder-scaffold TODO comments and replaced the placeholder infra controller Ginkgo test with an end-to-end envtest assertion for provisioned+Ready status; verified `make test` and `make lint`.
 
 - 2026-01-28: Updated `issues.md` with follow-up notes for false positives and corrected controller-runtime requeue semantics; added a devtools test enforcing the notes; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-29: Disabled controller-runtime cache for core Secrets to allow kubeconfig Secret reconciliation without `secrets` list/watch RBAC; added a devtools test asserting the manager cache configuration; verified `make test` and `make lint`.
