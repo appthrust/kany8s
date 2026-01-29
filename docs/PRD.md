@@ -634,7 +634,7 @@ MVP の位置づけ:
   - DoD: `make test` が通り、self-managed の回帰がユニットテストで検知できる
 
 ### サンプル/ドキュメント/acceptance
-- [ ] CAPD + kubeadm の self-managed サンプル manifests を追加する
+- [x] CAPD + kubeadm の self-managed サンプル manifests を追加する
   - 追加: `examples/self-managed-docker/` (new)
   - DoD: `kubectl apply -f` で control plane resources が揃い、Cluster API が provisioning を開始できる
 - [ ] self-managed (CAPD + kubeadm) の runbook を追加する

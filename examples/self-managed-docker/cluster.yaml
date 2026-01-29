@@ -1,0 +1,48 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-self-managed-docker
+  namespace: default
+spec:
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: DockerCluster
+    name: demo-self-managed-docker
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: Kany8sKubeadmControlPlane
+    name: demo-self-managed-docker
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: DockerCluster
+metadata:
+  name: demo-self-managed-docker
+  namespace: default
+spec: {}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: DockerMachineTemplate
+metadata:
+  name: demo-self-managed-docker-control-plane
+  namespace: default
+spec:
+  template:
+    spec:
+      customImage: kindest/node:v1.34.0
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sKubeadmControlPlane
+metadata:
+  name: demo-self-managed-docker
+  namespace: default
+spec:
+  version: v1.34.0
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: DockerMachineTemplate
+      name: demo-self-managed-docker-control-plane
+  kubeadmConfigSpec:
+    clusterConfiguration:
+      networking:
+        podSubnet: 192.168.0.0/16
