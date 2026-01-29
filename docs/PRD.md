@@ -578,7 +578,7 @@ MVP の位置づけ:
   - DoD: `default/<cluster>-ca` などが生成され、以後 reconcile で上書き/再生成しない（idempotent）
 
 ### Controller: `<cluster>-kubeconfig` Secret 生成 (self-managed)
-- [ ] Cluster CA Secret から admin kubeconfig を生成し `<cluster>-kubeconfig` を作成/更新する
+- [x] Cluster CA Secret から admin kubeconfig を生成し `<cluster>-kubeconfig` を作成/更新する
   - MVP 既定: `sigs.k8s.io/cluster-api/util/kubeconfig` を利用し、owner は Cluster（推奨）
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`
   - DoD:

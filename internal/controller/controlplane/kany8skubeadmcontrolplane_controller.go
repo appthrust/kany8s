@@ -19,20 +19,25 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/constants"
+	"github.com/reoring/kany8s/internal/kubeconfig"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
+	capicerts "sigs.k8s.io/cluster-api/util/certs"
+	capikubeconfig "sigs.k8s.io/cluster-api/util/kubeconfig"
 	capisecret "sigs.k8s.io/cluster-api/util/secret"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -151,7 +156,119 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	if err := r.reconcileClusterKubeconfigSecret(ctx, owner, clusterOwnerRef, desired); err != nil {
+		log.Error(err, "reconcile cluster kubeconfig secret")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileClusterKubeconfigSecret(ctx context.Context, cluster *clusterv1.Cluster, clusterOwnerRef metav1.OwnerReference, endpoint clusterv1.APIEndpoint) error {
+	if cluster == nil {
+		return fmt.Errorf("cluster is nil")
+	}
+
+	secretName, err := kubeconfig.SecretName(cluster.Name)
+	if err != nil {
+		return err
+	}
+
+	endpointStr := endpoint.String()
+	if endpointStr == "" {
+		return fmt.Errorf("control plane endpoint is empty")
+	}
+	server, err := url.JoinPath("https://", endpointStr)
+	if err != nil {
+		return err
+	}
+
+	key := client.ObjectKey{Name: secretName, Namespace: cluster.Namespace}
+	secretObj := &corev1.Secret{}
+	getErr := r.Get(ctx, key, secretObj)
+	if getErr != nil && !apierrors.IsNotFound(getErr) {
+		return getErr
+	}
+
+	needsKubeconfig := apierrors.IsNotFound(getErr)
+	if !needsKubeconfig {
+		kc, ok := secretObj.Data[kubeconfig.DataKey]
+		if !ok || len(kc) == 0 {
+			needsKubeconfig = true
+		} else {
+			clientConfig, err := clientcmd.NewClientConfigFromBytes(kc)
+			if err != nil {
+				needsKubeconfig = true
+			} else if restCfg, err := clientConfig.ClientConfig(); err != nil {
+				needsKubeconfig = true
+			} else if restCfg.Host != server {
+				needsKubeconfig = true
+			}
+		}
+	}
+
+	var out []byte
+	if needsKubeconfig {
+		caSecret := &corev1.Secret{}
+		caKey := client.ObjectKey{Name: capisecret.Name(cluster.Name, capisecret.ClusterCA), Namespace: cluster.Namespace}
+		if err := r.Get(ctx, caKey, caSecret); err != nil {
+			return err
+		}
+
+		cert, err := capicerts.DecodeCertPEM(caSecret.Data[capisecret.TLSCrtDataName])
+		if err != nil {
+			return fmt.Errorf("decode cluster CA cert: %w", err)
+		}
+		if cert == nil {
+			return fmt.Errorf("cluster CA cert not found")
+		}
+		key, err := capicerts.DecodePrivateKeyPEM(caSecret.Data[capisecret.TLSKeyDataName])
+		if err != nil {
+			return fmt.Errorf("decode cluster CA private key: %w", err)
+		}
+		if key == nil {
+			return fmt.Errorf("cluster CA private key not found")
+		}
+
+		cfg, err := capikubeconfig.New(cluster.Name, server, cert, key)
+		if err != nil {
+			return fmt.Errorf("generate kubeconfig: %w", err)
+		}
+		out, err = clientcmd.Write(*cfg)
+		if err != nil {
+			return fmt.Errorf("serialize kubeconfig: %w", err)
+		}
+	}
+
+	if apierrors.IsNotFound(getErr) {
+		created, err := kubeconfig.NewSecret(cluster.Name, cluster.Namespace, out)
+		if err != nil {
+			return err
+		}
+		created.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+		if err := r.Create(ctx, created); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				return nil
+			}
+			return err
+		}
+		return nil
+	}
+
+	before := secretObj.DeepCopy()
+	if secretObj.Labels == nil {
+		secretObj.Labels = map[string]string{}
+	}
+	secretObj.Labels[kubeconfig.ClusterNameLabelKey] = cluster.Name
+	secretObj.Type = kubeconfig.SecretType
+	secretObj.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+	if secretObj.Data == nil {
+		secretObj.Data = map[string][]byte{}
+	}
+	if needsKubeconfig {
+		secretObj.Data[kubeconfig.DataKey] = out
+	}
+	return r.Patch(ctx, secretObj, client.MergeFrom(before))
 }
 
 func (r *Kany8sKubeadmControlPlaneReconciler) reconcileOwnerClusterResolvedCondition(
