@@ -161,12 +161,101 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
+	if err := r.reconcileInitialControlPlaneKubeadmConfig(ctx, cp, owner, clusterOwnerRef, desired, certificates); err != nil {
+		log.Error(err, "reconcile initial control plane KubeadmConfig")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
 	if err := r.reconcileInfraMachine(ctx, cp, owner, clusterOwnerRef); err != nil {
 		log.Error(err, "reconcile infra machine")
 		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInitialControlPlaneKubeadmConfig(
+	ctx context.Context,
+	cp *controlplanev1alpha1.Kany8sKubeadmControlPlane,
+	cluster *clusterv1.Cluster,
+	clusterOwnerRef metav1.OwnerReference,
+	endpoint clusterv1.APIEndpoint,
+	certificates capisecret.Certificates,
+) error {
+	if cp == nil {
+		return fmt.Errorf("control plane is nil")
+	}
+	if cluster == nil {
+		return fmt.Errorf("cluster is nil")
+	}
+	if endpoint.Host == "" || endpoint.Port <= 0 {
+		return fmt.Errorf("control plane endpoint is not set")
+	}
+
+	name := fmt.Sprintf("%s-control-plane-0", cluster.Name)
+	key := client.ObjectKey{Name: name, Namespace: cluster.Namespace}
+
+	desiredSpec := bootstrapv1.KubeadmConfigSpec{}
+	if cp.Spec.KubeadmConfigSpec != nil {
+		desiredSpec = *cp.Spec.KubeadmConfigSpec.DeepCopy()
+	}
+	desiredSpec.ClusterConfiguration.ControlPlaneEndpoint = endpoint.String()
+	if desiredSpec.InitConfiguration.LocalAPIEndpoint.BindPort == 0 {
+		desiredSpec.InitConfiguration.LocalAPIEndpoint.BindPort = endpoint.Port
+	}
+	desiredSpec.Files = mergeBootstrapFiles(desiredSpec.Files, certificates.AsFiles())
+
+	existing := &bootstrapv1.KubeadmConfig{}
+	if err := r.Get(ctx, key, existing); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		created := &bootstrapv1.KubeadmConfig{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: cluster.Namespace}}
+		created.Labels = map[string]string{clusterv1.ClusterNameLabel: cluster.Name}
+		created.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+		created.Spec = desiredSpec
+		if err := r.Create(ctx, created); err != nil {
+			if apierrors.IsAlreadyExists(err) {
+				return nil
+			}
+			return err
+		}
+		return nil
+	}
+
+	before := existing.DeepCopy()
+	if existing.Labels == nil {
+		existing.Labels = map[string]string{}
+	}
+	existing.Labels[clusterv1.ClusterNameLabel] = cluster.Name
+	existing.OwnerReferences = []metav1.OwnerReference{clusterOwnerRef}
+	existing.Spec = desiredSpec
+	return r.Patch(ctx, existing, client.MergeFrom(before))
+}
+
+func mergeBootstrapFiles(base []bootstrapv1.File, inject []bootstrapv1.File) []bootstrapv1.File {
+	if len(inject) == 0 {
+		return base
+	}
+
+	overrides := make(map[string]struct{}, len(inject))
+	for _, f := range inject {
+		if f.Path == "" {
+			continue
+		}
+		overrides[f.Path] = struct{}{}
+	}
+
+	out := make([]bootstrapv1.File, 0, len(base)+len(inject))
+	for _, f := range base {
+		if _, ok := overrides[f.Path]; ok {
+			continue
+		}
+		out = append(out, f)
+	}
+	out = append(out, inject...)
+	return out
 }
 
 func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInfraMachine(ctx context.Context, cp *controlplanev1alpha1.Kany8sKubeadmControlPlane, cluster *clusterv1.Cluster, clusterOwnerRef metav1.OwnerReference) error {

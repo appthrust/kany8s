@@ -590,7 +590,7 @@ MVP の位置づけ:
   - MVP 既定: `spec.machineTemplate.infrastructureRef` を `external.GenerateTemplate` で clone（provider-specific fields は解釈しない）
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`, (必要なら) `internal/capi/template.go` (new)
   - DoD: infraMachine が 1 つ作成され、template 変更があればローリングで追随できる土台ができる
-- [ ] 初期 control plane 用の `KubeadmConfig` を作成する
+- [x] 初期 control plane 用の `KubeadmConfig` を作成する
   - 仕様(目安):
     - `initConfiguration` + `clusterConfiguration` をセット
     - `clusterConfiguration.controlPlaneEndpoint` は infra endpoint に同期
