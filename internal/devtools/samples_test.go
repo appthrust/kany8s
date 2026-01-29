@@ -30,6 +30,7 @@ func TestConfigSamplesKustomizationIncludesAllSampleResources(t *testing.T) {
 
 	for _, want := range []string{
 		"controlplane_v1alpha1_kany8scontrolplane.yaml",
+		"controlplane_v1alpha1_kany8skubeadmcontrolplane.yaml",
 		"controlplane_v1alpha1_kany8scontrolplanetemplate.yaml",
 		"infrastructure_v1alpha1_kany8scluster.yaml",
 		"infrastructure_v1alpha1_kany8sclustertemplate.yaml",
@@ -60,6 +61,17 @@ func TestConfigSamplesAreFilledInAndMatchCRDContracts(t *testing.T) {
 				{"metadata", "name"},
 				{"spec", "version"},
 				{"spec", "resourceGraphDefinitionRef", "name"},
+			},
+		},
+		{
+			relPath:        filepath.Join("config", "samples", "controlplane_v1alpha1_kany8skubeadmcontrolplane.yaml"),
+			wantAPIVersion: "controlplane.cluster.x-k8s.io/v1alpha1",
+			wantKind:       "Kany8sKubeadmControlPlane",
+			requiredStrings: [][]string{
+				{"metadata", "name"},
+			},
+			requiredMaps: [][]string{
+				{"spec"},
 			},
 		},
 		{

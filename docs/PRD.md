@@ -533,7 +533,7 @@ MVP の位置づけ:
   - DoD: endpoint/kubeconfig/certs の source of truth と owner を 1 セクションで説明できる
 
 ### API: `Kany8sKubeadmControlPlane` CRD を追加する
-- [ ] API scaffold を生成する
+- [x] API scaffold を生成する
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sKubeadmControlPlane --resource --controller=false`
   - 成果物: `api/v1alpha1/kany8skubeadmcontrolplane_types.go`
   - DoD: `make generate` が通る（フィールド追加前でも OK）

@@ -22,6 +22,9 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the kany8s itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- controlplane_kany8skubeadmcontrolplane_admin_role.yaml
+- controlplane_kany8skubeadmcontrolplane_editor_role.yaml
+- controlplane_kany8skubeadmcontrolplane_viewer_role.yaml
 - infrastructure_kany8sclustertemplate_admin_role.yaml
 - infrastructure_kany8sclustertemplate_editor_role.yaml
 - infrastructure_kany8sclustertemplate_viewer_role.yaml

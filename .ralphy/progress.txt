@@ -180,3 +180,5 @@
 - 2026-01-29: Gated `Kany8sControlPlane` `Ready=True` on kubeconfig Secret reconciliation when `status.kubeconfigSecretRef` is set (surface waits via Ready=False/Creating=True + `KubeconfigSecretReconciled=False`); documented semantics in `docs/rgd-contract.md` and added unit tests; verified `make test` and `make lint`.
 
 - 2026-01-29: Documented self-managed (kubeadm) responsibilities/boundaries (endpoint/kubeconfig/certs source of truth) in `docs/design.md`; added devtools coverage; aligned devtools README/issues doc checks to `docs/`; verified `make test` and `make lint`.
+
+- 2026-01-29: Scaffolded `Kany8sKubeadmControlPlane` API (kubebuilder create api), updated devtools/sample assertions, and regenerated manifests/deepcopy; verified `make test` and `make lint`.

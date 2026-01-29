@@ -27,3 +27,25 @@ func TestKany8sControlPlaneAPIScaffoldExists(t *testing.T) {
 		}
 	}
 }
+
+func TestKany8sKubeadmControlPlaneAPIScaffoldExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	typesPath := filepath.Join(root, "api", "v1alpha1", "kany8skubeadmcontrolplane_types.go")
+	typesBytes, err := os.ReadFile(typesPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", typesPath, err)
+	}
+
+	typesGo := string(typesBytes)
+	wantSubstrings := []string{
+		"type Kany8sKubeadmControlPlaneSpec struct",
+		"type Kany8sKubeadmControlPlaneStatus struct",
+		"type Kany8sKubeadmControlPlane struct",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(typesGo, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(typesPath), want)
+		}
+	}
+}
