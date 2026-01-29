@@ -616,7 +616,7 @@ MVP の位置づけ:
   - DoD: `kubectl get kany8skubeadmcontrolplanes` で初期化/Ready の遷移が追える
 
 ### RBAC / manager wiring
-- [ ] scheme に CAPI core/bootstrap を登録し、controller から typed client で扱えるようにする
+- [x] scheme に CAPI core/bootstrap を登録し、controller から typed client で扱えるようにする
   - 追加: `clusterv1.AddToScheme`, `bootstrapv1.AddToScheme` (必要に応じて)
   - Touch: `cmd/main.go`
   - DoD: manager 起動時に scheme エラーが出ず、controller が Cluster/Machine/KubeadmConfig を Get できる

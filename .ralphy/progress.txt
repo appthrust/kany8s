@@ -206,3 +206,5 @@
 - 2026-01-29: Implemented `Kany8sKubeadmControlPlane` reconciliation to create a control plane `Machine` referencing the generated `KubeadmConfig` and infraMachine; added unit tests and verified `make test` and `make lint`.
 
 - 2026-01-29: Implemented self-managed readiness semantics for `Kany8sKubeadmControlPlane` (Initialized when a control plane Machine is `Ready=True`; Ready when endpoint is resolved and Initialized=true), with unit tests; verified `make test` and `make lint`.
+
+- 2026-01-29: Registered Cluster API core + CABPK schemes in the manager (`cmd/main.go`) and added a devtools test to enforce it; verified `make test` and `make lint`.
