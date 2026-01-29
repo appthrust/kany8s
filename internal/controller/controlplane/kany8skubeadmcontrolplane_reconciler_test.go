@@ -36,6 +36,7 @@ const (
 
 	kcpTestKubernetesVersion = "1.34"
 	kcpTestClusterName       = "demo-cluster"
+	kcpOwnerKindCluster      = "Cluster"
 )
 
 func TestKany8sKubeadmControlPlaneReconciler_RequeuesWhenOwnerClusterNotSet(t *testing.T) {
@@ -98,7 +99,7 @@ func TestKany8sKubeadmControlPlaneReconciler_RequeuesWhenOwnerClusterNotFound(t 
 	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
 	cp.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: clusterv1.GroupVersion.String(),
-		Kind:       "Cluster",
+		Kind:       kcpOwnerKindCluster,
 		Name:       kcpTestClusterName,
 	}}
 
@@ -155,7 +156,7 @@ func TestKany8sKubeadmControlPlaneReconciler_SetsOwnerClusterResolvedConditionTr
 	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
 	cp.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: clusterv1.GroupVersion.String(),
-		Kind:       "Cluster",
+		Kind:       kcpOwnerKindCluster,
 		Name:       kcpTestClusterName,
 	}}
 
@@ -217,7 +218,7 @@ func TestKany8sKubeadmControlPlaneReconciler_SetsControlPlaneEndpointFromInfrast
 	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
 	cp.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: clusterv1.GroupVersion.String(),
-		Kind:       "Cluster",
+		Kind:       kcpOwnerKindCluster,
 		Name:       kcpTestClusterName,
 	}}
 
@@ -243,7 +244,30 @@ func TestKany8sKubeadmControlPlaneReconciler_SetsControlPlaneEndpointFromInfrast
 		},
 	}}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD).WithStatusSubresource(cp).Build()
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD, infraMachineTemplate, infraMachineTemplateCRD).WithStatusSubresource(cp).Build()
 	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -297,7 +321,7 @@ func TestKany8sKubeadmControlPlaneReconciler_GeneratesClusterCertificatesSecrets
 	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
 	cp.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: clusterv1.GroupVersion.String(),
-		Kind:       "Cluster",
+		Kind:       kcpOwnerKindCluster,
 		Name:       kcpTestClusterName,
 		UID:        cluster.UID,
 	}}
@@ -324,7 +348,30 @@ func TestKany8sKubeadmControlPlaneReconciler_GeneratesClusterCertificatesSecrets
 		},
 	}}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD).WithStatusSubresource(cp).Build()
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD, infraMachineTemplate, infraMachineTemplateCRD).WithStatusSubresource(cp).Build()
 	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -357,8 +404,8 @@ func TestKany8sKubeadmControlPlaneReconciler_GeneratesClusterCertificatesSecrets
 		if len(s.OwnerReferences) != 1 {
 			t.Fatalf("Secret %s ownerReferences = %d, want %d", key.Name, len(s.OwnerReferences), 1)
 		}
-		if s.OwnerReferences[0].Kind != "Cluster" || s.OwnerReferences[0].Name != kcpTestClusterName {
-			t.Fatalf("Secret %s ownerReferences[0] = %s/%s, want Cluster/%s", key.Name, s.OwnerReferences[0].Kind, s.OwnerReferences[0].Name, kcpTestClusterName)
+		if s.OwnerReferences[0].Kind != kcpOwnerKindCluster || s.OwnerReferences[0].Name != kcpTestClusterName {
+			t.Fatalf("Secret %s ownerReferences[0] = %s/%s, want %s/%s", key.Name, s.OwnerReferences[0].Kind, s.OwnerReferences[0].Name, kcpOwnerKindCluster, kcpTestClusterName)
 		}
 	}
 }
@@ -392,7 +439,7 @@ func TestKany8sKubeadmControlPlaneReconciler_CreatesClusterKubeconfigSecretFromC
 	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
 	cp.OwnerReferences = []metav1.OwnerReference{{
 		APIVersion: clusterv1.GroupVersion.String(),
-		Kind:       "Cluster",
+		Kind:       kcpOwnerKindCluster,
 		Name:       kcpTestClusterName,
 		UID:        cluster.UID,
 	}}
@@ -419,7 +466,30 @@ func TestKany8sKubeadmControlPlaneReconciler_CreatesClusterKubeconfigSecretFromC
 		},
 	}}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD).WithStatusSubresource(cp).Build()
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraCRD, infraMachineTemplate, infraMachineTemplateCRD).WithStatusSubresource(cp).Build()
 	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -454,8 +524,8 @@ func TestKany8sKubeadmControlPlaneReconciler_CreatesClusterKubeconfigSecretFromC
 	if len(s.OwnerReferences) != 1 {
 		t.Fatalf("kubeconfig Secret %s ownerReferences = %d, want %d", key.Name, len(s.OwnerReferences), 1)
 	}
-	if s.OwnerReferences[0].Kind != "Cluster" || s.OwnerReferences[0].Name != kcpTestClusterName {
-		t.Fatalf("kubeconfig Secret %s ownerReferences[0] = %s/%s, want Cluster/%s", key.Name, s.OwnerReferences[0].Kind, s.OwnerReferences[0].Name, kcpTestClusterName)
+	if s.OwnerReferences[0].Kind != kcpOwnerKindCluster || s.OwnerReferences[0].Name != kcpTestClusterName {
+		t.Fatalf("kubeconfig Secret %s ownerReferences[0] = %s/%s, want %s/%s", key.Name, s.OwnerReferences[0].Kind, s.OwnerReferences[0].Name, kcpOwnerKindCluster, kcpTestClusterName)
 	}
 	if len(s.Data[kubeconfig.DataKey]) == 0 {
 		t.Fatalf("kubeconfig Secret %s missing data[%q]", key.Name, kubeconfig.DataKey)
@@ -474,5 +544,120 @@ func TestKany8sKubeadmControlPlaneReconciler_CreatesClusterKubeconfigSecretFromC
 	}
 	if !bytes.Equal(restCfg.CAData, ca.Data[capisecret.TLSCrtDataName]) {
 		t.Fatalf("kubeconfig CAData does not match cluster CA Secret")
+	}
+}
+
+func TestKany8sKubeadmControlPlaneReconciler_CreatesInfraMachineFromMachineTemplate(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatalf("add core scheme: %v", err)
+	}
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sKubeadmControlPlane scheme: %v", err)
+	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Cluster scheme: %v", err)
+	}
+	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add apiextensions scheme: %v", err)
+	}
+
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: kcpTestClusterName, Namespace: "default", UID: types.UID("1")}}
+	cluster.Spec.InfrastructureRef = clusterv1.ContractVersionedObjectReference{
+		APIGroup: "infrastructure.cluster.x-k8s.io",
+		Kind:     "DockerCluster",
+		Name:     kcpTestClusterName,
+	}
+
+	cp := &controlplanev1alpha1.Kany8sKubeadmControlPlane{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"}}
+	cp.Spec.Version = kcpTestKubernetesVersion
+	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
+	cp.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       kcpOwnerKindCluster,
+		Name:       kcpTestClusterName,
+		UID:        cluster.UID,
+	}}
+
+	infraCluster := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerCluster",
+		"metadata": map[string]any{
+			"name":      kcpTestClusterName,
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"controlPlaneEndpoint": map[string]any{
+				"host": "127.0.0.1",
+				"port": int64(6443),
+			},
+		},
+	}}
+
+	infraClusterCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerCluster"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"metadata": map[string]any{
+					"labels": map[string]any{
+						"template-label": "true",
+					},
+				},
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, cluster, infraCluster, infraClusterCRD, infraMachineTemplate, infraMachineTemplateCRD).WithStatusSubresource(cp).Build()
+	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 0 {
+		t.Fatalf("RequeueAfter = %s, want 0", res.RequeueAfter)
+	}
+
+	infraMachine := &unstructured.Unstructured{}
+	infraMachine.SetAPIVersion("infrastructure.cluster.x-k8s.io/v1beta1")
+	infraMachine.SetKind("DockerMachine")
+	key := client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}
+	if err := c.Get(ctx, key, infraMachine); err != nil {
+		t.Fatalf("get infraMachine %s: %v", key.Name, err)
+	}
+	if got := infraMachine.GetLabels()[clusterv1.ClusterNameLabel]; got != kcpTestClusterName {
+		t.Fatalf("infraMachine %s label %s = %q, want %q", key.Name, clusterv1.ClusterNameLabel, got, kcpTestClusterName)
+	}
+	if len(infraMachine.GetOwnerReferences()) != 1 {
+		t.Fatalf("infraMachine %s ownerReferences = %d, want %d", key.Name, len(infraMachine.GetOwnerReferences()), 1)
+	}
+	ownerRef := infraMachine.GetOwnerReferences()[0]
+	if ownerRef.Kind != kcpOwnerKindCluster || ownerRef.Name != kcpTestClusterName {
+		t.Fatalf("infraMachine %s ownerReferences[0] = %s/%s, want %s/%s", key.Name, ownerRef.Kind, ownerRef.Name, kcpOwnerKindCluster, kcpTestClusterName)
 	}
 }

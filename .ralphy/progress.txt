@@ -198,3 +198,5 @@
 - 2026-01-29: Implemented self-managed cluster certificate Secret generation for `Kany8sKubeadmControlPlane` using Cluster API `util/secret` (`NewCertificatesForInitialControlPlane` + `LookupOrGenerate`); added unit tests covering generated `<cluster>-ca/etcd/proxy/sa` Secrets; verified `make test` and `make lint`.
 
 - 2026-01-29: Implemented self-managed `<cluster>-kubeconfig` Secret generation for `Kany8sKubeadmControlPlane` from the Cluster CA Secret (Cluster API `util/kubeconfig`); added unit tests and verified `make test` and `make lint`.
+
+- 2026-01-29: Implemented infra machine template cloning for `Kany8sKubeadmControlPlane` (create a control-plane infraMachine from `spec.machineTemplate.infrastructureRef` via Cluster API `external.GenerateTemplate`); added unit tests and verified `make test` and `make lint`.

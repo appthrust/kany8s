@@ -586,7 +586,7 @@ MVP の位置づけ:
     - `RemoteConnectionProbe` が kubeconfig Secret を見つけられる
 
 ### Controller: control plane Machines (MVP=replicas 1)
-- [ ] infra MachineTemplate を clone し、control plane 用 infraMachine を作成する
+- [x] infra MachineTemplate を clone し、control plane 用 infraMachine を作成する
   - MVP 既定: `spec.machineTemplate.infrastructureRef` を `external.GenerateTemplate` で clone（provider-specific fields は解釈しない）
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`, (必要なら) `internal/capi/template.go` (new)
   - DoD: infraMachine が 1 つ作成され、template 変更があればローリングで追随できる土台ができる
