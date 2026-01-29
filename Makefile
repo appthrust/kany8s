@@ -94,6 +94,14 @@ test-acceptance: ## Run acceptance test script (kind + kro + demo flow).
 test-acceptance-keep: ## Run acceptance test script and keep the kind cluster.
 	CLEANUP=false bash hack/acceptance-test.sh
 
+.PHONY: test-acceptance-self-managed
+test-acceptance-self-managed: ## Run self-managed acceptance test script (kind + clusterctl + CAPD + kubeadm).
+	bash hack/acceptance-test-self-managed.sh
+
+.PHONY: test-acceptance-self-managed-keep
+test-acceptance-self-managed-keep: ## Run self-managed acceptance test script and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-self-managed.sh
+
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)

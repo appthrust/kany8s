@@ -640,7 +640,7 @@ MVP の位置づけ:
 - [x] self-managed (CAPD + kubeadm) の runbook を追加する
   - 追加: `docs/runbooks/capd-kubeadm.md`
   - DoD: kind 上で `Cluster Available=True` までの手順がコピペで再現できる
-- [ ] self-managed acceptance test を追加する（`RemoteConnectionProbe=True` / `Cluster Available=True`）
+- [x] self-managed acceptance test を追加する（`RemoteConnectionProbe=True` / `Cluster Available=True`）
   - 追加: `hack/acceptance-test-self-managed.sh`, `Makefile` (`test-acceptance-self-managed`)
   - DoD:
     - kind で clusterctl(CAPI core + CABPK + CAPD) + Kany8s を導入し、sample を apply
