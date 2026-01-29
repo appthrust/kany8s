@@ -65,3 +65,31 @@ func TestGeneratedCRDBasesContainExpectedSchemaForKany8sKubeadmControlPlane(t *t
 		}
 	}
 }
+
+func TestKany8sKubeadmControlPlaneStatusHasRequiredFields(t *testing.T) {
+	root := findRepoRoot(t)
+
+	typesPath := filepath.Join(root, "api", "v1alpha1", "kany8skubeadmcontrolplane_types.go")
+	typesBytes, err := os.ReadFile(typesPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", typesPath, err)
+	}
+
+	typesGo := string(typesBytes)
+	wantSubstrings := []string{
+		"type Kany8sKubeadmControlPlaneInitializationStatus struct",
+		"ControlPlaneInitialized bool `json:\"controlPlaneInitialized,omitempty\"`",
+		"Version string `json:\"version,omitempty\"`",
+		"Initialization Kany8sKubeadmControlPlaneInitializationStatus `json:\"initialization,omitzero\"`",
+		"Conditions []metav1.Condition `json:\"conditions,omitempty\"`",
+		"FailureReason *string `json:\"failureReason,omitempty\"`",
+		"FailureMessage *string `json:\"failureMessage,omitempty\"`",
+		"func (r *Kany8sKubeadmControlPlane) GetConditions() []metav1.Condition",
+		"func (r *Kany8sKubeadmControlPlane) SetConditions(conditions []metav1.Condition)",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(typesGo, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(typesPath), want)
+		}
+	}
+}

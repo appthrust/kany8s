@@ -2456,16 +2456,8 @@ spec:
             description: status defines the observed state of Kany8sKubeadmControlPlane
             properties:
               conditions:
-                description: |-
-                  conditions represent the current state of the Kany8sKubeadmControlPlane resource.
-                  Each condition has a unique type and reflects the status of a specific aspect of the resource.
-
-                  Standard condition types include:
-                  - "Available": the resource is fully functional
-                  - "Progressing": the resource is being created or updated
-                  - "Degraded": the resource failed to reach or maintain its desired state
-
-                  The status of each condition is one of True, False, or Unknown.
+                description: conditions represent the current state of the Kany8sKubeadmControlPlane
+                  resource.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -2524,6 +2516,37 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              failureMessage:
+                description: |-
+                  failureMessage will be set in the event that there is a terminal problem
+                  reconciling the control plane and will contain a more verbose string
+                  suitable for logging and human consumption.
+                type: string
+              failureReason:
+                description: |-
+                  failureReason will be set in the event that there is a terminal problem
+                  reconciling the control plane and will contain a succinct reason for the
+                  failure.
+                type: string
+              initialization:
+                description: initialization holds fields related to control plane
+                  initialization.
+                properties:
+                  controlPlaneInitialized:
+                    description: |-
+                      controlPlaneInitialized denotes whether the control plane has completed
+                      initialization.
+                    type: boolean
+                type: object
+              version:
+                description: |-
+                  version represents the minimum Kubernetes version for the control plane.
+
+                  This field is required by the Cluster API control plane provider contract and is used by the
+                  topology controller to determine provisioning and upgrade state.
+                maxLength: 256
+                minLength: 1
+                type: string
             type: object
         required:
         - spec

@@ -59,27 +59,47 @@ type Kany8sKubeadmControlPlaneSpec struct {
 	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
 }
 
+// Kany8sKubeadmControlPlaneInitializationStatus defines fields related to control
+// plane initialization.
+type Kany8sKubeadmControlPlaneInitializationStatus struct {
+	// controlPlaneInitialized denotes whether the control plane has completed
+	// initialization.
+	// +optional
+	ControlPlaneInitialized bool `json:"controlPlaneInitialized,omitempty"`
+}
+
 // Kany8sKubeadmControlPlaneStatus defines the observed state of Kany8sKubeadmControlPlane.
 type Kany8sKubeadmControlPlaneStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// version represents the minimum Kubernetes version for the control plane.
+	//
+	// This field is required by the Cluster API control plane provider contract and is used by the
+	// topology controller to determine provisioning and upgrade state.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=256
+	Version string `json:"version,omitempty"`
 
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+	// initialization holds fields related to control plane initialization.
+	// +optional
+	Initialization Kany8sKubeadmControlPlaneInitializationStatus `json:"initialization,omitzero"`
 
 	// conditions represent the current state of the Kany8sKubeadmControlPlane resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// failureReason will be set in the event that there is a terminal problem
+	// reconciling the control plane and will contain a succinct reason for the
+	// failure.
+	// +optional
+	FailureReason *string `json:"failureReason,omitempty"`
+
+	// failureMessage will be set in the event that there is a terminal problem
+	// reconciling the control plane and will contain a more verbose string
+	// suitable for logging and human consumption.
+	// +optional
+	FailureMessage *string `json:"failureMessage,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -109,6 +129,14 @@ type Kany8sKubeadmControlPlaneList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitzero"`
 	Items           []Kany8sKubeadmControlPlane `json:"items"`
+}
+
+func (r *Kany8sKubeadmControlPlane) GetConditions() []metav1.Condition {
+	return r.Status.Conditions
+}
+
+func (r *Kany8sKubeadmControlPlane) SetConditions(conditions []metav1.Condition) {
+	r.Status.Conditions = conditions
 }
 
 func init() {

@@ -546,7 +546,7 @@ MVP の位置づけ:
     - `spec.controlPlaneEndpoint` (optional; `clusterv1.APIEndpoint`; controller が設定)
   - Touch: `api/v1alpha1/kany8skubeadmcontrolplane_types.go`
   - DoD: CRD 上で required/optional が意図どおりに表現される
-- [ ] `Kany8sKubeadmControlPlaneStatus` を定義する（CAPI contract の最小）
+- [x] `Kany8sKubeadmControlPlaneStatus` を定義する（CAPI contract の最小）
   - 追加:
     - `status.version` (optional; Ready になったら `spec.version` を反映)
     - `status.initialization.controlPlaneInitialized`
