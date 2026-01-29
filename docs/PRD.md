@@ -620,7 +620,7 @@ MVP の位置づけ:
   - 追加: `clusterv1.AddToScheme`, `bootstrapv1.AddToScheme` (必要に応じて)
   - Touch: `cmd/main.go`
   - DoD: manager 起動時に scheme エラーが出ず、controller が Cluster/Machine/KubeadmConfig を Get できる
-- [ ] RBAC を追加する（Machines/KubeadmConfigs/Clusters/infra resources）
+- [x] RBAC を追加する（Machines/KubeadmConfigs/Clusters/infra resources）
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go` (+kubebuilder:rbac)
   - MVP 既定: infraMachine の GVK は動的になり得るため `infrastructure.cluster.x-k8s.io` group は広めに許可（将来 tighten）
   - DoD: `make manifests` で生成される `config/rbac/role.yaml` に必要 verbs が含まれる

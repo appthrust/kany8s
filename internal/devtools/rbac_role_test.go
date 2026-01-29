@@ -50,13 +50,32 @@ func TestGeneratedManagerRoleIncludesKroInstanceWildcardRBAC(t *testing.T) {
 		t.Fatalf("read %q: %v", rolePath, err)
 	}
 
-	role := string(roleBytes)
+	var role rbacRole
+	if err := yaml.Unmarshal(roleBytes, &role); err != nil {
+		t.Fatalf("parse %q: %v", rolePath, err)
+	}
 
-	wantBlock := strings.Join([]string{
-		"- apiGroups:\n  - kro.run\n  resources:\n  - '*'\n  verbs:\n  - create\n  - get\n  - list\n  - patch\n  - update\n  - watch\n",
-	}, "")
-	if !strings.Contains(role, wantBlock) {
-		t.Errorf("%s missing expected kro wildcard RBAC rule block:\n%s", filepath.ToSlash(rolePath), wantBlock)
+	found := false
+	for _, rule := range role.Rules {
+		if !slices.Contains(rule.APIGroups, "kro.run") {
+			continue
+		}
+		if !slices.Contains(rule.Resources, "*") {
+			continue
+		}
+		missing := []string{}
+		for _, verb := range []string{"create", "get", "list", "patch", "update", "watch"} {
+			if !slices.Contains(rule.Verbs, verb) {
+				missing = append(missing, verb)
+			}
+		}
+		if len(missing) == 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("%s missing expected kro wildcard RBAC rule for kro.run resources '*'", filepath.ToSlash(rolePath))
 	}
 }
 
@@ -199,5 +218,82 @@ func TestGeneratedManagerRoleIncludesKany8sControlPlaneRBAC(t *testing.T) {
 		"controlplane.cluster.x-k8s.io",
 		"kany8scontrolplanes/finalizers",
 		"update",
+	)
+}
+
+func TestGeneratedManagerRoleIncludesKany8sKubeadmControlPlaneRBAC(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rolePath := filepath.Join(root, "config", "rbac", "role.yaml")
+	roleBytes, err := os.ReadFile(rolePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rolePath, err)
+	}
+
+	var role rbacRole
+	if err := yaml.Unmarshal(roleBytes, &role); err != nil {
+		t.Fatalf("parse %q: %v", rolePath, err)
+	}
+
+	requireRule := func(apiGroup, resource string, verbs ...string) {
+		t.Helper()
+
+		for _, rule := range role.Rules {
+			if !slices.Contains(rule.APIGroups, apiGroup) {
+				continue
+			}
+			if !slices.Contains(rule.Resources, resource) {
+				continue
+			}
+			missing := []string{}
+			for _, verb := range verbs {
+				if !slices.Contains(rule.Verbs, verb) {
+					missing = append(missing, verb)
+				}
+			}
+			if len(missing) == 0 {
+				return
+			}
+		}
+
+		t.Errorf("%s missing RBAC rule for %s %s with verbs %s", filepath.ToSlash(rolePath), apiGroup, resource, strings.Join(verbs, ","))
+	}
+
+	requireRule(
+		"cluster.x-k8s.io",
+		"clusters",
+		"get",
+		"list",
+		"watch",
+	)
+	requireRule(
+		"cluster.x-k8s.io",
+		"machines",
+		"create",
+		"get",
+		"list",
+		"patch",
+		"update",
+		"watch",
+	)
+	requireRule(
+		"bootstrap.cluster.x-k8s.io",
+		"kubeadmconfigs",
+		"create",
+		"get",
+		"list",
+		"patch",
+		"update",
+		"watch",
+	)
+	requireRule(
+		"infrastructure.cluster.x-k8s.io",
+		"*",
+		"create",
+		"get",
+		"list",
+		"patch",
+		"update",
+		"watch",
 	)
 }
