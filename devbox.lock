@@ -13,6 +13,10 @@
       "last_modified": "2026-01-17T14:47:01Z",
       "resolved": "github:NixOS/nixpkgs/3327b113f2ef698d380df83fbccefad7e83d7769?lastModified=1768661221&narHash=sha256-MJwOjrIISfOpdI9x4C%2B5WFQXvHtOuj5mqLZ4TMEtk1M%3D"
     },
+    "k9s": {
+      "resolved": "github:NixOS/nixpkgs/3327b113f2ef698d380df83fbccefad7e83d7769?narHash=sha256-MJwOjrIISfOpdI9x4C%2B5WFQXvHtOuj5mqLZ4TMEtk1M%3D#k9s",
+      "source": "nixpkg"
+    },
     "zig": {
       "resolved": "github:NixOS/nixpkgs/3327b113f2ef698d380df83fbccefad7e83d7769?narHash=sha256-MJwOjrIISfOpdI9x4C%2B5WFQXvHtOuj5mqLZ4TMEtk1M%3D#zig",
       "source": "nixpkg"

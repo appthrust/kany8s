@@ -1,0 +1,41 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-eks
+  namespace: default
+spec:
+  # Kany8s is a minimal InfrastructureCluster + ControlPlane provider.
+  # It provisions a managed control plane via kro + an RGD.
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: Kany8sCluster
+    name: demo-eks
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: Kany8sControlPlane
+    name: demo-eks
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+kind: Kany8sCluster
+metadata:
+  name: demo-eks
+  namespace: default
+spec: {}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sControlPlane
+metadata:
+  name: demo-eks
+  namespace: default
+spec:
+  version: "1.29"
+  resourceGraphDefinitionRef:
+    name: eks-control-plane.kro.run
+  kroSpec:
+    vpc:
+      subnetIDs:
+        - subnet-xxxx
+        - subnet-yyyy
+      securityGroupIDs:
+        - sg-zzzz
+

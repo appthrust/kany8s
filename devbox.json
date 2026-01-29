@@ -3,6 +3,7 @@
   "packages": [
     "bun",
     "git",
+    "k9s",
     "zig"
   ],
   "shell": {
