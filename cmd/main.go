@@ -40,6 +40,7 @@ import (
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/controller"
+	controlplanecontroller "github.com/reoring/kany8s/internal/controller/controlplane"
 	infrastructurecontroller "github.com/reoring/kany8s/internal/controller/infrastructure"
 	// +kubebuilder:scaffold:imports
 )
@@ -201,6 +202,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Kany8sCluster")
+		os.Exit(1)
+	}
+	if err := (&controlplanecontroller.Kany8sKubeadmControlPlaneReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Kany8sKubeadmControlPlane")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

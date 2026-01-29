@@ -188,3 +188,5 @@
 - 2026-01-29: Defined `Kany8sKubeadmControlPlaneStatus` (version, initialization.controlPlaneInitialized, conditions accessors, failureReason/failureMessage); added devtools assertions; verified `make test` and `make lint`.
 
 - 2026-01-29: Confirmed `make generate` + `make manifests` produce no diff and the generated `Kany8sKubeadmControlPlane` CRD base is up to date; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-01-29: Scaffolded the `Kany8sKubeadmControlPlane` controller (kubebuilder) and wired it into the manager; added a devtools scaffold assertion; verified `make test` and `make lint`.

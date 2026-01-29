@@ -558,7 +558,7 @@ MVP の位置づけ:
   - DoD: `config/crd/bases/controlplane.cluster.x-k8s.io_kany8skubeadmcontrolplanes.yaml` が生成される
 
 ### Controller: Cluster/infra endpoint 解決と self-managed の足場
-- [ ] controller scaffold を生成し、manager に登録される状態にする
+- [x] controller scaffold を生成し、manager に登録される状態にする
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sKubeadmControlPlane --controller --resource=false`
   - 成果物: `internal/controller/kany8skubeadmcontrolplane_controller.go`
   - DoD: `make test` が通る（ロジック追加前でも OK）

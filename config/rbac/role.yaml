@@ -25,6 +25,7 @@ rules:
   - controlplane.cluster.x-k8s.io
   resources:
   - kany8scontrolplanes
+  - kany8skubeadmcontrolplanes
   verbs:
   - create
   - delete
@@ -37,12 +38,14 @@ rules:
   - controlplane.cluster.x-k8s.io
   resources:
   - kany8scontrolplanes/finalizers
+  - kany8skubeadmcontrolplanes/finalizers
   verbs:
   - update
 - apiGroups:
   - controlplane.cluster.x-k8s.io
   resources:
   - kany8scontrolplanes/status
+  - kany8skubeadmcontrolplanes/status
   verbs:
   - get
   - patch
