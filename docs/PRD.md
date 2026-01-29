@@ -537,7 +537,7 @@ MVP の位置づけ:
   - コマンド: `kubebuilder create api --group controlplane --version v1alpha1 --kind Kany8sKubeadmControlPlane --resource --controller=false`
   - 成果物: `api/v1alpha1/kany8skubeadmcontrolplane_types.go`
   - DoD: `make generate` が通る（フィールド追加前でも OK）
-- [ ] `Kany8sKubeadmControlPlaneSpec` を定義する（KCP 互換の最小）
+- [x] `Kany8sKubeadmControlPlaneSpec` を定義する（KCP 互換の最小）
   - 追加/仕様(目安):
     - `spec.version` (required)
     - `spec.replicas` (optional; MVP 既定=1)

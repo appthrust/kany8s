@@ -182,3 +182,5 @@
 - 2026-01-29: Documented self-managed (kubeadm) responsibilities/boundaries (endpoint/kubeconfig/certs source of truth) in `docs/design.md`; added devtools coverage; aligned devtools README/issues doc checks to `docs/`; verified `make test` and `make lint`.
 
 - 2026-01-29: Scaffolded `Kany8sKubeadmControlPlane` API (kubebuilder create api), updated devtools/sample assertions, and regenerated manifests/deepcopy; verified `make test` and `make lint`.
+
+- 2026-01-29: Defined `Kany8sKubeadmControlPlaneSpec` MVP fields (version, replicas default=1, machineTemplate.infrastructureRef, kubeadmConfigSpec, controlPlaneEndpoint); updated sample + devtools assertions and regenerated manifests/deepcopy; verified `make test` and `make lint`.

@@ -18,17 +18,45 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// Kany8sKubeadmControlPlaneSpec defines the desired state of Kany8sKubeadmControlPlane
+// Kany8sKubeadmControlPlaneMachineTemplate defines how Machines should be created.
+type Kany8sKubeadmControlPlaneMachineTemplate struct {
+	// infrastructureRef is a required reference to a provider-specific machine
+	// template, for example DockerMachineTemplate.
+	InfrastructureRef clusterv1.ContractVersionedObjectReference `json:"infrastructureRef"`
+}
+
+// Kany8sKubeadmControlPlaneSpec defines the desired state of Kany8sKubeadmControlPlane.
 type Kany8sKubeadmControlPlaneSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+	// version is the Kubernetes version to use for the control plane.
+	// +kubebuilder:validation:MinLength=1
+	Version string `json:"version"`
+
+	// replicas is the desired number of control plane Machines.
+	//
+	// MVP default is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:default=1
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// machineTemplate is the template used to create control plane Machines.
+	MachineTemplate Kany8sKubeadmControlPlaneMachineTemplate `json:"machineTemplate"`
+
+	// kubeadmConfigSpec is the kubeadm bootstrap configuration for control plane Machines.
+	// +optional
+	KubeadmConfigSpec *bootstrapv1.KubeadmConfigSpec `json:"kubeadmConfigSpec,omitempty"`
+
+	// controlPlaneEndpoint is the endpoint used by Cluster API to communicate with
+	// the workload control plane.
+	// +optional
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
 }
 
 // Kany8sKubeadmControlPlaneStatus defines the observed state of Kany8sKubeadmControlPlane.

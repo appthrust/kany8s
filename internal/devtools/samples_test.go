@@ -69,9 +69,15 @@ func TestConfigSamplesAreFilledInAndMatchCRDContracts(t *testing.T) {
 			wantKind:       "Kany8sKubeadmControlPlane",
 			requiredStrings: [][]string{
 				{"metadata", "name"},
+				{"spec", "version"},
+				{"spec", "machineTemplate", "infrastructureRef", "apiVersion"},
+				{"spec", "machineTemplate", "infrastructureRef", "kind"},
+				{"spec", "machineTemplate", "infrastructureRef", "name"},
 			},
 			requiredMaps: [][]string{
 				{"spec"},
+				{"spec", "machineTemplate"},
+				{"spec", "machineTemplate", "infrastructureRef"},
 			},
 		},
 		{
