@@ -26,8 +26,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	"sigs.k8s.io/cluster-api/controllers/external"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -94,6 +97,39 @@ func (r *Kany8sKubeadmControlPlaneReconciler) Reconcile(ctx context.Context, req
 
 	if err := r.reconcileOwnerClusterResolvedCondition(ctx, cp, metav1.ConditionTrue, reasonOwnerClusterResolved, "owner Cluster resolved", corev1.EventTypeNormal); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if !owner.Spec.InfrastructureRef.IsDefined() {
+		log.V(1).Info("owner Cluster infrastructureRef not set yet")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
+	infra, err := external.GetObjectFromContractVersionedRef(ctx, r.Client, owner.Spec.InfrastructureRef, owner.Namespace)
+	if err != nil {
+		log.Error(err, "get infrastructure cluster")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
+	host, foundHost, err := unstructured.NestedString(infra.Object, "spec", "controlPlaneEndpoint", "host")
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("read infrastructure spec.controlPlaneEndpoint.host: %w", err)
+	}
+	port, foundPort, err := unstructured.NestedInt64(infra.Object, "spec", "controlPlaneEndpoint", "port")
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("read infrastructure spec.controlPlaneEndpoint.port: %w", err)
+	}
+	if !foundHost || host == "" || !foundPort || port <= 0 {
+		log.V(1).Info("infrastructure controlPlaneEndpoint not set yet")
+		return ctrl.Result{RequeueAfter: constants.ControlPlaneNotReadyRequeueAfter}, nil
+	}
+
+	desired := clusterv1.APIEndpoint{Host: host, Port: int32(port)}
+	if cp.Spec.ControlPlaneEndpoint != desired {
+		before := cp.DeepCopy()
+		cp.Spec.ControlPlaneEndpoint = desired
+		if err := r.Patch(ctx, cp, client.MergeFrom(before)); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil

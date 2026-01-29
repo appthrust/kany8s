@@ -566,7 +566,7 @@ MVP の位置づけ:
   - MVP 既定: `util.GetOwnerCluster` で解決し、未解決は Conditions/Event + `RequeueAfter` で待機
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`
   - DoD: `Cluster` 未作成/ownerRef 未設定でも panic せず、理由が `kubectl describe` で追える
-- [ ] infra cluster の `spec.controlPlaneEndpoint` を解決し、`spec.controlPlaneEndpoint` へ反映する
+- [x] infra cluster の `spec.controlPlaneEndpoint` を解決し、`spec.controlPlaneEndpoint` へ反映する
   - MVP 既定: `Cluster.spec.infrastructureRef` を `external.Get` で取得し、`spec.controlPlaneEndpoint.{host,port}` を `unstructured` で読む
   - Touch: `internal/controller/kany8skubeadmcontrolplane_controller.go`, (必要なら) `internal/endpoint/parse.go`
   - DoD: CAPD の LB endpoint が設定されたら `Kany8sKubeadmControlPlane.spec.controlPlaneEndpoint` が埋まる
