@@ -4,6 +4,12 @@
 
 前提: Kany8s は ControlPlane だけでなく Infrastructure 側も provider suite として提供する方針。
 
+## Status (2026-02-01)
+
+- Resolved: `Kany8sClusterTemplate` は `infrastructure.cluster.x-k8s.io` group に揃えた
+- Resolved: CAPI v1beta2 InfrastructureCluster contract として `Kany8sCluster.status.initialization.provisioned` を実装した（stub infra provider）
+- Remaining: `Kany8sCluster` はまだ stub で、kro(RGD) による infra 具象化は未対応（作業は `docs/TODO.md` を参照）
+
 ---
 
 ## 1. 見たもの（根拠となる箇所）
@@ -19,11 +25,11 @@
 - API/CRD
   - `api/v1alpha1/kany8scontrolplane_types.go`
   - `api/v1alpha1/kany8scontrolplanetemplate_types.go`
-  - `api/v1alpha1/kany8sclustertemplate_types.go`
+  - `api/infrastructure/v1alpha1/kany8sclustertemplate_types.go`
   - `api/infrastructure/v1alpha1/kany8scluster_types.go`
   - `config/crd/bases/controlplane.cluster.x-k8s.io_kany8scontrolplanes.yaml`
   - `config/crd/bases/controlplane.cluster.x-k8s.io_kany8scontrolplanetemplates.yaml`
-  - `config/crd/bases/controlplane.cluster.x-k8s.io_kany8sclustertemplates.yaml`
+  - `config/crd/bases/infrastructure.cluster.x-k8s.io_kany8sclustertemplates.yaml`
   - `config/crd/bases/infrastructure.cluster.x-k8s.io_kany8sclusters.yaml`
 
 - コントローラ実装
