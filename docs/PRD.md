@@ -399,7 +399,7 @@ spec:
 
 ### 14.4 Tests
 
-- [ ] fake client unit test で stub/kro mode の最小フローを固定する
+- [x] fake client unit test で stub/kro mode の最小フローを固定する
   - Touch: `internal/controller/infrastructure/kany8scluster_reconciler_test.go`
   - ケース例:
     - stub mode: `provisioned=true` + `Ready=True`

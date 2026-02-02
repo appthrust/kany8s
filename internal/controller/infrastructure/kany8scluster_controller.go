@@ -24,6 +24,7 @@ import (
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
 	"github.com/reoring/kany8s/internal/constants"
 	"github.com/reoring/kany8s/internal/kro"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,71 +78,77 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, kc.Spec.ResourceGraphDefinitionRef.Name)
 		if err != nil {
 			log.Error(err, "resolve kro instance GVK")
-			return ctrl.Result{}, err
-		}
-
-		instance := &unstructured.Unstructured{}
-		instance.SetGroupVersionKind(instanceGVK)
-		instance.SetName(kc.Name)
-		instance.SetNamespace(kc.Namespace)
-
-		instanceSpec, err := buildKroInstanceSpec(kc)
-		if err != nil {
-			log.Error(err, "invalid kroSpec")
-			reason = "InvalidKroSpec"
+			reason = "ResourceGraphDefinitionInvalid"
 			message = err.Error()
-			reasonCopy := reason
-			messageCopy := message
-			failureReason = &reasonCopy
-			failureMessage = &messageCopy
+			if apierrors.IsNotFound(err) {
+				reason = "ResourceGraphDefinitionNotFound"
+				message = fmt.Sprintf("ResourceGraphDefinition %q not found", kc.Spec.ResourceGraphDefinitionRef.Name)
+			}
+			requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
 		} else {
-			_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
-				instance.SetGroupVersionKind(instanceGVK)
-				instance.SetName(kc.Name)
-				instance.SetNamespace(kc.Namespace)
-				if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
-					return err
-				}
-				instance.Object["spec"] = instanceSpec
-				return nil
-			})
-			if err != nil {
-				log.Error(err, "create or update kro instance")
-				return ctrl.Result{}, err
-			}
+			instance := &unstructured.Unstructured{}
+			instance.SetGroupVersionKind(instanceGVK)
+			instance.SetName(kc.Name)
+			instance.SetNamespace(kc.Namespace)
 
-			if err := r.Get(ctx, client.ObjectKey{Name: kc.Name, Namespace: kc.Namespace}, instance); err != nil {
-				log.Error(err, "get kro instance")
-				return ctrl.Result{}, err
-			}
-			instanceStatus, err := kro.ReadInstanceStatus(instance)
+			instanceSpec, err := buildKroInstanceSpec(kc)
 			if err != nil {
-				log.Error(err, "read kro instance status")
-				return ctrl.Result{}, err
-			}
-
-			provisioned = instanceStatus.Ready
-			if provisioned {
-				readyStatus = metav1.ConditionTrue
-				if instanceStatus.Reason != "" {
-					reason = instanceStatus.Reason
-				} else {
-					reason = "Ready"
-				}
-				if instanceStatus.Message != "" {
-					message = instanceStatus.Message
-				} else {
-					message = "infrastructure is ready"
-				}
+				log.Error(err, "invalid kroSpec")
+				reason = "InvalidKroSpec"
+				message = err.Error()
+				reasonCopy := reason
+				messageCopy := message
+				failureReason = &reasonCopy
+				failureMessage = &messageCopy
 			} else {
-				readyStatus = metav1.ConditionFalse
-				if instanceStatus.Reason != "" {
-					reason = instanceStatus.Reason
+				_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
+					instance.SetGroupVersionKind(instanceGVK)
+					instance.SetName(kc.Name)
+					instance.SetNamespace(kc.Namespace)
+					if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
+						return err
+					}
+					instance.Object["spec"] = instanceSpec
+					return nil
+				})
+				if err != nil {
+					log.Error(err, "create or update kro instance")
+					return ctrl.Result{}, err
 				}
-				if instanceStatus.Message != "" {
-					message = instanceStatus.Message
+
+				if err := r.Get(ctx, client.ObjectKey{Name: kc.Name, Namespace: kc.Namespace}, instance); err != nil {
+					log.Error(err, "get kro instance")
+					return ctrl.Result{}, err
 				}
-				requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+				instanceStatus, err := kro.ReadInstanceStatus(instance)
+				if err != nil {
+					log.Error(err, "read kro instance status")
+					return ctrl.Result{}, err
+				}
+
+				provisioned = instanceStatus.Ready
+				if provisioned {
+					readyStatus = metav1.ConditionTrue
+					if instanceStatus.Reason != "" {
+						reason = instanceStatus.Reason
+					} else {
+						reason = "Ready"
+					}
+					if instanceStatus.Message != "" {
+						message = instanceStatus.Message
+					} else {
+						message = "infrastructure is ready"
+					}
+				} else {
+					readyStatus = metav1.ConditionFalse
+					if instanceStatus.Reason != "" {
+						reason = instanceStatus.Reason
+					}
+					if instanceStatus.Message != "" {
+						message = instanceStatus.Message
+					}
+					requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+				}
 			}
 		}
 	}

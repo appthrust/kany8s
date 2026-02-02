@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
@@ -543,5 +544,142 @@ func TestKany8sClusterReconciler_KroMode_SetsProvisionedWhenInstanceReady(t *tes
 	}
 	if cond.Status != metav1.ConditionTrue {
 		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionTrue)
+	}
+}
+
+func TestKany8sClusterReconciler_KroMode_RequeuesWhenResourceGraphDefinitionNotFound(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := infrastructurev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sCluster scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+
+	kc := &infrastructurev1alpha1.Kany8sCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: testNamespace},
+		Spec: infrastructurev1alpha1.Kany8sClusterSpec{
+			ResourceGraphDefinitionRef: &infrastructurev1alpha1.ResourceGraphDefinitionReference{Name: testRGDName},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kc).WithStatusSubresource(kc).Build()
+	r := &Kany8sClusterReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: testClusterName, Namespace: testNamespace}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter to be set while waiting for RGD")
+	}
+
+	got := &infrastructurev1alpha1.Kany8sCluster{}
+	if err := c.Get(ctx, client.ObjectKey{Name: testClusterName, Namespace: testNamespace}, got); err != nil {
+		t.Fatalf("get Kany8sCluster: %v", err)
+	}
+
+	if got.Status.Initialization.Provisioned {
+		t.Fatalf("status.initialization.provisioned = true, want false")
+	}
+
+	cond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if cond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != "ResourceGraphDefinitionNotFound" {
+		t.Fatalf("Ready condition reason = %q, want %q", cond.Reason, "ResourceGraphDefinitionNotFound")
+	}
+	if !strings.Contains(cond.Message, testRGDName) {
+		t.Fatalf("Ready condition message = %q, want to contain %q", cond.Message, testRGDName)
+	}
+	if got.Status.FailureReason != nil {
+		t.Fatalf("status.failureReason = %q, want nil", *got.Status.FailureReason)
+	}
+	if got.Status.FailureMessage != nil {
+		t.Fatalf("status.failureMessage = %q, want nil", *got.Status.FailureMessage)
+	}
+}
+
+func TestKany8sClusterReconciler_KroMode_RequeuesWhenResourceGraphDefinitionIsInvalid(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := infrastructurev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sCluster scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+
+	kc := &infrastructurev1alpha1.Kany8sCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: testNamespace},
+		Spec: infrastructurev1alpha1.Kany8sClusterSpec{
+			ResourceGraphDefinitionRef: &infrastructurev1alpha1.ResourceGraphDefinitionReference{Name: testRGDName},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": testRGDName,
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				// kind intentionally missing
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kc, rgd).WithStatusSubresource(kc).Build()
+	r := &Kany8sClusterReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: testClusterName, Namespace: testNamespace}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter to be set while waiting for RGD")
+	}
+
+	got := &infrastructurev1alpha1.Kany8sCluster{}
+	if err := c.Get(ctx, client.ObjectKey{Name: testClusterName, Namespace: testNamespace}, got); err != nil {
+		t.Fatalf("get Kany8sCluster: %v", err)
+	}
+
+	if got.Status.Initialization.Provisioned {
+		t.Fatalf("status.initialization.provisioned = true, want false")
+	}
+
+	cond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if cond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != "ResourceGraphDefinitionInvalid" {
+		t.Fatalf("Ready condition reason = %q, want %q", cond.Reason, "ResourceGraphDefinitionInvalid")
+	}
+	if !strings.Contains(cond.Message, "missing spec.schema.kind") {
+		t.Fatalf("Ready condition message = %q, want to contain %q", cond.Message, "missing spec.schema.kind")
+	}
+	if got.Status.FailureReason != nil {
+		t.Fatalf("status.failureReason = %q, want nil", *got.Status.FailureReason)
+	}
+	if got.Status.FailureMessage != nil {
+		t.Fatalf("status.failureMessage = %q, want nil", *got.Status.FailureMessage)
 	}
 }
