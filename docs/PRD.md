@@ -358,7 +358,7 @@ spec:
   - Touch: `api/infrastructure/v1alpha1/` (new file or inline)
   - DoD: `spec.resourceGraphDefinitionRef.name` を型として表現できる
 
-- [ ] `Kany8sClusterSpec` に `spec.resourceGraphDefinitionRef` を追加する（kro 連携のスイッチ）
+- [x] `Kany8sClusterSpec` に `spec.resourceGraphDefinitionRef` を追加する（kro 連携のスイッチ）
   - Touch: `api/infrastructure/v1alpha1/kany8scluster_types.go`
   - 仕様: 未指定なら stub mode / 指定ありなら kro mode
   - DoD: `make manifests generate test` が通る

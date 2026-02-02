@@ -222,3 +222,5 @@
 - 2026-02-02: Documented the infrastructure RGD instance normalized status contract for `Kany8sCluster` in `docs/rgd-contract.md`; extended the devtools doc test; verified `make test` and `make lint`.
 
 - 2026-02-02: Added infrastructure-group `ResourceGraphDefinitionReference` type (for upcoming `spec.resourceGraphDefinitionRef`) plus a devtools test; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-02: Added optional `spec.resourceGraphDefinitionRef` to infrastructure `Kany8sCluster` as the kro integration switch; regenerated manifests/deepcopy and updated devtools assertions; verified `make test` and `make lint`.

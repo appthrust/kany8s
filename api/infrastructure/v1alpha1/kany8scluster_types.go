@@ -26,6 +26,13 @@ import (
 
 // Kany8sClusterSpec defines the desired state of Kany8sCluster
 type Kany8sClusterSpec struct {
+	// resourceGraphDefinitionRef identifies the kro ResourceGraphDefinition to use
+	// for provisioning infrastructure.
+	//
+	// When unset, the controller runs in stub mode.
+	// +optional
+	ResourceGraphDefinitionRef *ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef,omitempty"`
+
 	// kroSpec is an arbitrary, provider-specific object.
 	// +optional
 	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`

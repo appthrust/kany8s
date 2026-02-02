@@ -22,6 +22,7 @@ func TestKany8sClusterAPIScaffoldExists(t *testing.T) {
 		"type Kany8sClusterInitializationStatus struct",
 		"type Kany8sClusterStatus struct",
 		"type Kany8sCluster struct",
+		"ResourceGraphDefinitionRef *ResourceGraphDefinitionReference",
 		"KroSpec *apiextensionsv1.JSON",
 		"Provisioned bool",
 		"Conditions []metav1.Condition",
@@ -59,6 +60,8 @@ func TestGeneratedCRDBasesContainExpectedSchemaForKany8sCluster(t *testing.T) {
 		"subresources:",
 		"status: {}",
 		"x-kubernetes-preserve-unknown-fields: true",
+		"resourceGraphDefinitionRef:",
+		"When unset, the controller runs in stub mode.",
 		"provisioned:",
 	}
 	for _, want := range wantSubstrings {
