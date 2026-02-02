@@ -84,6 +84,30 @@ func TestSelfManagedAcceptanceTestScriptExists(t *testing.T) {
 	}
 }
 
+func TestSelfManagedAcceptanceTestScriptWaitsForCAPDWebhook(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-self-managed.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	// CAPD uses admission webhooks; applying Docker* resources too early results in
+	// connection refused errors. The acceptance script should wait for the webhook Service endpoints.
+	wantSubstrings := []string{
+		"capd-webhook-service",
+		"endpoints",
+		"rollout status",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(script, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(scriptPath), want)
+		}
+	}
+}
+
 func TestMakefileHasSelfManagedAcceptanceTarget(t *testing.T) {
 	root := findRepoRoot(t)
 

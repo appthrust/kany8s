@@ -66,6 +66,23 @@ func TestGeneratedCRDBasesContainExpectedSchemaForKany8sKubeadmControlPlane(t *t
 	}
 }
 
+func TestKany8sKubeadmControlPlaneCRDHasCAPIContractLabel(t *testing.T) {
+	root := findRepoRoot(t)
+
+	crdPath := filepath.Join(root, "config", "crd", "bases", "controlplane.cluster.x-k8s.io_kany8skubeadmcontrolplanes.yaml")
+	crdBytes, err := os.ReadFile(crdPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", crdPath, err)
+	}
+
+	crd := string(crdBytes)
+	// Cluster API resolves a v1beta2 contract reference to our v1alpha1 API via this label.
+	// Without it, CAPI can't reliably interact with the ControlPlane provider object.
+	if !strings.Contains(crd, "cluster.x-k8s.io/v1beta2: v1alpha1") {
+		t.Fatalf("%s missing CAPI contract label %q", filepath.ToSlash(crdPath), "cluster.x-k8s.io/v1beta2: v1alpha1")
+	}
+}
+
 func TestKany8sKubeadmControlPlaneStatusHasRequiredFields(t *testing.T) {
 	root := findRepoRoot(t)
 

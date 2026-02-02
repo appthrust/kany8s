@@ -104,6 +104,7 @@ type Kany8sKubeadmControlPlaneStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
 
 // Kany8sKubeadmControlPlane is the Schema for the kany8skubeadmcontrolplanes API
 type Kany8sKubeadmControlPlane struct {

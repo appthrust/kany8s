@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	controlplanev1alpha1 "github.com/reoring/kany8s/api/v1alpha1"
 	"github.com/reoring/kany8s/internal/constants"
@@ -45,6 +46,14 @@ import (
 )
 
 const (
+	// kubeadmCertificatesDirDefault is kubeadm's default location for PKI assets.
+	// We rewrite to a writable runtime directory for CAPD/kindest nodes where intermediate
+	// parents (e.g. /etc/kubernetes) may not exist at bootstrap time.
+	kubeadmCertificatesDirDefault = "/etc/kubernetes/pki"
+	bootstrapCertificatesDir      = "/run/kubeadm/pki"
+)
+
+const (
 	conditionTypeOwnerClusterResolved = "OwnerClusterResolved"
 	conditionTypeReady                = "Ready"
 	conditionTypeCreating             = "Creating"
@@ -55,6 +64,7 @@ const (
 	reasonOwnerClusterGetFailed = "OwnerClusterGetFailed"
 
 	reasonWaitingForInfrastructureEndpoint    = "WaitingForInfrastructureEndpoint"
+	reasonWaitingForRemoteConnectionProbe     = "WaitingForRemoteConnectionProbe"
 	reasonWaitingForControlPlaneMachineReady  = "WaitingForControlPlaneMachineReady"
 	reasonWaitingForControlPlaneMachineCreate = "WaitingForControlPlaneMachineCreated"
 	reasonControlPlaneReady                   = "Ready"
@@ -74,6 +84,7 @@ type Kany8sKubeadmControlPlaneReconciler struct {
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=kubeadmconfigs,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=*,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -204,19 +215,28 @@ func (r *Kany8sKubeadmControlPlaneReconciler) reconcileReadiness(ctx context.Con
 		return r.requeueNotReady(ctx, cp, reasonWaitingForInfrastructureEndpoint, "waiting for infrastructure controlPlaneEndpoint to be set")
 	}
 
-	machineReady, err := r.hasReadyControlPlaneMachine(ctx, cluster)
-	if err != nil {
-		message := fmt.Sprintf("list control plane Machines: %v", err)
-		return r.requeueNotReady(ctx, cp, reasonWaitingForControlPlaneMachineCreate, message)
-	}
-
-	if machineReady && !cp.Status.Initialization.ControlPlaneInitialized {
+	remoteConnectionProbeReady := meta.IsStatusConditionTrue(cluster.Status.Conditions, clusterv1.ClusterRemoteConnectionProbeCondition)
+	if remoteConnectionProbeReady && !cp.Status.Initialization.ControlPlaneInitialized {
 		if err := r.reconcileControlPlaneInitialized(ctx, cp); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
+
 	if !cp.Status.Initialization.ControlPlaneInitialized {
-		return r.requeueNotReady(ctx, cp, reasonWaitingForControlPlaneMachineReady, "waiting for a control plane Machine to become Ready")
+		machineReady, err := r.hasReadyControlPlaneMachine(ctx, cluster)
+		if err != nil {
+			message := fmt.Sprintf("list control plane Machines: %v", err)
+			return r.requeueNotReady(ctx, cp, reasonWaitingForControlPlaneMachineCreate, message)
+		}
+		if machineReady {
+			if err := r.reconcileControlPlaneInitialized(ctx, cp); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	if !cp.Status.Initialization.ControlPlaneInitialized {
+		return r.requeueNotReady(ctx, cp, reasonWaitingForRemoteConnectionProbe, "waiting for Cluster RemoteConnectionProbe=True")
 	}
 
 	if err := r.reconcileReadyConditions(ctx, cp, metav1.ConditionTrue, reasonControlPlaneReady, "control plane is ready"); err != nil {
@@ -343,10 +363,14 @@ func (r *Kany8sKubeadmControlPlaneReconciler) reconcileInitialControlPlaneKubead
 		desiredSpec = *cp.Spec.KubeadmConfigSpec.DeepCopy()
 	}
 	desiredSpec.ClusterConfiguration.ControlPlaneEndpoint = endpoint.String()
+	if desiredSpec.ClusterConfiguration.CertificatesDir == "" {
+		desiredSpec.ClusterConfiguration.CertificatesDir = bootstrapCertificatesDir
+	}
 	if desiredSpec.InitConfiguration.LocalAPIEndpoint.BindPort == 0 {
 		desiredSpec.InitConfiguration.LocalAPIEndpoint.BindPort = endpoint.Port
 	}
-	desiredSpec.Files = mergeBootstrapFiles(desiredSpec.Files, certificates.AsFiles())
+	certFiles := rewriteKubeadmCertificatesDir(certificates.AsFiles(), desiredSpec.ClusterConfiguration.CertificatesDir)
+	desiredSpec.Files = mergeBootstrapFiles(desiredSpec.Files, certFiles)
 
 	existing := &bootstrapv1.KubeadmConfig{}
 	if err := r.Get(ctx, key, existing); err != nil {
@@ -398,6 +422,25 @@ func mergeBootstrapFiles(base []bootstrapv1.File, inject []bootstrapv1.File) []b
 		out = append(out, f)
 	}
 	out = append(out, inject...)
+	return out
+}
+
+func rewriteKubeadmCertificatesDir(files []bootstrapv1.File, certificatesDir string) []bootstrapv1.File {
+	if len(files) == 0 {
+		return files
+	}
+	if strings.TrimSpace(certificatesDir) == "" || certificatesDir == kubeadmCertificatesDirDefault {
+		return files
+	}
+
+	out := make([]bootstrapv1.File, 0, len(files))
+	for _, f := range files {
+		nf := f
+		if strings.HasPrefix(nf.Path, kubeadmCertificatesDirDefault+"/") {
+			nf.Path = strings.TrimRight(certificatesDir, "/") + strings.TrimPrefix(nf.Path, kubeadmCertificatesDirDefault)
+		}
+		out = append(out, nf)
+	}
 	return out
 }
 

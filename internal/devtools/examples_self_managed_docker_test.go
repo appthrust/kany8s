@@ -26,7 +26,7 @@ func TestExamplesSelfManagedDockerSampleExists(t *testing.T) {
 		"controlPlaneRef:",
 		"apiGroup: controlplane.cluster.x-k8s.io",
 		"kind: Kany8sKubeadmControlPlane",
-		"apiVersion: infrastructure.cluster.x-k8s.io/v1beta1",
+		"apiVersion: infrastructure.cluster.x-k8s.io/v1beta2",
 		"kind: DockerMachineTemplate",
 		"apiVersion: controlplane.cluster.x-k8s.io/v1alpha1",
 		"machineTemplate:",

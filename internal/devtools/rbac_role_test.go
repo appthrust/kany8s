@@ -114,6 +114,44 @@ func TestGeneratedManagerRoleIncludesEventsRBAC(t *testing.T) {
 	}
 }
 
+func TestGeneratedManagerRoleIncludesCRDReadRBAC(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rolePath := filepath.Join(root, "config", "rbac", "role.yaml")
+	roleBytes, err := os.ReadFile(rolePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rolePath, err)
+	}
+
+	var role rbacRole
+	if err := yaml.Unmarshal(roleBytes, &role); err != nil {
+		t.Fatalf("parse %q: %v", rolePath, err)
+	}
+
+	found := false
+	for _, rule := range role.Rules {
+		if !slices.Contains(rule.APIGroups, "apiextensions.k8s.io") {
+			continue
+		}
+		if !slices.Contains(rule.Resources, "customresourcedefinitions") {
+			continue
+		}
+		missing := []string{}
+		for _, verb := range []string{"get", "list", "watch"} {
+			if !slices.Contains(rule.Verbs, verb) {
+				missing = append(missing, verb)
+			}
+		}
+		if len(missing) == 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("%s missing RBAC rule for apiextensions.k8s.io customresourcedefinitions with verbs get,list,watch", filepath.ToSlash(rolePath))
+	}
+}
+
 func TestGeneratedManagerRoleIncludesSecretsRBAC(t *testing.T) {
 	root := findRepoRoot(t)
 

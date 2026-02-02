@@ -492,7 +492,7 @@ func TestKany8sKubeadmControlPlaneReconciler_MinimalFlow_WaitsForEndpointThenCre
 
 	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got, "control plane")
 	kcpTestMustEndpoint(t, got.Spec.ControlPlaneEndpoint, "127.0.0.1", 6443)
-	kcpTestMustCondition(t, got.Status.Conditions, conditionTypeReady, metav1.ConditionFalse, reasonWaitingForControlPlaneMachineReady)
+	kcpTestMustCondition(t, got.Status.Conditions, conditionTypeReady, metav1.ConditionFalse, reasonWaitingForRemoteConnectionProbe)
 
 	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-kubeconfig", Namespace: "default"}, &corev1.Secret{}, "kubeconfig Secret")
 	kcpTestMustGet(t, c, ctx, client.ObjectKey{Name: "demo-cluster-control-plane-0", Namespace: "default"}, &bootstrapv1.KubeadmConfig{}, "KubeadmConfig")
@@ -995,19 +995,22 @@ func TestKany8sKubeadmControlPlaneReconciler_CreatesKubeadmConfigForInitialContr
 	if got := kc.Spec.ClusterConfiguration.ControlPlaneEndpoint; got != "127.0.0.1:6443" {
 		t.Fatalf("KubeadmConfig.spec.clusterConfiguration.controlPlaneEndpoint = %q, want %q", got, "127.0.0.1:6443")
 	}
+	if got := kc.Spec.ClusterConfiguration.CertificatesDir; got != "/run/kubeadm/pki" {
+		t.Fatalf("KubeadmConfig.spec.clusterConfiguration.certificatesDir = %q, want %q", got, "/run/kubeadm/pki")
+	}
 	if got := kc.Spec.InitConfiguration.LocalAPIEndpoint.BindPort; got != 6443 {
 		t.Fatalf("KubeadmConfig.spec.initConfiguration.localAPIEndpoint.bindPort = %d, want %d", got, 6443)
 	}
 
 	foundCA := false
 	for _, f := range kc.Spec.Files {
-		if f.Path == "/etc/kubernetes/pki/ca.crt" && len(f.Content) > 0 {
+		if f.Path == "/run/kubeadm/pki/ca.crt" && len(f.Content) > 0 {
 			foundCA = true
 			break
 		}
 	}
 	if !foundCA {
-		t.Fatalf("expected KubeadmConfig.spec.files to include %q with non-empty content", "/etc/kubernetes/pki/ca.crt")
+		t.Fatalf("expected KubeadmConfig.spec.files to include %q with non-empty content", "/run/kubeadm/pki/ca.crt")
 	}
 }
 
@@ -1248,6 +1251,126 @@ func TestKany8sKubeadmControlPlaneReconciler_SetsControlPlaneInitializedAndReady
 	c := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithObjects(cp, cluster, infraCluster, infraClusterCRD, infraMachineTemplate, infraMachineTemplateCRD, readyMachine).
+		WithStatusSubresource(cp).
+		Build()
+	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 0 {
+		t.Fatalf("RequeueAfter = %s, want 0", res.RequeueAfter)
+	}
+
+	got := &controlplanev1alpha1.Kany8sKubeadmControlPlane{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "demo", Namespace: "default"}, got); err != nil {
+		t.Fatalf("get control plane: %v", err)
+	}
+	if !got.Status.Initialization.ControlPlaneInitialized {
+		t.Fatalf("control plane initialized = %v, want %v", got.Status.Initialization.ControlPlaneInitialized, true)
+	}
+	cond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if cond == nil {
+		t.Fatalf("expected %q condition", "Ready")
+	}
+	if cond.Status != metav1.ConditionTrue {
+		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionTrue)
+	}
+}
+
+func TestKany8sKubeadmControlPlaneReconciler_SetsControlPlaneInitializedWhenRemoteConnectionProbeIsTrue(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatalf("add core scheme: %v", err)
+	}
+	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sKubeadmControlPlane scheme: %v", err)
+	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Cluster scheme: %v", err)
+	}
+	if err := bootstrapv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add KubeadmConfig scheme: %v", err)
+	}
+	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add apiextensions scheme: %v", err)
+	}
+
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: kcpTestClusterName, Namespace: "default", UID: types.UID("1")}}
+	cluster.Spec.InfrastructureRef = clusterv1.ContractVersionedObjectReference{
+		APIGroup: "infrastructure.cluster.x-k8s.io",
+		Kind:     "DockerCluster",
+		Name:     kcpTestClusterName,
+	}
+	cluster.Status.Conditions = []metav1.Condition{{Type: clusterv1.ClusterRemoteConnectionProbeCondition, Status: metav1.ConditionTrue}}
+
+	cp := &controlplanev1alpha1.Kany8sKubeadmControlPlane{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"}}
+	cp.Spec.Version = kcpTestKubernetesVersion
+	cp.Spec.MachineTemplate.InfrastructureRef = clusterv1.ContractVersionedObjectReference{APIGroup: "infrastructure.cluster.x-k8s.io", Kind: "DockerMachineTemplate", Name: "demo"}
+	cp.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       kcpOwnerKindCluster,
+		Name:       kcpTestClusterName,
+		UID:        cluster.UID,
+	}}
+
+	infraCluster := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerCluster",
+		"metadata": map[string]any{
+			"name":      kcpTestClusterName,
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"controlPlaneEndpoint": map[string]any{
+				"host": "127.0.0.1",
+				"port": int64(6443),
+			},
+		},
+	}}
+
+	infraClusterCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerCluster"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	infraMachineTemplate := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "infrastructure.cluster.x-k8s.io/v1beta1",
+		"kind":       "DockerMachineTemplate",
+		"metadata": map[string]any{
+			"name":      "demo",
+			"namespace": "default",
+		},
+		"spec": map[string]any{
+			"template": map[string]any{
+				"metadata": map[string]any{
+					"labels": map[string]any{
+						"template-label": "true",
+					},
+				},
+				"spec": map[string]any{
+					"customImage": "kindest/node:v1.34.0",
+				},
+			},
+		},
+	}}
+
+	infraMachineTemplateCRD := &apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{
+		Name: capicontract.CalculateCRDName("infrastructure.cluster.x-k8s.io", "DockerMachineTemplate"),
+		Labels: map[string]string{
+			fmt.Sprintf("%s/%s", clusterv1.GroupVersion.Group, clusterv1.GroupVersion.Version): "v1beta1",
+		},
+	}}
+
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(cp, cluster, infraCluster, infraClusterCRD, infraMachineTemplate, infraMachineTemplateCRD).
 		WithStatusSubresource(cp).
 		Build()
 	r := &Kany8sKubeadmControlPlaneReconciler{Client: c, Scheme: scheme}
