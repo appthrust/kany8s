@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
+	"github.com/reoring/kany8s/internal/constants"
 	"github.com/reoring/kany8s/internal/kro"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -59,7 +60,20 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	provisioned := true
+	readyStatus := metav1.ConditionTrue
+	reason := "Ready"
+	message := "infrastructure is ready"
+	var failureReason *string
+	var failureMessage *string
+	var requeueAfter metav1.Duration
+
 	if kc.Spec.ResourceGraphDefinitionRef != nil {
+		provisioned = false
+		readyStatus = metav1.ConditionFalse
+		reason = "Provisioning"
+		message = "waiting for infrastructure to become ready"
+
 		instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, kc.Spec.ResourceGraphDefinitionRef.Name)
 		if err != nil {
 			log.Error(err, "resolve kro instance GVK")
@@ -74,40 +88,77 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		instanceSpec, err := buildKroInstanceSpec(kc)
 		if err != nil {
 			log.Error(err, "invalid kroSpec")
-			return ctrl.Result{}, err
-		}
-
-		_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
-			instance.SetGroupVersionKind(instanceGVK)
-			instance.SetName(kc.Name)
-			instance.SetNamespace(kc.Namespace)
-			if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
-				return err
+			reason = "InvalidKroSpec"
+			message = err.Error()
+			reasonCopy := reason
+			messageCopy := message
+			failureReason = &reasonCopy
+			failureMessage = &messageCopy
+		} else {
+			_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
+				instance.SetGroupVersionKind(instanceGVK)
+				instance.SetName(kc.Name)
+				instance.SetNamespace(kc.Namespace)
+				if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
+					return err
+				}
+				instance.Object["spec"] = instanceSpec
+				return nil
+			})
+			if err != nil {
+				log.Error(err, "create or update kro instance")
+				return ctrl.Result{}, err
 			}
-			instance.Object["spec"] = instanceSpec
-			return nil
-		})
-		if err != nil {
-			log.Error(err, "create or update kro instance")
-			return ctrl.Result{}, err
+
+			if err := r.Get(ctx, client.ObjectKey{Name: kc.Name, Namespace: kc.Namespace}, instance); err != nil {
+				log.Error(err, "get kro instance")
+				return ctrl.Result{}, err
+			}
+			instanceStatus, err := kro.ReadInstanceStatus(instance)
+			if err != nil {
+				log.Error(err, "read kro instance status")
+				return ctrl.Result{}, err
+			}
+
+			provisioned = instanceStatus.Ready
+			if provisioned {
+				readyStatus = metav1.ConditionTrue
+				if instanceStatus.Reason != "" {
+					reason = instanceStatus.Reason
+				} else {
+					reason = "Ready"
+				}
+				if instanceStatus.Message != "" {
+					message = instanceStatus.Message
+				} else {
+					message = "infrastructure is ready"
+				}
+			} else {
+				readyStatus = metav1.ConditionFalse
+				if instanceStatus.Reason != "" {
+					reason = instanceStatus.Reason
+				}
+				if instanceStatus.Message != "" {
+					message = instanceStatus.Message
+				}
+				requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+			}
 		}
 	}
 
 	before := kc.DeepCopy()
-	kc.Status.Initialization.Provisioned = true
-	conditions.Set(kc, metav1.Condition{
-		Type:    "Ready",
-		Status:  metav1.ConditionTrue,
-		Reason:  "Ready",
-		Message: "infrastructure is ready",
-	})
-	kc.Status.FailureReason = nil
-	kc.Status.FailureMessage = nil
+	kc.Status.Initialization.Provisioned = provisioned
+	conditions.Set(kc, metav1.Condition{Type: "Ready", Status: readyStatus, Reason: reason, Message: message})
+	kc.Status.FailureReason = failureReason
+	kc.Status.FailureMessage = failureMessage
 	if err := r.Status().Patch(ctx, kc, client.MergeFrom(before)); err != nil {
 		log.Error(err, "update Kany8sCluster status")
 		return ctrl.Result{}, err
 	}
 
+	if requeueAfter.Duration != 0 {
+		return ctrl.Result{RequeueAfter: requeueAfter.Duration}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

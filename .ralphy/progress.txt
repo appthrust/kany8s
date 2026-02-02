@@ -234,3 +234,5 @@
 - 2026-02-02: Implemented infrastructure `Kany8sCluster` kro mode scaffolding (RGD -> instance GVK resolution + 1:1 kro instance create/update) in `internal/controller/infrastructure/kany8scluster_controller.go`; added a fake-client unit test in `internal/controller/infrastructure/kany8scluster_reconciler_test.go`; verified `make test` and `make lint`.
 
 - 2026-02-02: Made infrastructure kro instance spec rendering idempotent (expand `Kany8sCluster.spec.kroSpec` + inject `spec.clusterName`/`spec.clusterNamespace`) and added unit tests for drift correction; verified `make test` and `make lint`.
+
+- 2026-02-02: Aligned infrastructure `Kany8sCluster` kro mode status/conditions (provisioned/Ready + terminal failure semantics) to the normalized kro instance status; added fake-client unit tests; verified `make test` and `make lint`.

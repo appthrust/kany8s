@@ -389,7 +389,7 @@ spec:
     - `.spec.clusterName` / `.spec.clusterNamespace` は常に `Kany8sCluster` から注入
   - DoD: instance `.spec` の手動変更が reconcile で戻る
 
-- [ ] status/conditions を揃える（provisioned/Ready/failure）
+- [x] status/conditions を揃える（provisioned/Ready/failure）
   - Touch: `internal/controller/infrastructure/kany8scluster_controller.go`
   - 入力: `internal/kro/status.go` の `status.ready/reason/message`
   - DoD:
