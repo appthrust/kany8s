@@ -382,7 +382,7 @@ spec:
   - 利用: `internal/kro/gvk.go`
   - DoD: `spec.resourceGraphDefinitionRef` が指定された `Kany8sCluster` で kro instance が作成される
 
-- [ ] kro instance の spec 反映ルールを固定する（idempotent）
+- [x] kro instance の spec 反映ルールを固定する（idempotent）
   - Touch: `internal/controller/infrastructure/kany8scluster_controller.go`
   - MVP 既定:
     - `Kany8sCluster.spec.kroSpec` を instance `.spec` に展開

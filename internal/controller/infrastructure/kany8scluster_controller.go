@@ -18,6 +18,8 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
 	"github.com/reoring/kany8s/internal/kro"
@@ -69,6 +71,12 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		instance.SetName(kc.Name)
 		instance.SetNamespace(kc.Namespace)
 
+		instanceSpec, err := buildKroInstanceSpec(kc)
+		if err != nil {
+			log.Error(err, "invalid kroSpec")
+			return ctrl.Result{}, err
+		}
+
 		_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
 			instance.SetGroupVersionKind(instanceGVK)
 			instance.SetName(kc.Name)
@@ -76,9 +84,7 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
 				return err
 			}
-			if instance.Object["spec"] == nil {
-				instance.Object["spec"] = map[string]any{}
-			}
+			instance.Object["spec"] = instanceSpec
 			return nil
 		})
 		if err != nil {
@@ -103,6 +109,32 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func buildKroInstanceSpec(kc *infrastructurev1alpha1.Kany8sCluster) (map[string]any, error) {
+	if kc == nil {
+		return nil, fmt.Errorf("cluster is nil")
+	}
+
+	spec := map[string]any{}
+	if kc.Spec.KroSpec != nil && len(kc.Spec.KroSpec.Raw) > 0 {
+		var v any
+		if err := json.Unmarshal(kc.Spec.KroSpec.Raw, &v); err != nil {
+			return nil, fmt.Errorf("parse spec.kroSpec: %w", err)
+		}
+		if v == nil {
+			return nil, fmt.Errorf("spec.kroSpec must be a JSON object, got null")
+		}
+		obj, ok := v.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("spec.kroSpec must be a JSON object, got %T", v)
+		}
+		spec = obj
+	}
+
+	spec["clusterName"] = kc.Name
+	spec["clusterNamespace"] = kc.Namespace
+	return spec, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
