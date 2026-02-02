@@ -58,6 +58,7 @@ Kany8s は、CAPI の contract を満たす "最小の provider" として振る
 - 依存関係は RGD に閉じる: infra と control plane の値受け渡しが必要な場合は、ControlPlane が参照する "親 RGD" に infra も含め、RGD chaining/DAG 内で完結させる。Kany8s の CR 間で汎用 outputs を受け渡す仕組みは導入しない。
 - 小さく分割・合成: "巨大な 1 枚 RGD" を避け、部品 RGD + chaining で再利用可能にする。
 - Ready の定義を守る: ControlPlane の Ready は "API endpoint を設定できる" を意味し、Addon 等の周辺リソースの ready とは分離する。
+- 観測性は正規化 status に集約: Kany8s とユーザーが provider-specific な子リソースを覗かずに状況判断できるよう、kro instance の正規化 status (`ready/endpoint/reason/message/kubeconfigSecretRef`) を parent RGD でも可能な限り投影する。
 - Secrets は最小限: kubeconfig Secret 等、CAPI contract 上必須なもの以外は "汎用 outputs" を原則持ち込まない。
 - Working cluster first: CAPD(docker) をリファレンス環境として、`RemoteConnectionProbe=True` / `Cluster Available=True` を "成功" の最低条件に含める。
 
@@ -207,6 +208,10 @@ ControlPlane (managed control plane / kro instance):
 - Should: `status.message: string`
 - Should: `status.kubeconfigSecretRef` (name/namespace)
 
+補足 (Approach A / parent RGD):
+
+- `Kany8sControlPlane` が参照する kro instance が "親 RGD" の場合でも、親 instance の `status` は上記 ControlPlane contract を満たすこと。特に `ready/endpoint` は必須で、`reason/message/kubeconfigSecretRef` も可能な限り `controlPlane.status.*` から投影し、"親だけ見ればよい" 状態にする。
+
 Infrastructure (kro 連携を行う場合):
 
 - Must: `status.ready: boolean` (Infrastructure ready)
@@ -294,6 +299,9 @@ spec:
 - `readyWhen` は self resource しか参照できない
 - status の文字列テンプレートはリテラル欠落が起こり得るため CEL 1 式で連結する
 - status field は resource 参照を含まないと reject される(定数が置けない)
+- status の boolean field が materialize されないことがあるため、必要なら `int/ternary` 等で field presence を確保する
+- 他 resource の status を spec/status に参照する場合、参照先 field の欠落でテンプレート評価が落ち得る。`.?` / `orValue(...)` 等の欠落耐性を組み込み、待機中に "評価エラー" にならないようにする
+- Ready 判定の語彙を `status.state` 等に閉じない。正規化 contract は `status.ready` を唯一の source of truth とし、`status.state` は kro の内部状態/デバッグ用途に限定する
 - `NetworkPolicy` を含む graph が Ready にならない等の既知問題があるため、Kany8s 付属/推奨 RGD では避ける
 
 ### 11.3 セキュリティ要求
@@ -343,7 +351,7 @@ spec:
 - MVP は後方互換: `spec.resourceGraphDefinitionRef` が無い場合は現状どおり stub として `provisioned=true` を立てる
 - `spec.resourceGraphDefinitionRef` が指定された場合のみ kro 連携を有効化する
 - `Kany8sCluster` controller は provider-specific な CR を直接読まず、kro instance の正規化 status のみを読む
-- 新方針(案A): infra と control plane の値受け渡しが必要な場合は、`Kany8sControlPlane` が参照する "親 RGD" に infra を含めて完結させる。`Kany8sCluster` は control plane の inputs を生成/配布する役割を持たず、汎用 outputs を導入しない。
+- 新方針(案A): infra と control plane の値受け渡しが必要な場合は、`Kany8sControlPlane` が参照する "親 RGD" に infra を含めて完結させる。`Kany8sCluster` は control plane の inputs を生成/配布する役割を持たず、汎用 outputs を導入しない。あわせて親 RGD は `controlPlane.status.*` を top-level `status` に投影し、"親だけ見ればよい" 観測性を提供する。
 
 ### 14.1 Contract (docs)
 
@@ -351,6 +359,14 @@ spec:
   - 追加: Infrastructure contract `status.ready` / `status.reason` / `status.message`
   - 追加: `Kany8sCluster.status.initialization.provisioned` への反映ルール（`status.ready=true` -> `provisioned=true`）
   - DoD: RGD 作者が "infra 側は何を出せば良いか" を迷わない
+
+- [x] (Approach A) "親 RGD (infra + control plane)" の status 投影ガイドを `docs/rgd-contract.md` に追記する
+  - 仕様: 親 instance は `ready/endpoint` を必ず投影し、`reason/message/kubeconfigSecretRef` も可能な限り透過する
+  - DoD: Kany8s とユーザーが provider-specific な子リソースを覗かずに状況判断できる
+
+- [ ] (Approach A) infra outputs を control plane spec に渡す際の欠落耐性/必須 field のガイドを `docs/rgd-guidelines.md` に追記する
+  - 例: `.?` / `orValue(...)` の使いどころ、配列/文字列の default 戦略、field 未生成時に "評価エラー" を起こさない
+  - DoD: infra 待機中でも parent graph がテンプレート評価エラーで破綻しない
 
 ### 14.2 API (CRD)
 

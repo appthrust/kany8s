@@ -34,6 +34,22 @@ Note:
   - Meaning: reference to a provider-specific "source" Secret that contains a kubeconfig in `data.value`.
   - If set, Kany8s copies `data.value` into the CAPI-compatible `<cluster>-kubeconfig` Secret and reports progress via the `KubeconfigSecretReconciled` Condition.
 
+### Parent RGD (infra + control plane)
+
+Some environments want the RGD referenced by `Kany8sControlPlane` to also compose infrastructure resources.
+In this "Parent RGD" approach (infra + control plane), Kany8s still reads only the instance it created.
+
+Your Parent RGD MUST project the child control plane contract into the parent's top-level `status`.
+Kany8s does not read provider-specific child resources, nor nested `controlPlane.status.*` fields directly.
+
+Projection guidance (best-effort forwarding):
+
+- `status.ready` <- `controlPlane.status.ready` (required)
+- `status.endpoint` <- `controlPlane.status.endpoint` (required)
+- `status.reason` <- `controlPlane.status.reason` (optional)
+- `status.message` <- `controlPlane.status.message` (optional)
+- `status.kubeconfigSecretRef` <- `controlPlane.status.kubeconfigSecretRef` (optional)
+
 ### Infrastructure (for `Kany8sCluster`)
 
 If an RGD instance is intended to back `Kany8sCluster` in kro mode, it MUST expose:

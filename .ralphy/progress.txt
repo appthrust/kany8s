@@ -242,3 +242,5 @@
 - 2026-02-02: Confirmed devtools regression coverage for infrastructure API/CRD/samples and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-02: Added a minimal infra kro RGD example under `examples/kro/infra/` and updated `examples/capi/cluster.yaml` to include a `Kany8sCluster` in kro mode; added devtools tests to enforce the example files; verified `make test` and `make lint`.
+
+- 2026-02-02: Documented Parent RGD (infra + control plane) status projection guidance in `docs/rgd-contract.md`; extended the devtools doc test; marked the PRD item complete; verified `make test` and `make lint`.
