@@ -220,3 +220,5 @@
 - 2026-01-29: Added a CAPD+kubeadm self-managed acceptance test script (`hack/acceptance-test-self-managed.sh`) + Makefile targets; added devtools coverage; verified `make test` and `make lint`.
 
 - 2026-02-02: Documented the infrastructure RGD instance normalized status contract for `Kany8sCluster` in `docs/rgd-contract.md`; extended the devtools doc test; verified `make test` and `make lint`.
+
+- 2026-02-02: Added infrastructure-group `ResourceGraphDefinitionReference` type (for upcoming `spec.resourceGraphDefinitionRef`) plus a devtools test; marked the PRD item complete; verified `make test` and `make lint`.

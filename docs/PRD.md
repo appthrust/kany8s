@@ -354,7 +354,7 @@ spec:
 
 ### 14.2 API (CRD)
 
-- [ ] infra API group に `ResourceGraphDefinitionReference` を追加する（ControlPlane と同等の形）
+- [x] infra API group に `ResourceGraphDefinitionReference` を追加する（ControlPlane と同等の形）
   - Touch: `api/infrastructure/v1alpha1/` (new file or inline)
   - DoD: `spec.resourceGraphDefinitionRef.name` を型として表現できる
 
