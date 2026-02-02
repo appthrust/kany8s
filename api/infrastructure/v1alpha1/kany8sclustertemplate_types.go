@@ -47,6 +47,13 @@ type Kany8sClusterTemplateResource struct {
 // Kany8sClusterTemplateResourceSpec defines the desired state of a Kany8sCluster
 // created from a template.
 type Kany8sClusterTemplateResourceSpec struct {
+	// resourceGraphDefinitionRef identifies the kro ResourceGraphDefinition to use
+	// for provisioning infrastructure.
+	//
+	// When unset, the controller runs in stub mode.
+	// +optional
+	ResourceGraphDefinitionRef *ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef,omitempty"`
+
 	// kroSpec is an arbitrary, provider-specific object.
 	// +optional
 	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`

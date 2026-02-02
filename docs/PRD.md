@@ -363,7 +363,7 @@ spec:
   - 仕様: 未指定なら stub mode / 指定ありなら kro mode
   - DoD: `make manifests generate test` が通る
 
-- [ ] `Kany8sClusterTemplate` にも `resourceGraphDefinitionRef` を追加し、Topology から同等の入力が渡せるようにする
+- [x] `Kany8sClusterTemplate` にも `resourceGraphDefinitionRef` を追加し、Topology から同等の入力が渡せるようにする
   - Touch: `api/infrastructure/v1alpha1/kany8sclustertemplate_types.go`
   - DoD: ClusterClass/Topology から生成される `Kany8sCluster` が kro mode に入れる
 

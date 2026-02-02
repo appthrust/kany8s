@@ -224,3 +224,5 @@
 - 2026-02-02: Added infrastructure-group `ResourceGraphDefinitionReference` type (for upcoming `spec.resourceGraphDefinitionRef`) plus a devtools test; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-02: Added optional `spec.resourceGraphDefinitionRef` to infrastructure `Kany8sCluster` as the kro integration switch; regenerated manifests/deepcopy and updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-02: Added optional `spec.template.spec.resourceGraphDefinitionRef` to infrastructure `Kany8sClusterTemplate` (Topology switch for kro mode) and updated devtools CRD/schema assertions; verified `make test` and `make lint`.

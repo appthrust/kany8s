@@ -96,6 +96,7 @@ func TestInfrastructureKany8sClusterTemplateAPIScaffoldExists(t *testing.T) {
 		"type Kany8sClusterTemplateResource struct",
 		"ObjectMeta clusterv1.ObjectMeta",
 		"type Kany8sClusterTemplateResourceSpec struct",
+		"ResourceGraphDefinitionRef *ResourceGraphDefinitionReference",
 		"KroSpec *apiextensionsv1.JSON",
 		"type Kany8sClusterTemplate struct",
 		"type Kany8sClusterTemplateList struct",
@@ -157,6 +158,7 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 		"kind: Kany8sClusterTemplate",
 		"plural: kany8sclustertemplates",
 		"template:",
+		"resourceGraphDefinitionRef:",
 		"kroSpec:",
 		"- template",
 	}
@@ -164,6 +166,9 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 		if !strings.Contains(infraClusterTemplateCRD, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(infraClusterTemplateCRDPath), want)
 		}
+	}
+	if strings.Contains(infraClusterTemplateCRD, "- resourceGraphDefinitionRef") {
+		t.Errorf("%s should not require spec.template.spec.resourceGraphDefinitionRef (optional; omit for stub mode)", filepath.ToSlash(infraClusterTemplateCRDPath))
 	}
 	if strings.Contains(infraClusterTemplateCRD, "foo:") {
 		t.Errorf("%s should not include the scaffold example spec field foo", filepath.ToSlash(infraClusterTemplateCRDPath))
