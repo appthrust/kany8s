@@ -240,3 +240,5 @@
 - 2026-02-02: Added fake-client unit tests for `Kany8sCluster` kro mode to cover missing/invalid ResourceGraphDefinition handling (Ready reason/message + requeue) and updated the reconciler to surface those waits; verified `make test` and `make lint`.
 
 - 2026-02-02: Confirmed devtools regression coverage for infrastructure API/CRD/samples and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-02: Added a minimal infra kro RGD example under `examples/kro/infra/` and updated `examples/capi/cluster.yaml` to include a `Kany8sCluster` in kro mode; added devtools tests to enforce the example files; verified `make test` and `make lint`.

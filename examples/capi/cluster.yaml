@@ -4,8 +4,8 @@ metadata:
   name: demo-cluster
   namespace: default
 spec:
-  # Kany8s is currently a ControlPlane provider only. Replace this ref with your
-  # Infrastructure provider (e.g. DockerCluster, AWSCluster, AzureCluster, ...).
+  # Kany8sCluster is a minimal InfrastructureCluster provider.
+  # In kro mode, it provisions infra via an RGD (see examples/kro/infra/rgd.yaml).
   infrastructureRef:
     apiGroup: infrastructure.cluster.x-k8s.io
     kind: Kany8sCluster
@@ -14,6 +14,15 @@ spec:
     apiGroup: controlplane.cluster.x-k8s.io
     kind: Kany8sControlPlane
     name: demo-cluster
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+kind: Kany8sCluster
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  resourceGraphDefinitionRef:
+    name: demo-infra.kro.run
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
 kind: Kany8sControlPlane

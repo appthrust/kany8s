@@ -1,0 +1,8 @@
+apiVersion: kro.run/v1alpha1
+kind: DemoInfrastructure
+metadata:
+  name: demo-cluster
+  namespace: default
+spec:
+  clusterName: demo-cluster
+  clusterNamespace: default

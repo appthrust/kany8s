@@ -415,7 +415,7 @@ spec:
 
 ### 14.5 Examples
 
-- [ ] infra 向けの最小 RGD 例を追加し、`Kany8sCluster` と組み合わせた例を用意する
+- [x] infra 向けの最小 RGD 例を追加し、`Kany8sCluster` と組み合わせた例を用意する
   - Add: `examples/kro/infra/` (RGD yaml)
   - Update (or add): `examples/capi/` (Cluster + infraRef の例)
   - DoD: `kubectl apply` で `Kany8sCluster` が kro mode で Provisioned になるデモができる
