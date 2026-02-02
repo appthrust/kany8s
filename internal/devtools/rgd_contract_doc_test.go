@@ -19,10 +19,13 @@ func TestRgdContractDocExists(t *testing.T) {
 	doc := string(docBytes)
 	wantSubstrings := []string{
 		"# RGD Contract",
+		"`Kany8sCluster`",
 		"`status.ready`",
 		"`status.endpoint`",
 		"`status.reason`",
 		"`status.message`",
+		"Infrastructure",
+		"`status.initialization.provisioned`",
 		"RGD authors",
 		"tolerates missing",
 		"docs/rgd-guidelines.md",

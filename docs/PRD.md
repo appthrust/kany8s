@@ -347,7 +347,7 @@ spec:
 
 ### 14.1 Contract (docs)
 
-- [ ] infra RGD instance の status 契約を `docs/rgd-contract.md` に追記する
+- [x] infra RGD instance の status 契約を `docs/rgd-contract.md` に追記する
   - 追加: Infrastructure contract `status.ready` / `status.reason` / `status.message`
   - 追加: `Kany8sCluster.status.initialization.provisioned` への反映ルール（`status.ready=true` -> `provisioned=true`）
   - DoD: RGD 作者が "infra 側は何を出せば良いか" を迷わない

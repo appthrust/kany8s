@@ -1,6 +1,6 @@
 # RGD Contract
 
-This document defines the minimal contract an RGD instance (a custom resource created by kro from a `ResourceGraphDefinition`) MUST expose so `Kany8sControlPlane` can consume it without provider-specific logic.
+This document defines the minimal contract an RGD instance (a custom resource created by kro from a `ResourceGraphDefinition`) MUST expose so `Kany8sControlPlane` (and `Kany8sCluster` in kro mode) can consume it without provider-specific logic.
 
 ## Status Fields (Normalized)
 
@@ -11,6 +11,8 @@ Note:
 - For RGD authors: treat `status.ready` and `status.endpoint` as required outputs of your RGD instance.
 - Runtime behavior: the Kany8s controller tolerates missing fields by treating them as "not ready" (`ready=false`, empty endpoint) so it can keep reconciling safely even if kro status materialization is imperfect.
   - See `docs/rgd-guidelines.md` for pitfalls and recommended patterns.
+
+### ControlPlane (for `Kany8sControlPlane`)
 
 - `status.ready` (required, boolean)
   - Meaning: "the managed control plane is Ready" (control-plane ready, not addons ready).
@@ -32,6 +34,19 @@ Note:
   - Meaning: reference to a provider-specific "source" Secret that contains a kubeconfig in `data.value`.
   - If set, Kany8s copies `data.value` into the CAPI-compatible `<cluster>-kubeconfig` Secret and reports progress via the `KubeconfigSecretReconciled` Condition.
 
+### Infrastructure (for `Kany8sCluster`)
+
+If an RGD instance is intended to back `Kany8sCluster` in kro mode, it MUST expose:
+
+- `status.ready` (required, boolean)
+  - Meaning: "the infrastructure is provisioned" (infrastructure ready, not control-plane ready).
+
+- `status.reason` (optional, string)
+  - Short machine-friendly reason for the current state.
+
+- `status.message` (optional, string)
+  - Human-friendly message describing the current state.
+
 ### Reserved Status Fields
 
 kro reserves `status.conditions` and `status.state`. Do not use them for the above contract; use the dedicated fields listed here.
@@ -49,6 +64,9 @@ kro reserves `status.conditions` and `status.state`. Do not use them for the abo
 
 Kany8s surfaces `status.reason` / `status.message` primarily via Conditions (e.g., Ready/Creating).
 `Kany8sControlPlane.status.failureReason` / `failureMessage` are reserved for terminal, controller-detected errors (for example: invalid `spec.kroSpec`, invalid `status.endpoint`) and are cleared during normal provisioning.
+
+- For `Kany8sCluster` in kro mode:
+  - `Kany8sCluster.status.initialization.provisioned` (i.e., `status.initialization.provisioned`) reflects the infrastructure RGD instance `status.ready`.
 
 ## Example
 
