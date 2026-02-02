@@ -95,6 +95,7 @@ func TestConfigSamplesAreFilledInAndMatchCRDContracts(t *testing.T) {
 			wantKind:       "Kany8sCluster",
 			requiredStrings: [][]string{
 				{"metadata", "name"},
+				{"spec", "resourceGraphDefinitionRef", "name"},
 			},
 			requiredMaps: [][]string{
 				{"spec"},
@@ -106,6 +107,7 @@ func TestConfigSamplesAreFilledInAndMatchCRDContracts(t *testing.T) {
 			wantKind:       "Kany8sClusterTemplate",
 			requiredStrings: [][]string{
 				{"metadata", "name"},
+				{"spec", "template", "spec", "resourceGraphDefinitionRef", "name"},
 			},
 			requiredMaps: [][]string{
 				{"spec", "template", "spec"},

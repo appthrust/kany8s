@@ -226,3 +226,5 @@
 - 2026-02-02: Added optional `spec.resourceGraphDefinitionRef` to infrastructure `Kany8sCluster` as the kro integration switch; regenerated manifests/deepcopy and updated devtools assertions; verified `make test` and `make lint`.
 
 - 2026-02-02: Added optional `spec.template.spec.resourceGraphDefinitionRef` to infrastructure `Kany8sClusterTemplate` (Topology switch for kro mode) and updated devtools CRD/schema assertions; verified `make test` and `make lint`.
+
+- 2026-02-02: Updated infrastructure `config/samples` to include kro mode `resourceGraphDefinitionRef` and tightened devtools sample contract checks; verified `make test` and `make lint`.

@@ -8,4 +8,7 @@ metadata:
 spec:
   template:
     spec:
+      resourceGraphDefinitionRef:
+        # TODO: replace with your infra RGD name.
+        name: demo-infra.kro.run
       kroSpec: {}

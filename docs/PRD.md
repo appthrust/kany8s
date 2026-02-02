@@ -367,7 +367,7 @@ spec:
   - Touch: `api/infrastructure/v1alpha1/kany8sclustertemplate_types.go`
   - DoD: ClusterClass/Topology から生成される `Kany8sCluster` が kro mode に入れる
 
-- [ ] サンプルを更新する（kro mode の最小例を含める）
+- [x] サンプルを更新する（kro mode の最小例を含める）
   - Touch: `config/samples/infrastructure_v1alpha1_kany8scluster.yaml`, `config/samples/infrastructure_v1alpha1_kany8sclustertemplate.yaml`
   - DoD: `make deploy` 後に samples が apply できる
 

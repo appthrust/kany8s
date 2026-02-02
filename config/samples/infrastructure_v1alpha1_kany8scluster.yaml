@@ -6,4 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: demo-cluster
 spec:
+  resourceGraphDefinitionRef:
+    # TODO: replace with your infra RGD name.
+    name: demo-infra.kro.run
   kroSpec: {}
