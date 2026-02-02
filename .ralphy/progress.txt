@@ -238,3 +238,5 @@
 - 2026-02-02: Aligned infrastructure `Kany8sCluster` kro mode status/conditions (provisioned/Ready + terminal failure semantics) to the normalized kro instance status; added fake-client unit tests; verified `make test` and `make lint`.
 
 - 2026-02-02: Added fake-client unit tests for `Kany8sCluster` kro mode to cover missing/invalid ResourceGraphDefinition handling (Ready reason/message + requeue) and updated the reconciler to surface those waits; verified `make test` and `make lint`.
+
+- 2026-02-02: Confirmed devtools regression coverage for infrastructure API/CRD/samples and marked the PRD item complete; verified `make test` and `make lint`.

@@ -409,7 +409,7 @@ spec:
     - kro mode: RGD が無い/不正 -> Condition に理由が出て待機/失敗できる
   - Run: `make test`
 
-- [ ] devtools テストを追加/更新する（API/CRD/samples の回帰検知）
+- [x] devtools テストを追加/更新する（API/CRD/samples の回帰検知）
   - Touch: `internal/devtools/kany8scluster_api_test.go`, `internal/devtools/crd_bases_test.go` など
   - DoD: `make test` で CRD 生成・samples の整合が壊れたら検知できる
 
