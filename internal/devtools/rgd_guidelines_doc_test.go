@@ -26,6 +26,10 @@ func TestRgdGuidelinesDocExists(t *testing.T) {
 		"readyWhen",
 		"CEL",
 		"string template",
+		"Infra outputs",
+		"control plane spec",
+		"orValue",
+		".?",
 		"NetworkPolicy",
 		"docs/kro.md",
 	}

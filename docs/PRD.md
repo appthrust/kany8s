@@ -364,7 +364,7 @@ spec:
   - 仕様: 親 instance は `ready/endpoint` を必ず投影し、`reason/message/kubeconfigSecretRef` も可能な限り透過する
   - DoD: Kany8s とユーザーが provider-specific な子リソースを覗かずに状況判断できる
 
-- [ ] (Approach A) infra outputs を control plane spec に渡す際の欠落耐性/必須 field のガイドを `docs/rgd-guidelines.md` に追記する
+- [x] (Approach A) infra outputs を control plane spec に渡す際の欠落耐性/必須 field のガイドを `docs/rgd-guidelines.md` に追記する
   - 例: `.?` / `orValue(...)` の使いどころ、配列/文字列の default 戦略、field 未生成時に "評価エラー" を起こさない
   - DoD: infra 待機中でも parent graph がテンプレート評価エラーで破綻しない
 

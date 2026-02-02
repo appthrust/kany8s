@@ -43,6 +43,45 @@ If you reference external CRDs (ACK / Config Connector / ASO, etc.), note that m
 - If an optional resource (`includeWhen=false`) is referenced from status, the status field can be omitted entirely.
 - If a status field must always exist (like `status.ready` / `status.endpoint`), avoid depending on optional resources.
 
+## Infra outputs into control plane spec (Approach A)
+
+If a parent RGD composes infrastructure resources and a managed control plane resource, it is common to wire infra outputs (VPC IDs, subnet IDs, security group IDs, etc.) into the control plane spec.
+
+During the "infra not ready yet" phase, referenced fields can be missing. If you reference missing fields directly, kro can fail template evaluation and the parent graph can get stuck.
+
+Guidelines:
+
+- Use optional field selection (`.?`) anywhere a field might be missing.
+- Provide safe defaults with `orValue(...)` so template evaluation succeeds while waiting.
+- Guard each nesting level that might be missing (for example `status.?ackResourceMetadata.?arn`).
+
+Examples (CEL snippets embedded in YAML templates):
+
+```yaml
+spec:
+  # Default strings to empty string
+  roleARN: ${role.status.?ackResourceMetadata.?arn.orValue("")}
+
+  # Default arrays to empty list
+  subnetIDs: ${vpc.status.?subnetIDs.orValue([])}
+
+  # Default objects to empty object (when the target field expects an object)
+  tags: ${someResource.status.?tags.orValue({})}
+```
+
+If the downstream CRD has strict validation (for example, a required field that must be non-empty or match a pattern), do NOT default to an invalid placeholder. Instead, gate the dependent resource using `includeWhen` so it is only created once inputs exist:
+
+```yaml
+resources:
+  - id: controlPlane
+    includeWhen: ${vpc.status.?vpcID.orValue("") != ""}
+    template:
+      apiVersion: example.kro.run/v1alpha1
+      kind: ExampleControlPlane
+      spec:
+        vpcID: ${vpc.status.?vpcID.orValue("")}
+```
+
 ### Boolean materialization quirks
 
 - Some boolean status expressions may not materialize as fields.
