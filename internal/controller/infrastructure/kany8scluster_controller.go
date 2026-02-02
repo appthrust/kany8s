@@ -20,11 +20,14 @@ import (
 	"context"
 
 	infrastructurev1alpha1 "github.com/reoring/kany8s/api/infrastructure/v1alpha1"
+	"github.com/reoring/kany8s/internal/kro"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -52,6 +55,36 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	kc := &infrastructurev1alpha1.Kany8sCluster{}
 	if err := r.Get(ctx, req.NamespacedName, kc); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if kc.Spec.ResourceGraphDefinitionRef != nil {
+		instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, kc.Spec.ResourceGraphDefinitionRef.Name)
+		if err != nil {
+			log.Error(err, "resolve kro instance GVK")
+			return ctrl.Result{}, err
+		}
+
+		instance := &unstructured.Unstructured{}
+		instance.SetGroupVersionKind(instanceGVK)
+		instance.SetName(kc.Name)
+		instance.SetNamespace(kc.Namespace)
+
+		_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
+			instance.SetGroupVersionKind(instanceGVK)
+			instance.SetName(kc.Name)
+			instance.SetNamespace(kc.Namespace)
+			if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
+				return err
+			}
+			if instance.Object["spec"] == nil {
+				instance.Object["spec"] = map[string]any{}
+			}
+			return nil
+		})
+		if err != nil {
+			log.Error(err, "create or update kro instance")
+			return ctrl.Result{}, err
+		}
 	}
 
 	before := kc.DeepCopy()

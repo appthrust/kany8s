@@ -377,7 +377,7 @@ spec:
   - Touch: `internal/controller/infrastructure/kany8scluster_controller.go` (+kubebuilder:rbac)
   - DoD: `make manifests` で生成される RBAC に `resourcegraphdefinitions.kro.run` と instance への権限が含まれる
 
-- [ ] kro mode の足場を実装する（RGD -> instance GVK 解決 + instance 1:1 create/update）
+- [x] kro mode の足場を実装する（RGD -> instance GVK 解決 + instance 1:1 create/update）
   - Touch: `internal/controller/infrastructure/kany8scluster_controller.go`
   - 利用: `internal/kro/gvk.go`
   - DoD: `spec.resourceGraphDefinitionRef` が指定された `Kany8sCluster` で kro instance が作成される

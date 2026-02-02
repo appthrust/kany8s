@@ -230,3 +230,5 @@
 - 2026-02-02: Updated infrastructure `config/samples` to include kro mode `resourceGraphDefinitionRef` and tightened devtools sample contract checks; verified `make test` and `make lint`.
 
 - 2026-02-02: Added kubebuilder RBAC markers to the infrastructure `Kany8sCluster` controller for kro `ResourceGraphDefinition` reads and dynamic kro instance create/update; added a devtools test asserting the markers exist; regenerated manifests; verified `make test` and `make lint`.
+
+- 2026-02-02: Implemented infrastructure `Kany8sCluster` kro mode scaffolding (RGD -> instance GVK resolution + 1:1 kro instance create/update) in `internal/controller/infrastructure/kany8scluster_controller.go`; added a fake-client unit test in `internal/controller/infrastructure/kany8scluster_reconciler_test.go`; verified `make test` and `make lint`.
