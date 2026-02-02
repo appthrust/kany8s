@@ -373,7 +373,7 @@ spec:
 
 ### 14.3 Controller (kro integration)
 
-- [ ] RBAC を追加する（RGD 読み取り + kro instance 作成/更新）
+- [x] RBAC を追加する（RGD 読み取り + kro instance 作成/更新）
   - Touch: `internal/controller/infrastructure/kany8scluster_controller.go` (+kubebuilder:rbac)
   - DoD: `make manifests` で生成される RBAC に `resourcegraphdefinitions.kro.run` と instance への権限が含まれる
 
