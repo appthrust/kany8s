@@ -173,7 +173,7 @@
 ## 2.15 Kany8s の install/build/deploy
 
 - [x] `make install` を追加する
-- [ ] `make docker-build IMG="${IMG}"` を追加する
+- [x] `make docker-build IMG="${IMG}"` を追加する
 - [ ] `kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"` を追加する
 - [ ] `backup_kustomization` を呼ぶ
 - [ ] `make deploy IMG="${IMG}"` を追加する
