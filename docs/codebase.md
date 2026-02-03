@@ -68,8 +68,15 @@ Make targets live in `Makefile` (266 lines):
 - Unit/envtest: `make test` (`Makefile:60-63`)
 - E2E (kind-based): `make test-e2e` (`Makefile:84-88`)
 - Acceptance:
-  - kro demo flow: `make test-acceptance` (`Makefile:89-92`) -> `hack/acceptance-test.sh`
-  - self-managed flow: `make test-acceptance-self-managed` (`Makefile:97-103`) -> `hack/acceptance-test-self-managed.sh`
+  - kro reflection (managed control plane): `make test-acceptance-kro-reflection` -> `hack/acceptance-test-kro-reflection.sh`
+    - legacy alias: `make test-acceptance`
+  - kro infra reflection (infrastructure): `make test-acceptance-kro-infra-reflection` -> `hack/acceptance-test-kro-infra-reflection.sh`
+    - keep cluster: `make test-acceptance-kro-infra-reflection-keep`
+    - wrapper runner: `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`
+  - kro reflection (multi RGD / multi instance kind): `make test-acceptance-kro-reflection-multi-rgd` -> `hack/acceptance-test-kro-reflection-multi-rgd.sh`
+    - legacy alias: `make test-acceptance-multi-rgd`
+  - CAPD + kubeadm (self-managed): `make test-acceptance-capd-kubeadm` -> `hack/acceptance-test-capd-kubeadm.sh`
+    - legacy alias: `make test-acceptance-self-managed`
 - Local run: `make run` (`Makefile:127-129`) -> `go run ./cmd/main.go`
 - Build/install/deploy:
   - `make build` (`Makefile:123-126`) -> `bin/manager`
@@ -260,31 +267,49 @@ Purpose:
 
 ### kro demo flow
 
-File: `hack/acceptance-test.sh` (275 lines)
+File: `hack/acceptance-test-kro-reflection.sh`
 
 Major shell functions:
 
-- `need_cmd()` (`hack/acceptance-test.sh:39`)
-- `k()` (`hack/acceptance-test.sh:48`)
-- `collect_diagnostics()` (`hack/acceptance-test.sh:65`)
-- `on_exit()` (`hack/acceptance-test.sh:114`)
+- `need_cmd()` (`hack/acceptance-test-kro-reflection.sh:43`)
+- `k()` (`hack/acceptance-test-kro-reflection.sh:52`)
+- `collect_diagnostics()` (`hack/acceptance-test-kro-reflection.sh:69`)
+- `on_exit()` (`hack/acceptance-test-kro-reflection.sh:118`)
 
 Flow summary:
 
-- Create kind cluster, install kro, apply demo RGD (`examples/kro/ready-endpoint/rgd.yaml`), install Kany8s CRDs, build/load controller image, deploy, apply `Kany8sControlPlane`, and verify endpoint/initialized contract.
+- Create kind cluster, install kro, apply demo RGD (`test/acceptance_test/manifests/kro/rgd.yaml`), install Kany8s CRDs, build/load controller image, deploy, apply `Kany8sControlPlane`, and verify endpoint/initialized contract.
+
+### kro infra reflection (infrastructure)
+
+File: `hack/acceptance-test-kro-infra-reflection.sh`
+
+Flow summary:
+
+- Create kind cluster, install kro, apply infra RGD (`test/acceptance_test/manifests/kro/infra/rgd.yaml`), install/deploy Kany8s, apply `Kany8sCluster`, and verify the provisioned/Ready contract and kro instance spec injection.
+
+### kro demo flow (multi RGD / multi instance kind)
+
+File: `hack/acceptance-test-kro-reflection-multi-rgd.sh`
+
+Flow summary:
+
+- Same shape as the kro demo flow, but applies two RGDs (`demo-control-plane.kro.run` + `demo-control-plane-alt.kro.run`) and creates two `Kany8sControlPlane` objects, proving a single `Kany8sControlPlane` kind can drive multiple kro instance kinds via `spec.resourceGraphDefinitionRef`.
+- Wrapper runner script: `test/acceptance_test/run-acceptance-kro-reflection-multi-rgd.sh`.
+- Make target: `make test-acceptance-kro-reflection-multi-rgd`.
 
 ### self-managed (CAPD + kubeadm)
 
-File: `hack/acceptance-test-self-managed.sh` (286 lines)
+File: `hack/acceptance-test-capd-kubeadm.sh`
 
 Major shell functions:
 
-- `wait_cluster_condition_with_progress()` (`hack/acceptance-test-self-managed.sh:59`)
-- `collect_diagnostics()` (`hack/acceptance-test-self-managed.sh:92`)
+- `wait_cluster_condition_with_progress()` (`hack/acceptance-test-capd-kubeadm.sh:121`)
+- `collect_diagnostics()` (`hack/acceptance-test-capd-kubeadm.sh:248`)
 
 Flow summary:
 
-- Create kind management cluster with docker.sock mounted, build/load controller image, build a clusterctl-style components bundle from `dist/install.yaml`, run `clusterctl init` with CAPD + CABPK + Kany8s, apply `examples/self-managed-docker/cluster.yaml`, wait for Cluster conditions, and fetch workload kubeconfig.
+- Create kind management cluster with docker.sock mounted, build/load controller image, build a clusterctl-style components bundle from `dist/install.yaml`, run `clusterctl init` with CAPD + CABPK + Kany8s, render + apply `test/acceptance_test/manifests/self-managed-docker/cluster.yaml.tpl` (equivalent to `examples/self-managed-docker/cluster.yaml`), wait for Cluster conditions, and fetch workload kubeconfig.
 
 ## Tests
 

@@ -1,0 +1,32 @@
+package devtools_test
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestCodebaseDocListsKroInfraReflectionAcceptanceEntryPoints(t *testing.T) {
+	root := findRepoRoot(t)
+
+	docPath := filepath.Join(root, "docs", "codebase.md")
+	docBytes, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", docPath, err)
+	}
+
+	doc := string(docBytes)
+	wantSubstrings := []string{
+		"make test-acceptance-kro-infra-reflection",
+		"make test-acceptance-kro-infra-reflection-keep",
+		"hack/acceptance-test-kro-infra-reflection.sh",
+		"test/acceptance_test/run-acceptance-kro-infra-reflection.sh",
+		"test/acceptance_test/manifests/kro/infra/rgd.yaml",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(doc, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(docPath), want)
+		}
+	}
+}

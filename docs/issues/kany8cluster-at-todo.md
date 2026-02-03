@@ -302,7 +302,7 @@
 
 ## 7.4 `docs/codebase.md`
 
-- [ ] `docs/codebase.md` の Acceptance Scripts/Entry Points に infra reflection を追記する
+- [x] `docs/codebase.md` の Acceptance Scripts/Entry Points に infra reflection を追記する
 
 ## 7.5 `acceptance.md`（任意）
 
