@@ -10,6 +10,7 @@ NAMESPACE="${NAMESPACE:-default}"
 CLUSTER_NAME="${CLUSTER_NAME:-demo-cluster}"
 KRO_VERSION="${KRO_VERSION:-0.7.1}"
 IMG="${IMG:-example.com/kany8s:acceptance-kro-infra}"
+CLEANUP="${CLEANUP:-true}"
 
 RGD_NAME="demo-infra.kro.run"
 RGD_INSTANCE_CRD="demoinfrastructures.kro.run"

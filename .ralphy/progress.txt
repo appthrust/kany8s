@@ -272,3 +272,5 @@
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `KIND_CLUSTER_NAME` (default `kany8s-acceptance-infra-${timestamp}`) and asserted it in devtools tests; verified `make test` and `make lint`.
 
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `KUBECTL_CONTEXT` (default `kind-${KIND_CLUSTER_NAME}`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `CLEANUP` (default `true`) and asserted it in devtools tests; verified `make test` and `make lint`.

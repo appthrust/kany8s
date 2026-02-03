@@ -30,7 +30,7 @@
 - [ ] hack script が `IMG` を受け取れるようにする
 - [ ] hack script が `NAMESPACE` を受け取れるようにする
 - [ ] hack script が `CLUSTER_NAME` を受け取れるようにする
-- [ ] hack script が `CLEANUP` を受け取れるようにする
+- [x] hack script が `CLEANUP` を受け取れるようにする
 - [ ] hack script が `ARTIFACTS_DIR` を受け取れるようにする
 - [ ] hack script が `KUBECONFIG_FILE` を受け取れるようにする
 - [ ] hack script が `KRO_RBAC_WORKAROUND_MANIFEST` を override できるようにする
