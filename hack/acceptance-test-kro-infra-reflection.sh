@@ -28,6 +28,10 @@ KANY8S_CLUSTER_TEMPLATE="${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifes
 
 mkdir -p "${ARTIFACTS_DIR}"
 
+log_file="${ARTIFACTS_DIR}/acceptance-infra.log"
+touch "${log_file}"
+exec > >(tee -a "${log_file}") 2>&1
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

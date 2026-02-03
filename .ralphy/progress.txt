@@ -304,3 +304,5 @@
 - 2026-02-03: Added a devtools test rendering the kro infra acceptance `Kany8sCluster` manifest template and validating it decodes into an unstructured Kubernetes object; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-03: Created the kro infra reflection acceptance artifacts dir (`mkdir -p "${ARTIFACTS_DIR}"`) and asserted it in the devtools script policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro infra reflection acceptance script logging (`${ARTIFACTS_DIR}/acceptance-infra.log`) via `tee` and extended devtools script policy assertions; verified `go test ./...` and `make lint`.

@@ -37,6 +37,8 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
 		"mkdir -p \"${ARTIFACTS_DIR}\"",
+		"log_file=\"${ARTIFACTS_DIR}/acceptance-infra.log\"",
+		"exec > >(tee -a \"${log_file}\") 2>&1",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {
