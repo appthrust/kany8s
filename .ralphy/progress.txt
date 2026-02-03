@@ -296,3 +296,5 @@
 - 2026-02-03: Added `repo_root` resolution to `hack/acceptance-test-kro-infra-reflection.sh` (matching `hack/acceptance-test-kro-reflection.sh`) and asserted it in devtools tests; verified `make test` and `make lint`.
 
 - 2026-02-03: Added `cd "${repo_root}"` to `hack/acceptance-test-kro-infra-reflection.sh` (run-from-anywhere safety) and extended the devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KRO_RBAC_WORKAROUND_MANIFEST` override (default `test/acceptance_test/manifests/kro/rbac-unrestricted.yaml`) and asserted it in devtools tests; marked the PRD item complete; verified `make test` and `make lint`.

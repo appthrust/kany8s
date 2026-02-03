@@ -22,6 +22,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "${repo_root}"
 
+KRO_RBAC_WORKAROUND_MANIFEST="${KRO_RBAC_WORKAROUND_MANIFEST:-test/acceptance_test/manifests/kro/rbac-unrestricted.yaml}"
 KRO_RGD_MANIFEST="${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}"
 KANY8S_CLUSTER_TEMPLATE="${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}"
 
