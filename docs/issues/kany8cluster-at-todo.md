@@ -20,7 +20,7 @@
 - [x] Namespace のデフォルトを `default` に確定する
 - [x] Cluster 名のデフォルトを `demo-cluster` に確定する
 - [x] `KRO_VERSION` のデフォルトを `0.7.1` に確定する
-- [ ] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に確定する
+- [x] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に確定する
 
 ## 0.3 script/wrapper が受け取る env var
 

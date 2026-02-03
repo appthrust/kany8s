@@ -266,3 +266,5 @@
 - 2026-02-03: Set the kro infra reflection acceptance script default `CLUSTER_NAME` to `demo-cluster` and asserted it in devtools tests; verified `make test` and `make lint`.
 
 - 2026-02-03: Set the kro infra reflection acceptance script default `KRO_VERSION` to `0.7.1` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Set the kro infra reflection acceptance script default `IMG` to `example.com/kany8s:acceptance-kro-infra` and asserted it in devtools tests; verified `make test` and `make lint`.
