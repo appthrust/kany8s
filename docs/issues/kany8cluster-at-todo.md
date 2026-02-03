@@ -102,9 +102,9 @@
 
 ## 2.6 kustomization の退避/復元
 
-- [ ] `kustomization_path="${repo_root}/config/manager/kustomization.yaml"` を追加する
-- [ ] `backup_kustomization()` を追加する
-- [ ] `restore_kustomization()` を追加する
+- [x] `kustomization_path="${repo_root}/config/manager/kustomization.yaml"` を追加する
+- [x] `backup_kustomization()` を追加する
+- [x] `restore_kustomization()` を追加する
 
 ## 2.7 helper 関数
 

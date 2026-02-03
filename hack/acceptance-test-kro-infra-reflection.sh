@@ -34,6 +34,22 @@ log_file="${ARTIFACTS_DIR}/acceptance-infra.log"
 touch "${log_file}"
 exec > >(tee -a "${log_file}") 2>&1
 
+kustomization_path="${repo_root}/config/manager/kustomization.yaml"
+kustomization_backup=""
+
+backup_kustomization() {
+	if [[ -f "${kustomization_path}" ]]; then
+		kustomization_backup="${ARTIFACTS_DIR}/kustomization.yaml.bak"
+		cp "${kustomization_path}" "${kustomization_backup}"
+	fi
+}
+
+restore_kustomization() {
+	if [[ -n "${kustomization_backup}" && -f "${kustomization_backup}" ]]; then
+		cp "${kustomization_backup}" "${kustomization_path}"
+	fi
+}
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

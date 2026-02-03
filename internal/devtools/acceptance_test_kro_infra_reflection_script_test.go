@@ -40,6 +40,9 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"export KUBECONFIG=\"${KUBECONFIG_FILE}\"",
 		"log_file=\"${ARTIFACTS_DIR}/acceptance-infra.log\"",
 		"exec > >(tee -a \"${log_file}\") 2>&1",
+		"kustomization_path=\"${repo_root}/config/manager/kustomization.yaml\"",
+		"backup_kustomization()",
+		"restore_kustomization()",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {
