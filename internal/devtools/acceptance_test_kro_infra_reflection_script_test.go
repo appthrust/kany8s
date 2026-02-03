@@ -259,3 +259,31 @@ func TestKroInfraReflectionAcceptanceWrapperScriptHasValidBashSyntax(t *testing.
 		t.Fatalf("bash -n %s: %v\n%s", filepath.ToSlash(scriptPath), err, string(out))
 	}
 }
+
+func TestKroInfraReflectionAcceptanceHackScriptSetsRBACWorkaroundManifestDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := "cd \"${repo_root}\""
+	rbacDefaultLine := "KRO_RBAC_WORKAROUND_MANIFEST=\"${KRO_RBAC_WORKAROUND_MANIFEST:-test/acceptance_test/manifests/kro/rbac-unrestricted.yaml}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	rbacIdx := strings.Index(script, rbacDefaultLine)
+	if rbacIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), rbacDefaultLine)
+	}
+
+	if rbacIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KRO_RBAC_WORKAROUND_MANIFEST default", cdLine)
+	}
+}
