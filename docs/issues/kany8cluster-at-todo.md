@@ -181,11 +181,11 @@
 
 ## 2.16 `Kany8sCluster` apply（テンプレ render）
 
-- [ ] `rendered_cluster_manifest="${ARTIFACTS_DIR}/kany8scluster.yaml"` を追加する
-- [ ] `sed` で `__CLUSTER_NAME__` を置換して render する
-- [ ] `sed` で `__NAMESPACE__` を置換して render する
-- [ ] `sed` で `__RGD_NAME__` を置換して render する
-- [ ] `k apply -f "${rendered_cluster_manifest}"` を追加する
+- [x] `rendered_cluster_manifest="${ARTIFACTS_DIR}/kany8scluster.yaml"` を追加する
+- [x] `sed` で `__CLUSTER_NAME__` を置換して render する
+- [x] `sed` で `__NAMESPACE__` を置換して render する
+- [x] `sed` で `__RGD_NAME__` を置換して render する
+- [x] `k apply -f "${rendered_cluster_manifest}"` を追加する
 
 ## 2.17 `Kany8sCluster` contract wait
 

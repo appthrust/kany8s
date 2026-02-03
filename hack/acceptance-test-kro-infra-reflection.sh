@@ -171,6 +171,17 @@ backup_kustomization
 make deploy IMG="${IMG}"
 k -n kany8s-system rollout status deployment/kany8s-controller-manager --timeout=180s
 
-echo "error: kro infra reflection acceptance script is not implemented yet" >&2
+echo "==> Applying Kany8sCluster"
+
+rendered_cluster_manifest="${ARTIFACTS_DIR}/kany8scluster.yaml"
+sed \
+	-e "s/__CLUSTER_NAME__/${CLUSTER_NAME}/g" \
+	-e "s/__NAMESPACE__/${NAMESPACE}/g" \
+	-e "s/__RGD_NAME__/${RGD_NAME}/g" \
+	"${KANY8S_CLUSTER_TEMPLATE}" >"${rendered_cluster_manifest}"
+
+k apply -f "${rendered_cluster_manifest}"
+
+echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
