@@ -378,3 +378,5 @@
 - 2026-02-03: Rendered and applied the infra `Kany8sCluster` manifest from the template in `hack/acceptance-test-kro-infra-reflection.sh` and extended devtools assertions; verified `go test ./...` and `make lint`.
 
 - 2026-02-03: Added a `Kany8sCluster` Ready wait (`kubectl wait --for=condition=Ready`) to `hack/acceptance-test-kro-infra-reflection.sh` and added a devtools repo-policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a `Kany8sCluster` provisioned wait (`kubectl wait --for=jsonpath='{.status.initialization.provisioned}'=true`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.

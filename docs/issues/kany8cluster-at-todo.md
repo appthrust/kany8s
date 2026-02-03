@@ -190,7 +190,7 @@
 ## 2.17 `Kany8sCluster` contract wait
 
 - [x] `k -n "${NAMESPACE}" wait --for=condition=Ready --timeout=240s "kany8scluster/${CLUSTER_NAME}"` を追加する
-- [ ] `k -n "${NAMESPACE}" wait --for=jsonpath='{.status.initialization.provisioned}'=true --timeout=240s "kany8scluster/${CLUSTER_NAME}"` を追加する
+- [x] `k -n "${NAMESPACE}" wait --for=jsonpath='{.status.initialization.provisioned}'=true --timeout=240s "kany8scluster/${CLUSTER_NAME}"` を追加する
 
 ## 2.18 failure fields が空であることを確認
 
