@@ -113,19 +113,19 @@
 
 ## 2.8 diagnostics（失敗時収集）
 
-- [ ] `collect_diagnostics()` を追加する
-- [ ] diagnostics に `kind get clusters` を含める
-- [ ] diagnostics に kubeconfig context dump を含める
-- [ ] diagnostics に `k get nodes -o wide` を含める
-- [ ] diagnostics に `k get events -A --sort-by=.metadata.creationTimestamp` を含める
-- [ ] diagnostics に kro-system の `get all` を含める
-- [ ] diagnostics に kro-system の `logs deploy/kro` を含める
-- [ ] diagnostics に `k get rgd "${RGD_NAME}" -o yaml` を含める
-- [ ] diagnostics に `k get crd "${RGD_INSTANCE_CRD}" -o yaml` を含める
-- [ ] diagnostics に kany8s-system の `get all` を含める
-- [ ] diagnostics に kany8s-system の `logs deploy/kany8s-controller-manager -c manager` を含める
-- [ ] diagnostics に `k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o yaml` を含める
-- [ ] diagnostics に `k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o yaml` を含める
+- [x] `collect_diagnostics()` を追加する
+- [x] diagnostics に `kind get clusters` を含める
+- [x] diagnostics に kubeconfig context dump を含める
+- [x] diagnostics に `k get nodes -o wide` を含める
+- [x] diagnostics に `k get events -A --sort-by=.metadata.creationTimestamp` を含める
+- [x] diagnostics に kro-system の `get all` を含める
+- [x] diagnostics に kro-system の `logs deploy/kro` を含める
+- [x] diagnostics に `k get rgd "${RGD_NAME}" -o yaml` を含める
+- [x] diagnostics に `k get crd "${RGD_INSTANCE_CRD}" -o yaml` を含める
+- [x] diagnostics に kany8s-system の `get all` を含める
+- [x] diagnostics に kany8s-system の `logs deploy/kany8s-controller-manager -c manager` を含める
+- [x] diagnostics に `k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o yaml` を含める
+- [x] diagnostics に `k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o yaml` を含める
 
 ## 2.9 cleanup / trap
 

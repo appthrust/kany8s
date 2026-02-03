@@ -46,6 +46,18 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",
 		"restore_kustomization()",
+		"collect_diagnostics() {",
+		"kind get clusters",
+		"kubeconfig-contexts.txt",
+		"kubeconfig-minify.yaml",
+		"nodes.txt",
+		"events.txt",
+		"kro-system.txt",
+		"kro-logs.txt",
+		"rgd-instance-crd.yaml",
+		"kany8s-controller-logs.txt",
+		"kany8scluster.yaml",
+		"rgd-instance.yaml",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {

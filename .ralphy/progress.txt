@@ -320,3 +320,5 @@
 - 2026-02-03: Verified the kro infra acceptance RGD manifest `metadata.name` is `demo-infra.kro.run` and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-03: Ensured the rendered infra acceptance `Kany8sCluster` template contains no unreplaced placeholder tokens (devtools test); marked the PRD kubectl dry-run checklist item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Implemented kro infra reflection acceptance `collect_diagnostics()` (kind/kubeconfig/kro/kany8s/Kany8sCluster dumps) and asserted it in devtools; verified `make test` and `make lint`.

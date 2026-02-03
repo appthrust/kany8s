@@ -63,6 +63,38 @@ restore_kustomization() {
 	fi
 }
 
+collect_diagnostics() {
+	echo "==> Collecting diagnostics into ${ARTIFACTS_DIR}"
+
+	local diag_dir
+	diag_dir="${ARTIFACTS_DIR}/diagnostics"
+	mkdir -p "${diag_dir}"
+
+	{
+		echo "kind clusters:";
+		kind get clusters || true
+	} >"${diag_dir}/kind.txt" 2>&1 || true
+
+	if [[ -f "${KUBECONFIG_FILE}" ]]; then
+		kubectl --kubeconfig "${KUBECONFIG_FILE}" config get-contexts >"${diag_dir}/kubeconfig-contexts.txt" 2>&1 || true
+		kubectl --kubeconfig "${KUBECONFIG_FILE}" config view --minify >"${diag_dir}/kubeconfig-minify.yaml" 2>&1 || true
+	fi
+
+	k get nodes -o wide >"${diag_dir}/nodes.txt" 2>&1 || true
+	k get events -A --sort-by=.metadata.creationTimestamp >"${diag_dir}/events.txt" 2>&1 || true
+
+	k -n kro-system get all -o wide >"${diag_dir}/kro-system.txt" 2>&1 || true
+	k -n kro-system logs deploy/kro --tail=200 >"${diag_dir}/kro-logs.txt" 2>&1 || true
+	k get rgd "${RGD_NAME}" -o yaml >"${diag_dir}/rgd.yaml" 2>&1 || true
+	k get crd "${RGD_INSTANCE_CRD}" -o yaml >"${diag_dir}/rgd-instance-crd.yaml" 2>&1 || true
+
+	k -n kany8s-system get all -o wide >"${diag_dir}/kany8s-system.txt" 2>&1 || true
+	k -n kany8s-system logs deploy/kany8s-controller-manager -c manager --tail=200 >"${diag_dir}/kany8s-controller-logs.txt" 2>&1 || true
+
+	k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o yaml >"${diag_dir}/kany8scluster.yaml" 2>&1 || true
+	k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o yaml >"${diag_dir}/rgd-instance.yaml" 2>&1 || true
+}
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
