@@ -300,3 +300,5 @@
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `KRO_RBAC_WORKAROUND_MANIFEST` override (default `test/acceptance_test/manifests/kro/rbac-unrestricted.yaml`) and asserted it in devtools tests; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-03: Added a devtools test validating the kro infra acceptance RGD manifest parses as a Kubernetes object (YAML->unstructured; dry-run client parse equivalent); verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools test rendering the kro infra acceptance `Kany8sCluster` manifest template and validating it decodes into an unstructured Kubernetes object; marked the PRD item complete; verified `make test` and `make lint`.

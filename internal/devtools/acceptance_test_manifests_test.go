@@ -94,3 +94,59 @@ func TestKroInfraAcceptanceKany8sClusterTemplateExists(t *testing.T) {
 		}
 	}
 }
+
+func TestKroInfraAcceptanceKany8sClusterTemplateRendersToValidYAML(t *testing.T) {
+	root := findRepoRoot(t)
+
+	tplPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "kany8scluster.yaml.tpl")
+	tplBytes, err := os.ReadFile(tplPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", tplPath, err)
+	}
+
+	replacer := strings.NewReplacer(
+		"__CLUSTER_NAME__", "demo-cluster",
+		"__NAMESPACE__", "default",
+		"__RGD_NAME__", "demo-infra.kro.run",
+	)
+	rendered := replacer.Replace(string(tplBytes))
+
+	jsonBytes, err := utilyaml.ToJSON([]byte(rendered))
+	if err != nil {
+		t.Fatalf("parse rendered template %q as YAML: %v", tplPath, err)
+	}
+
+	var obj unstructured.Unstructured
+	if err := obj.UnmarshalJSON(jsonBytes); err != nil {
+		t.Fatalf("decode rendered %q into unstructured object: %v", tplPath, err)
+	}
+
+	if got, want := obj.GetAPIVersion(), "infrastructure.cluster.x-k8s.io/v1alpha1"; got != want {
+		t.Fatalf("%s apiVersion=%q, want %q", filepath.ToSlash(tplPath), got, want)
+	}
+	if got, want := obj.GetKind(), "Kany8sCluster"; got != want {
+		t.Fatalf("%s kind=%q, want %q", filepath.ToSlash(tplPath), got, want)
+	}
+	if got, want := obj.GetName(), "demo-cluster"; got != want {
+		t.Fatalf("%s metadata.name=%q, want %q", filepath.ToSlash(tplPath), got, want)
+	}
+	if got, want := obj.GetNamespace(), "default"; got != want {
+		t.Fatalf("%s metadata.namespace=%q, want %q", filepath.ToSlash(tplPath), got, want)
+	}
+
+	if got, found, err := unstructured.NestedString(obj.Object, "spec", "resourceGraphDefinitionRef", "name"); err != nil {
+		t.Fatalf("%s get spec.resourceGraphDefinitionRef.name: %v", filepath.ToSlash(tplPath), err)
+	} else if !found {
+		t.Fatalf("%s missing spec.resourceGraphDefinitionRef.name", filepath.ToSlash(tplPath))
+	} else if want := "demo-infra.kro.run"; got != want {
+		t.Fatalf("%s spec.resourceGraphDefinitionRef.name=%q, want %q", filepath.ToSlash(tplPath), got, want)
+	}
+
+	if got, found, err := unstructured.NestedMap(obj.Object, "spec", "kroSpec"); err != nil {
+		t.Fatalf("%s get spec.kroSpec: %v", filepath.ToSlash(tplPath), err)
+	} else if !found {
+		t.Fatalf("%s missing spec.kroSpec", filepath.ToSlash(tplPath))
+	} else if got == nil {
+		t.Fatalf("%s spec.kroSpec is nil, want object", filepath.ToSlash(tplPath))
+	}
+}
