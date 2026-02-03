@@ -54,7 +54,7 @@ func TestMakefileHasAcceptanceTarget(t *testing.T) {
 	}
 }
 
-func TestMakefileHasKroInfraReflectionAcceptanceTarget(t *testing.T) {
+func TestMakefileHasKroInfraReflectionAcceptanceTargets(t *testing.T) {
 	root := findRepoRoot(t)
 
 	makefilePath := filepath.Join(root, "Makefile")
@@ -67,6 +67,8 @@ func TestMakefileHasKroInfraReflectionAcceptanceTarget(t *testing.T) {
 	wantSubstrings := []string{
 		"test-acceptance-kro-infra-reflection:",
 		"bash hack/acceptance-test-kro-infra-reflection.sh",
+		"test-acceptance-kro-infra-reflection-keep:",
+		"CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(makefile, want) {

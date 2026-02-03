@@ -9,7 +9,7 @@
 ## 0.1 Naming
 
  - [x] Make target 名を `test-acceptance-kro-infra-reflection` に確定する
-- [ ] Make target 名を `test-acceptance-kro-infra-reflection-keep` に確定する
+- [x] Make target 名を `test-acceptance-kro-infra-reflection-keep` に確定する
 - [ ] Script 名を `hack/acceptance-test-kro-infra-reflection.sh` に確定する
 - [ ] Wrapper runner 名を `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` に確定する
 

@@ -98,6 +98,10 @@ test-acceptance-keep: ## Run acceptance test script and keep the kind cluster.
 test-acceptance-kro-infra-reflection: ## Run acceptance test script (kind + kro + Kany8sCluster infra reflection).
 	bash hack/acceptance-test-kro-infra-reflection.sh
 
+.PHONY: test-acceptance-kro-infra-reflection-keep
+test-acceptance-kro-infra-reflection-keep: ## Run kro infra reflection acceptance test and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh
+
 .PHONY: test-acceptance-self-managed
 test-acceptance-self-managed: ## Run self-managed acceptance test script (kind + clusterctl + CAPD + kubeadm).
 	bash hack/acceptance-test-self-managed.sh
