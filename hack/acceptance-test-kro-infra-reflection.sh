@@ -228,6 +228,10 @@ fi
 echo "==> Waiting for kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} Ready"
 k -n "${NAMESPACE}" wait --for=jsonpath='{.status.ready}'=true --timeout=180s "${RGD_INSTANCE_CRD}/${CLUSTER_NAME}"
 
+echo "==> Capturing kro instance YAML"
+observed_rgd_instance_yaml="${ARTIFACTS_DIR}/rgd-instance.observed.yaml"
+k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o yaml >"${observed_rgd_instance_yaml}"
+
 echo "==> Verifying kro instance spec injection"
 injected_cluster_name="$(k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o jsonpath='{.spec.clusterName}')"
 injected_cluster_namespace="$(k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o jsonpath='{.spec.clusterNamespace}')"
