@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+timestamp="$(date +%Y%m%d%H%M%S)"
+
+KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-kany8s-acceptance-infra-${timestamp}}"
+
 NAMESPACE="${NAMESPACE:-default}"
 CLUSTER_NAME="${CLUSTER_NAME:-demo-cluster}"
 KRO_VERSION="${KRO_VERSION:-0.7.1}"
