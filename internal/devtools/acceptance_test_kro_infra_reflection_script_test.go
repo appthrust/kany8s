@@ -2,6 +2,7 @@ package devtools_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -134,6 +135,24 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		if !strings.Contains(script, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(scriptPath), want)
 		}
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptHasValidBashSyntax(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("bash -n is not supported on windows")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not found")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	cmd := exec.Command("bash", "-n", scriptPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash -n %s: %v\n%s", filepath.ToSlash(scriptPath), err, string(out))
 	}
 }
 

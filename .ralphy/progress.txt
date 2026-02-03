@@ -390,3 +390,5 @@
 - 2026-02-03: Verified infra kro instance spec injection in `hack/acceptance-test-kro-infra-reflection.sh` (`.spec.clusterName/.spec.clusterNamespace`) and extended devtools coverage; verified `make test` and `make lint`.
 
 - 2026-02-03: Made `hack/acceptance-test-kro-infra-reflection.sh` executable and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools repo-policy test enforcing `bash -n` succeeds for `hack/acceptance-test-kro-infra-reflection.sh`; verified `go test ./...` and `make lint`.
