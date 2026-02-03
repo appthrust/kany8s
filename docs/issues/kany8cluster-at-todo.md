@@ -199,7 +199,7 @@
 
 ## 2.19 kro instance の存在/ready の確認
 
-- [ ] kro instance が取得できるまでリトライする（最大 240 秒）
+- [x] kro instance が取得できるまでリトライする（最大 240 秒）
 - [ ] `k -n "${NAMESPACE}" wait --for=jsonpath='{.status.ready}'=true --timeout=180s "${RGD_INSTANCE_CRD}/${CLUSTER_NAME}"` を追加する
 
 ## 2.20 kro instance spec 注入の確認

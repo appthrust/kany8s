@@ -206,6 +206,21 @@ if [[ -n "${failure_message}" && "${failure_message}" != "<no value>" ]]; then
 	exit 1
 fi
 
+echo "==> Waiting for kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} to exist"
+kro_instance_found="false"
+for ((i = 0; i < 48; i++)); do
+	if k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o name >/dev/null 2>&1; then
+		kro_instance_found="true"
+		break
+	fi
+	sleep 5
+done
+
+if [[ "${kro_instance_found}" != "true" ]]; then
+	echo "error: timed out waiting for kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} to exist" >&2
+	exit 1
+fi
+
 echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
