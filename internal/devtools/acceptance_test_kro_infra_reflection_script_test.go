@@ -229,6 +229,8 @@ func TestKroInfraReflectionAcceptanceWrapperScriptExists(t *testing.T) {
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
+		`timestamp="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"`,
+		`repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"`,
 		"kany8s-acc-infra-",
 		"kany8s-acceptance-kro-infra-reflection-",
 		"kind delete cluster",

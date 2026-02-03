@@ -446,3 +446,5 @@
 - 2026-02-04: Marked infra reflection acceptance `KRO_RGD_MANIFEST` default PRD item complete; added a devtools ordering test to keep the default after `cd "${repo_root}"`; verified `make test` and `make lint`.
 
 - 2026-02-04: Enforced infra reflection acceptance `KANY8S_CLUSTER_TEMPLATE` default ordering (after repo-root `cd`) via devtools and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked the infra reflection acceptance wrapper runner PRD items complete and tightened the devtools wrapper script assertion to enforce `TIMESTAMP` override support; verified `make test` and `make lint`.

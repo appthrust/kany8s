@@ -216,29 +216,29 @@
 
 ## 3.1 wrapper 作成
 
-- [ ] `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を新規作成する
-- [ ] 先頭に `#!/usr/bin/env bash` を追加する
-- [ ] `set -euo pipefail` を追加する
+- [x] `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を新規作成する
+- [x] 先頭に `#!/usr/bin/env bash` を追加する
+- [x] `set -euo pipefail` を追加する
 
 ## 3.2 wrapper の変数/表示
 
-- [ ] `timestamp` を設定する（`TIMESTAMP` があれば優先）
-- [ ] `repo_root` を `../..` から解決する
-- [ ] `KIND_CLUSTER_NAME` のデフォルトを `kany8s-acc-infra-${timestamp}` に設定する
-- [ ] `ARTIFACTS_DIR` のデフォルトを `/tmp/kany8s-acceptance-kro-infra-reflection-${timestamp}` に設定する
-- [ ] `CLEANUP` のデフォルトを `true` に設定する
+- [x] `timestamp` を設定する（`TIMESTAMP` があれば優先）
+- [x] `repo_root` を `../..` から解決する
+- [x] `KIND_CLUSTER_NAME` のデフォルトを `kany8s-acc-infra-${timestamp}` に設定する
+- [x] `ARTIFACTS_DIR` のデフォルトを `/tmp/kany8s-acceptance-kro-infra-reflection-${timestamp}` に設定する
+- [x] `CLEANUP` のデフォルトを `true` に設定する
 
 ## 3.3 pre-clean kind
 
-- [ ] `kind` の存在チェックを追加する
-- [ ] `kind delete cluster --name "${KIND_CLUSTER_NAME}"` を追加する（失敗しても OK）
+- [x] `kind` の存在チェックを追加する
+- [x] `kind delete cluster --name "${KIND_CLUSTER_NAME}"` を追加する（失敗しても OK）
 
 ## 3.4 hack script に委譲
 
-- [ ] wrapper から `hack/acceptance-test-kro-infra-reflection.sh` を `bash` 実行する
-- [ ] 実行時に `KIND_CLUSTER_NAME` を渡す
-- [ ] 実行時に `ARTIFACTS_DIR` を渡す
-- [ ] 実行時に `CLEANUP` を渡す
+- [x] wrapper から `hack/acceptance-test-kro-infra-reflection.sh` を `bash` 実行する
+- [x] 実行時に `KIND_CLUSTER_NAME` を渡す
+- [x] 実行時に `ARTIFACTS_DIR` を渡す
+- [x] 実行時に `CLEANUP` を渡す
 
 ## 3.5 wrapper の静的検証
 
