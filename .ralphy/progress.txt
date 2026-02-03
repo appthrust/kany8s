@@ -310,3 +310,5 @@
 - 2026-02-03: Exported `KUBECONFIG` from `hack/acceptance-test-kro-infra-reflection.sh` (points at `${KUBECONFIG_FILE}`) and asserted it in devtools; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-03: Added kustomization backup/restore helpers to `hack/acceptance-test-kro-infra-reflection.sh` and asserted them in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd()` helper to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.

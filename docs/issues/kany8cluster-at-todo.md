@@ -108,7 +108,7 @@
 
 ## 2.7 helper 関数
 
-- [ ] `need_cmd()` を追加する
+- [x] `need_cmd()` を追加する
 - [ ] `k()` を追加する（`kubectl --context "${KUBECTL_CONTEXT}"` wrapper）
 
 ## 2.8 diagnostics（失敗時収集）

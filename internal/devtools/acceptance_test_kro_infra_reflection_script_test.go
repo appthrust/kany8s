@@ -41,6 +41,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"log_file=\"${ARTIFACTS_DIR}/acceptance-infra.log\"",
 		"exec > >(tee -a \"${log_file}\") 2>&1",
 		"kustomization_path=\"${repo_root}/config/manager/kustomization.yaml\"",
+		"need_cmd()",
 		"backup_kustomization()",
 		"restore_kustomization()",
 	}

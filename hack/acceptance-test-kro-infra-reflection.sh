@@ -37,6 +37,15 @@ exec > >(tee -a "${log_file}") 2>&1
 kustomization_path="${repo_root}/config/manager/kustomization.yaml"
 kustomization_backup=""
 
+need_cmd() {
+	local cmd
+	cmd="$1"
+	command -v "${cmd}" >/dev/null 2>&1 || {
+		echo "error: required command not found: ${cmd}" >&2
+		exit 1
+	}
+}
+
 backup_kustomization() {
 	if [[ -f "${kustomization_path}" ]]; then
 		kustomization_backup="${ARTIFACTS_DIR}/kustomization.yaml.bak"
