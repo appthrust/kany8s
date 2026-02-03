@@ -63,6 +63,10 @@ restore_kustomization() {
 	fi
 }
 
+cleanup() {
+	restore_kustomization
+}
+
 collect_diagnostics() {
 	echo "==> Collecting diagnostics into ${ARTIFACTS_DIR}"
 

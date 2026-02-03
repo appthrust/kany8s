@@ -46,6 +46,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",
 		"restore_kustomization()",
+		"cleanup() {\n\trestore_kustomization",
 		"collect_diagnostics() {",
 		"kind get clusters",
 		"kubeconfig-contexts.txt",

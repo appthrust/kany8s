@@ -322,3 +322,5 @@
 - 2026-02-03: Ensured the rendered infra acceptance `Kany8sCluster` template contains no unreplaced placeholder tokens (devtools test); marked the PRD kubectl dry-run checklist item complete; verified `make test` and `make lint`.
 
 - 2026-02-03: Implemented kro infra reflection acceptance `collect_diagnostics()` (kind/kubeconfig/kro/kany8s/Kany8sCluster dumps) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `cleanup()` to `hack/acceptance-test-kro-infra-reflection.sh` (calls `restore_kustomization` first) and asserted it in devtools; verified `make test` and `make lint`.
