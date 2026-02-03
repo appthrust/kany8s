@@ -48,6 +48,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"need_cmd make",
 		"need_cmd go",
 		"need_cmd curl",
+		"kind create cluster --name \"${KIND_CLUSTER_NAME}\" --wait 60s --kubeconfig \"${KUBECONFIG_FILE}\"",
 		"k() {",
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",

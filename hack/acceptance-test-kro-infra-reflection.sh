@@ -128,6 +128,9 @@ need_cmd make
 need_cmd go
 need_cmd curl
 
+echo "==> Creating kind cluster ${KIND_CLUSTER_NAME}"
+kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 60s --kubeconfig "${KUBECONFIG_FILE}"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
