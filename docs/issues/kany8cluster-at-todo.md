@@ -134,7 +134,7 @@
 - [x] `cleanup()` に `CLEANUP=false` の場合の “keep” メッセージを追加する
 - [x] `on_exit()` を追加する（rc != 0 なら `collect_diagnostics`）
 - [x] `on_exit()` で `cleanup` を呼ぶ
-- [ ] `trap on_exit EXIT` を追加する
+- [x] `trap on_exit EXIT` を追加する
 
 ## 2.10 必須コマンドチェック
 

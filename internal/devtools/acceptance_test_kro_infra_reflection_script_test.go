@@ -66,6 +66,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"rc=$?",
 		"collect_diagnostics || true",
 		"cleanup || true",
+		"trap on_exit EXIT",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {
