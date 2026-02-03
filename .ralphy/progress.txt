@@ -358,3 +358,5 @@
 - 2026-02-03: Ensured the kro infra reflection acceptance script creates the vendor cache dir for `KRO_CORE_INSTALL_MANIFEST`; updated devtools assertions; verified `make test` and `make lint`.
 
 - 2026-02-03: Added kro install manifest download to `hack/acceptance-test-kro-infra-reflection.sh` (curl from GitHub releases when missing) and extended devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro core install apply (`k apply -f "${KRO_CORE_INSTALL_MANIFEST}"`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./...` and `make lint`.

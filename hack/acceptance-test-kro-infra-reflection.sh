@@ -145,6 +145,8 @@ if [[ ! -f "${KRO_CORE_INSTALL_MANIFEST}" ]]; then
 		"https://github.com/kubernetes-sigs/kro/releases/download/v${KRO_VERSION}/kro-core-install-manifests.yaml"
 fi
 
+k apply -f "${KRO_CORE_INSTALL_MANIFEST}"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
