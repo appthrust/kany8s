@@ -254,3 +254,5 @@
 - 2026-02-03: Added acceptance source-of-truth infra kro RGD manifest at `test/acceptance_test/manifests/kro/infra/rgd.yaml` with a devtools test enforcing key contents; verified `make test` and `make lint`.
 
 - 2026-02-03: Added stub `hack/acceptance-test-kro-infra-reflection.sh` plus a devtools test enforcing it exists; verified `make test` and `make lint`.
+
+- 2026-02-03: Added wrapper runner `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` and a devtools test enforcing it delegates to the hack script; verified `make test` and `make lint`.
