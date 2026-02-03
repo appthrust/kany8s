@@ -410,3 +410,5 @@
 - 2026-02-03: Added a devtools repo-policy test enforcing `bash -n` succeeds for `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`; verified `go test ./...` and `make lint`.
 
 - 2026-02-03: Marked the kro infra reflection acceptance PRD item for creating `hack/acceptance-test-kro-infra-reflection.sh` complete; verified `go test $(go list ./... | grep -v /e2e)` and `make lint`.
+
+- 2026-02-03: Enforced the infra acceptance hack script shebang as the first line (devtools); verified `make test` and `make lint`.

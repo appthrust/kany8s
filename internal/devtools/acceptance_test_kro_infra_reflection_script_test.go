@@ -42,6 +42,14 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	if strings.Contains(script, "not fully implemented") || strings.Contains(script, "kany8cluster-at-todo.md") {
 		t.Errorf("%s still contains stub failure block", filepath.ToSlash(scriptPath))
 	}
+	firstLine := script
+	if idx := strings.IndexByte(firstLine, '\n'); idx != -1 {
+		firstLine = firstLine[:idx]
+	}
+	firstLine = strings.TrimSuffix(firstLine, "\r")
+	if firstLine != "#!/usr/bin/env bash" {
+		t.Errorf("%s first line=%q want %q", filepath.ToSlash(scriptPath), firstLine, "#!/usr/bin/env bash")
+	}
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
