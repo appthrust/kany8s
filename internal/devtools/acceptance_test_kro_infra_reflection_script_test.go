@@ -10,7 +10,7 @@ import (
 )
 
 func TestKroInfraReflectionAcceptanceHackScriptIsExecutable(t *testing.T) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == goosWindows {
 		t.Skip("executable bit is not enforced on windows")
 	}
 
@@ -139,7 +139,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 }
 
 func TestKroInfraReflectionAcceptanceHackScriptHasValidBashSyntax(t *testing.T) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == goosWindows {
 		t.Skip("bash -n is not supported on windows")
 	}
 	if _, err := exec.LookPath("bash"); err != nil {

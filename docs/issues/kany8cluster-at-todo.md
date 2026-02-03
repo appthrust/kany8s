@@ -258,10 +258,10 @@
 
 ## 5.1 run-all に追加
 
-- [ ] `test/acceptance_test/run-all.sh` に “kro infra reflection” の実行ブロックを追加する
-- [ ] run-all の新ブロックで `ARTIFACTS_DIR` を `.../acceptance-kro-infra-reflection` に分ける
-- [ ] run-all の新ブロックで `KIND_CLUSTER_NAME` を `kany8s-acc-infra-${timestamp}` に分ける
-- [ ] run-all の新ブロックから `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を呼ぶ
+- [x] `test/acceptance_test/run-all.sh` に “kro infra reflection” の実行ブロックを追加する
+- [x] run-all の新ブロックで `ARTIFACTS_DIR` を `.../acceptance-kro-infra-reflection` に分ける
+- [x] run-all の新ブロックで `KIND_CLUSTER_NAME` を `kany8s-acc-infra-${timestamp}` に分ける
+- [x] run-all の新ブロックから `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を呼ぶ
 
 # 6) repo-policy tests (internal/devtools)
 
