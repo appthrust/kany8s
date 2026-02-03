@@ -75,7 +75,7 @@
 - [x] `KUBECTL_CONTEXT` のデフォルトを `kind-${KIND_CLUSTER_NAME}` に設定する
 - [x] `KRO_VERSION` のデフォルトを `0.7.1` に設定する
 - [x] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に設定する
-- [ ] `NAMESPACE` のデフォルトを `default` に設定する
+- [x] `NAMESPACE` のデフォルトを `default` に設定する
 - [ ] `CLUSTER_NAME` のデフォルトを `demo-cluster` に設定する
 - [ ] `CLEANUP` のデフォルトを `true` に設定する
 - [ ] `ARTIFACTS_DIR` のデフォルトを `/tmp/kany8s-acceptance-kro-infra-${timestamp}` に設定する
