@@ -448,3 +448,5 @@
 - 2026-02-04: Enforced infra reflection acceptance `KANY8S_CLUSTER_TEMPLATE` default ordering (after repo-root `cd`) via devtools and marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-04: Marked the infra reflection acceptance wrapper runner PRD items complete and tightened the devtools wrapper script assertion to enforce `TIMESTAMP` override support; verified `make test` and `make lint`.
+
+- 2026-02-04: Enforced `.PHONY` for kro infra reflection acceptance Makefile targets via devtools; marked the PRD Makefile target items complete; verified `make test` and `make lint`.

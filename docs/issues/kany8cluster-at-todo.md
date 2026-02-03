@@ -249,10 +249,10 @@
 
 ## 4.1 target 追加
 
-- [ ] `.PHONY: test-acceptance-kro-infra-reflection` を追加する
-- [ ] `test-acceptance-kro-infra-reflection` の recipe を `bash hack/acceptance-test-kro-infra-reflection.sh` にする
-- [ ] `.PHONY: test-acceptance-kro-infra-reflection-keep` を追加する
-- [ ] `test-acceptance-kro-infra-reflection-keep` の recipe を `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh` にする
+- [x] `.PHONY: test-acceptance-kro-infra-reflection` を追加する
+- [x] `test-acceptance-kro-infra-reflection` の recipe を `bash hack/acceptance-test-kro-infra-reflection.sh` にする
+- [x] `.PHONY: test-acceptance-kro-infra-reflection-keep` を追加する
+- [x] `test-acceptance-kro-infra-reflection-keep` の recipe を `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh` にする
 
 # 5) run-all integration (optional)
 
