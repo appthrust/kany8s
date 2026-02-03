@@ -31,6 +31,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"KUBECONFIG_FILE=\"${KUBECONFIG_FILE:-${ARTIFACTS_DIR}/kubeconfig}\"",
 		"RGD_NAME=\"demo-infra.kro.run\"",
 		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
+		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {

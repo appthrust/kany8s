@@ -282,3 +282,5 @@
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `KUBECONFIG_FILE` (default `${ARTIFACTS_DIR}/kubeconfig`) and asserted it in devtools tests; verified `make test` and `make lint`.
 
 - 2026-02-03: Marked the kro infra reflection acceptance PRD item for `IMG` env-var support complete (script already supported it + devtools assertion); verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KRO_RGD_MANIFEST` (default `test/acceptance_test/manifests/kro/infra/rgd.yaml`) and asserted it in devtools tests; verified `make test` and `make lint`.

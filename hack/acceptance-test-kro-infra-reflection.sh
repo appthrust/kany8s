@@ -18,6 +18,8 @@ KUBECONFIG_FILE="${KUBECONFIG_FILE:-${ARTIFACTS_DIR}/kubeconfig}"
 RGD_NAME="demo-infra.kro.run"
 RGD_INSTANCE_CRD="demoinfrastructures.kro.run"
 
+KRO_RGD_MANIFEST="${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
