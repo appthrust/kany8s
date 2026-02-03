@@ -146,6 +146,35 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	}
 }
 
+func TestKroInfraReflectionAcceptanceHackScriptUsesStrictMode(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	// Ensure strict mode is enabled before any executable statements.
+	lines := strings.Split(string(scriptBytes), "\n")
+	for i := 1; i < len(lines); i++ {
+		line := strings.TrimSuffix(lines[i], "\r")
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if trimmed != "set -euo pipefail" {
+			t.Fatalf("%s first command line=%q want %q", filepath.ToSlash(scriptPath), trimmed, "set -euo pipefail")
+		}
+		return
+	}
+
+	t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), "set -euo pipefail")
+}
+
 func TestKroInfraReflectionAcceptanceHackScriptHasValidBashSyntax(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("bash -n is not supported on windows")
