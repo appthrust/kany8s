@@ -64,7 +64,7 @@
 
 ## 2.1 ファイル作成と基本設定
 
-- [ ] `hack/acceptance-test-kro-infra-reflection.sh` を新規作成する
+- [x] `hack/acceptance-test-kro-infra-reflection.sh` を新規作成する
 - [ ] 先頭に `#!/usr/bin/env bash` を追加する
 - [ ] `set -euo pipefail` を追加する
 
