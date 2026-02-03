@@ -333,4 +333,4 @@
 
 - 2026-02-03: Wired infra reflection acceptance `on_exit()` to call `cleanup` (preserve diagnostics then cleanup); updated devtools assertions; verified `make test` and `make lint`.
 
-- 2026-02-03: Added `trap on_exit EXIT` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+- 2026-02-03: Added `trap on_exit EXIT` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools`, `bash -n hack/acceptance-test-kro-infra-reflection.sh`, and `make lint`.
