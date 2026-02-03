@@ -428,3 +428,5 @@
 - 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `IMG` default; verified `make test` and `make lint`.
 
 - 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `NAMESPACE` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `CLUSTER_NAME` default; verified `make test` and `make lint`.
