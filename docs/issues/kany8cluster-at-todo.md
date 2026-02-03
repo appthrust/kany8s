@@ -83,7 +83,7 @@
 
 ## 2.3 固定値（infra RGD）
 
-- [ ] `RGD_NAME="demo-infra.kro.run"` を追加する
+- [x] `RGD_NAME="demo-infra.kro.run"` を追加する
 - [ ] `RGD_INSTANCE_CRD="demoinfrastructures.kro.run"` を追加する
 
 ## 2.4 repo_root と manifest パス
