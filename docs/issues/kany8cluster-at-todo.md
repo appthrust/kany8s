@@ -267,15 +267,15 @@
 
 ## 6.1 script exists
 
-- [ ] `internal/devtools/acceptance_test_script_test.go` に infra 用の "script exists" テストを追加する
-- [ ] 新テストで `hack/acceptance-test-kro-infra-reflection.sh` を読み込む
-- [ ] `wantSubstrings` に `kind create cluster` を含める
-- [ ] `wantSubstrings` に `kro-core-install-manifests.yaml` を含める
-- [ ] `wantSubstrings` に `ResourceGraphAccepted` を含める
-- [ ] `wantSubstrings` に `test/acceptance_test/manifests/kro/infra/rgd.yaml` を含める
-- [ ] `wantSubstrings` に `make deploy` を含める
-- [ ] `wantSubstrings` に `kany8scluster` を含める
-- [ ] `wantSubstrings` に `status.initialization.provisioned` を含める
+- [x] `internal/devtools/acceptance_test_script_test.go` に infra 用の "script exists" テストを追加する
+- [x] 新テストで `hack/acceptance-test-kro-infra-reflection.sh` を読み込む
+- [x] `wantSubstrings` に `kind create cluster` を含める
+- [x] `wantSubstrings` に `kro-core-install-manifests.yaml` を含める
+- [x] `wantSubstrings` に `ResourceGraphAccepted` を含める
+- [x] `wantSubstrings` に `test/acceptance_test/manifests/kro/infra/rgd.yaml` を含める
+- [x] `wantSubstrings` に `make deploy` を含める
+- [x] `wantSubstrings` に `kany8scluster` を含める
+- [x] `wantSubstrings` に `status.initialization.provisioned` を含める
 
 ## 6.2 Makefile target exists
 

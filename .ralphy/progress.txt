@@ -450,3 +450,5 @@
 - 2026-02-04: Marked the infra reflection acceptance wrapper runner PRD items complete and tightened the devtools wrapper script assertion to enforce `TIMESTAMP` override support; verified `make test` and `make lint`.
 
 - 2026-02-04: Enforced `.PHONY` for kro infra reflection acceptance Makefile targets via devtools; marked the PRD Makefile target items complete; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` repo-policy infra reflection "script exists" checklist complete (already enforced by devtools); verified `go test ./internal/devtools` and `make lint`.
