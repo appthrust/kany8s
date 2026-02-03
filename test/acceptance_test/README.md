@@ -28,6 +28,7 @@ Third-party YAML is downloaded on-demand (and cached) under:
   - Purpose: prove `Kany8sControlPlane` can drive multiple kro instance kinds via `spec.resourceGraphDefinitionRef`
 - `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`
   - wraps `hack/acceptance-test-kro-infra-reflection.sh`
+  - Purpose: validate managed-kro infra "status reflection" (kro instance create/Ready + `Kany8sCluster` Ready/provisioned + spec injection)
 - `test/acceptance_test/run-acceptance-capd-kubeadm.sh`
   - wraps `hack/acceptance-test-capd-kubeadm.sh`
   - Purpose: validate self-managed provisioning (CAPD + kubeadm) creates a reachable workload cluster

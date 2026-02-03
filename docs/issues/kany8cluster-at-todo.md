@@ -290,7 +290,7 @@
 ## 7.1 `test/acceptance_test/README.md`
 
 - [x] `test/acceptance_test/README.md` に `run-acceptance-kro-infra-reflection.sh` を追記する
-- [ ] `test/acceptance_test/README.md` に Purpose（1行）を追記する
+- [x] `test/acceptance_test/README.md` に Purpose（1行）を追記する
 
 ## 7.2 `docs/README.md`
 

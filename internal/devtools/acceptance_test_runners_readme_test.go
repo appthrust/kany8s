@@ -20,6 +20,7 @@ func TestAcceptanceTestRunnersReadmeMentionsKroInfraReflectionRunner(t *testing.
 	wantSubstrings := []string{
 		"run-acceptance-kro-infra-reflection.sh",
 		"hack/acceptance-test-kro-infra-reflection.sh",
+		"Purpose: validate managed-kro infra \"status reflection\"",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(readme, want) {
