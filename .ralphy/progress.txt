@@ -438,3 +438,5 @@
 - 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KUBECONFIG_FILE` default; verified `make test` and `make lint`.
 
 - 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `RGD_NAME` constant; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `RGD_INSTANCE_CRD` constant; verified `go test ./...` and `make lint`.
