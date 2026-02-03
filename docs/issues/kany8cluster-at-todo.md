@@ -158,7 +158,7 @@
 - [x] `mkdir -p "$(dirname "${KRO_CORE_INSTALL_MANIFEST}")"` を追加する
 - [x] install manifest が無ければ GitHub releases から `curl -fsSL -o ...` で取得する
 - [x] `k apply -f "${KRO_CORE_INSTALL_MANIFEST}"` を追加する
-- [ ] `k -n kro-system rollout status deploy/kro --timeout=180s` を追加する
+- [x] `k -n kro-system rollout status deploy/kro --timeout=180s` を追加する
 
 ## 2.13 kro RBAC workaround
 
