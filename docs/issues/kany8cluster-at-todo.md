@@ -26,7 +26,7 @@
 
 - [x] hack script が `KIND_CLUSTER_NAME` を受け取れるようにする
 - [x] hack script が `KUBECTL_CONTEXT` を受け取れるようにする
-- [ ] hack script が `KRO_VERSION` を受け取れるようにする
+- [x] hack script が `KRO_VERSION` を受け取れるようにする
 - [ ] hack script が `IMG` を受け取れるようにする
 - [ ] hack script が `NAMESPACE` を受け取れるようにする
 - [ ] hack script が `CLUSTER_NAME` を受け取れるようにする
