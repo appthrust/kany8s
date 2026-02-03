@@ -49,6 +49,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"cleanup() {\n\trestore_kustomization",
 		"if [[ \"${CLEANUP}\" == \"true\" ]]; then",
 		"kind delete cluster --name \"${KIND_CLUSTER_NAME}\" --kubeconfig \"${KUBECONFIG_FILE}\"",
+		"CLEANUP=false; keeping kind cluster",
 		"collect_diagnostics() {",
 		"kind get clusters",
 		"kubeconfig-contexts.txt",

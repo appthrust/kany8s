@@ -69,6 +69,10 @@ cleanup() {
 	if [[ "${CLEANUP}" == "true" ]]; then
 		echo "==> Cleaning up kind cluster ${KIND_CLUSTER_NAME}"
 		kind delete cluster --name "${KIND_CLUSTER_NAME}" --kubeconfig "${KUBECONFIG_FILE}" || true
+	else
+		echo "==> CLEANUP=false; keeping kind cluster ${KIND_CLUSTER_NAME}"
+		echo "==> kubectl context: ${KUBECTL_CONTEXT}"
+		echo "==> kubeconfig: ${KUBECONFIG_FILE}"
 	fi
 }
 

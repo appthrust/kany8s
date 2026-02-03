@@ -326,3 +326,5 @@
 - 2026-02-03: Added `cleanup()` to `hack/acceptance-test-kro-infra-reflection.sh` (calls `restore_kustomization` first) and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added kind cluster deletion to infra reflection acceptance `cleanup()` when `CLEANUP=true` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a keep-cluster message for infra reflection acceptance `cleanup()` when `CLEANUP=false` and asserted it in devtools; verified `make test` and `make lint`.
