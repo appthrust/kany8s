@@ -71,7 +71,7 @@
 ## 2.2 変数（デフォルト値）
 
 - [x] `timestamp="$(date +%Y%m%d%H%M%S)"` を追加する
-- [ ] `KIND_CLUSTER_NAME` のデフォルトを `kany8s-acceptance-infra-${timestamp}` に設定する
+- [x] `KIND_CLUSTER_NAME` のデフォルトを `kany8s-acceptance-infra-${timestamp}` に設定する
 - [ ] `KUBECTL_CONTEXT` のデフォルトを `kind-${KIND_CLUSTER_NAME}` に設定する
 - [ ] `KRO_VERSION` のデフォルトを `0.7.1` に設定する
 - [ ] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に設定する
