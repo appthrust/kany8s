@@ -62,6 +62,9 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"kany8s-controller-logs.txt",
 		"kany8scluster.yaml",
 		"rgd-instance.yaml",
+		"on_exit() {",
+		"rc=$?",
+		"collect_diagnostics || true",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {

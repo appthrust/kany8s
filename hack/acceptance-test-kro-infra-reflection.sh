@@ -108,6 +108,15 @@ collect_diagnostics() {
 	k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o yaml >"${diag_dir}/rgd-instance.yaml" 2>&1 || true
 }
 
+on_exit() {
+	local rc
+	rc=$?
+
+	if [[ "${rc}" -ne 0 ]]; then
+		collect_diagnostics || true
+	fi
+}
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
