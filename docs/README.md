@@ -222,6 +222,21 @@ Prereqs:
    - `kubectl get kany8scontrolplanes -n default -o wide`
    - `kubectl get democontrolplanes.kro.run -n default -o wide`
 
+## Acceptance runners
+
+For reproducible end-to-end checks (fresh kind clusters + artifacts), see `test/acceptance_test/README.md`.
+
+- kro demo flow (managed control plane reflection): `make test-acceptance-kro-reflection`
+- kro demo flow (managed infra reflection): `make test-acceptance-kro-infra-reflection`
+- kro demo flow with 2 RGDs (multi-instance-kind): `make test-acceptance-kro-reflection-multi-rgd`
+- self-managed (CAPD + kubeadm): `make test-acceptance-capd-kubeadm`
+
+Legacy aliases are still supported:
+
+- `make test-acceptance` -> `make test-acceptance-kro-reflection`
+- `make test-acceptance-multi-rgd` -> `make test-acceptance-kro-reflection-multi-rgd`
+- `make test-acceptance-self-managed` -> `make test-acceptance-capd-kubeadm`
+
 ## Development
 
 ### Prerequisites

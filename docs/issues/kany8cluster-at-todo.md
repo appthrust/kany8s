@@ -294,7 +294,7 @@
 
 ## 7.2 `docs/README.md`
 
-- [ ] `docs/README.md` の acceptance targets/scripts 一覧に `test-acceptance-kro-infra-reflection` を追記する
+- [x] `docs/README.md` の acceptance targets/scripts 一覧に `test-acceptance-kro-infra-reflection` を追記する
 
 ## 7.3 `docs/e2e-and-acceptance-test.md`
 

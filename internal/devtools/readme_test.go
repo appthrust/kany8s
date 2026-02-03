@@ -58,3 +58,23 @@ func TestReadmeDocumentsInstallApplyFlow(t *testing.T) {
 		}
 	}
 }
+
+func TestReadmeDocumentsKroInfraReflectionAcceptanceRunner(t *testing.T) {
+	root := findRepoRoot(t)
+
+	readmePath := filepath.Join(root, "docs", "README.md")
+	readmeBytes, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", readmePath, err)
+	}
+
+	readme := string(readmeBytes)
+	wantSubstrings := []string{
+		"test-acceptance-kro-infra-reflection",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(readme, want) {
+			t.Errorf("docs/README.md missing %q", want)
+		}
+	}
+}
