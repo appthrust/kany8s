@@ -27,6 +27,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"KRO_VERSION=\"${KRO_VERSION:-0.7.1}\"",
 		"IMG=\"${IMG:-example.com/kany8s:acceptance-kro-infra}\"",
 		"CLEANUP=\"${CLEANUP:-true}\"",
+		"ARTIFACTS_DIR=\"${ARTIFACTS_DIR:-/tmp/kany8s-acceptance-kro-infra-${timestamp}}\"",
 		"RGD_NAME=\"demo-infra.kro.run\"",
 		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
 	}
