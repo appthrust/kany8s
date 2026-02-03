@@ -434,3 +434,5 @@
 - 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `CLEANUP` default; verified `make test` and `make lint`.
 
 - 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `ARTIFACTS_DIR` default; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KUBECONFIG_FILE` default; verified `make test` and `make lint`.

@@ -79,7 +79,7 @@
 - [x] `CLUSTER_NAME` のデフォルトを `demo-cluster` に設定する
 - [x] `CLEANUP` のデフォルトを `true` に設定する
 - [x] `ARTIFACTS_DIR` のデフォルトを `/tmp/kany8s-acceptance-kro-infra-${timestamp}` に設定する
-- [ ] `KUBECONFIG_FILE` のデフォルトを `${ARTIFACTS_DIR}/kubeconfig` に設定する
+- [x] `KUBECONFIG_FILE` のデフォルトを `${ARTIFACTS_DIR}/kubeconfig` に設定する
 
 ## 2.3 固定値（infra RGD）
 
