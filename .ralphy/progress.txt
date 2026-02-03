@@ -422,3 +422,5 @@
 - 2026-02-03: Marked the kro infra reflection acceptance PRD item for `KIND_CLUSTER_NAME` default complete; verified `go test ./...` and `make lint`.
 
 - 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KUBECTL_CONTEXT` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KRO_VERSION` default; verified `make test` and `make lint`.

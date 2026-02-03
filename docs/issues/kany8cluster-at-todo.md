@@ -73,7 +73,7 @@
 - [x] `timestamp="$(date +%Y%m%d%H%M%S)"` を追加する
 - [x] `KIND_CLUSTER_NAME` のデフォルトを `kany8s-acceptance-infra-${timestamp}` に設定する
 - [x] `KUBECTL_CONTEXT` のデフォルトを `kind-${KIND_CLUSTER_NAME}` に設定する
-- [ ] `KRO_VERSION` のデフォルトを `0.7.1` に設定する
+- [x] `KRO_VERSION` のデフォルトを `0.7.1` に設定する
 - [ ] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に設定する
 - [ ] `NAMESPACE` のデフォルトを `default` に設定する
 - [ ] `CLUSTER_NAME` のデフォルトを `demo-cluster` に設定する
