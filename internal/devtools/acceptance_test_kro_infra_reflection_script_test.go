@@ -20,6 +20,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
+		"NAMESPACE=\"${NAMESPACE:-default}\"",
 		"RGD_NAME=\"demo-infra.kro.run\"",
 		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
 	}
