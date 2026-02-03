@@ -42,6 +42,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"exec > >(tee -a \"${log_file}\") 2>&1",
 		"kustomization_path=\"${repo_root}/config/manager/kustomization.yaml\"",
 		"need_cmd()",
+		"need_cmd docker",
 		"k() {",
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",
