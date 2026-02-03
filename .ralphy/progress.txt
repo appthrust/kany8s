@@ -384,3 +384,5 @@
 - 2026-02-03: Added infra kro reflection acceptance checks to fail when `Kany8sCluster.status.failureReason/failureMessage` are set (jsonpath) and asserted them in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added a retry loop to `hack/acceptance-test-kro-infra-reflection.sh` to wait for the infra kro instance to exist (up to 240s) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a `kubectl wait` for the infra kro instance `status.ready=true` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.

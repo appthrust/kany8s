@@ -60,6 +60,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"k -n \"${NAMESPACE}\" get kany8scluster \"${CLUSTER_NAME}\" -o jsonpath='{.status.failureReason}'",
 		"k -n \"${NAMESPACE}\" get kany8scluster \"${CLUSTER_NAME}\" -o jsonpath='{.status.failureMessage}'",
 		"k -n \"${NAMESPACE}\" get \"${RGD_INSTANCE_CRD}\" \"${CLUSTER_NAME}\" -o name",
+		"k -n \"${NAMESPACE}\" wait --for=jsonpath='{.status.ready}'=true --timeout=180s \"${RGD_INSTANCE_CRD}/${CLUSTER_NAME}\"",
 		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
 		"mkdir -p \"${ARTIFACTS_DIR}\"",

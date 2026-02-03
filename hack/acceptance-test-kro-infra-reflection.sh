@@ -221,6 +221,9 @@ if [[ "${kro_instance_found}" != "true" ]]; then
 	exit 1
 fi
 
+echo "==> Waiting for kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} Ready"
+k -n "${NAMESPACE}" wait --for=jsonpath='{.status.ready}'=true --timeout=180s "${RGD_INSTANCE_CRD}/${CLUSTER_NAME}"
+
 echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
