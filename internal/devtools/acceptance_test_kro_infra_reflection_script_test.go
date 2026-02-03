@@ -21,6 +21,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
 		"NAMESPACE=\"${NAMESPACE:-default}\"",
+		"CLUSTER_NAME=\"${CLUSTER_NAME:-demo-cluster}\"",
 		"RGD_NAME=\"demo-infra.kro.run\"",
 		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
 	}

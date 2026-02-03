@@ -18,7 +18,7 @@
 - [x] RGD 名を `demo-infra.kro.run` に確定する
 - [x] kro instance CRD 名を `demoinfrastructures.kro.run` に確定する
 - [x] Namespace のデフォルトを `default` に確定する
-- [ ] Cluster 名のデフォルトを `demo-cluster` に確定する
+- [x] Cluster 名のデフォルトを `demo-cluster` に確定する
 - [ ] `KRO_VERSION` のデフォルトを `0.7.1` に確定する
 - [ ] `IMG` のデフォルトを `example.com/kany8s:acceptance-kro-infra` に確定する
 
