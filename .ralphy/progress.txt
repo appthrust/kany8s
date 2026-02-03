@@ -278,3 +278,5 @@
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `CLEANUP` (default `true`) and asserted it in devtools tests; verified `make test` and `make lint`.
 
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `ARTIFACTS_DIR` (default `/tmp/kany8s-acceptance-kro-infra-${timestamp}`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KUBECONFIG_FILE` (default `${ARTIFACTS_DIR}/kubeconfig`) and asserted it in devtools tests; verified `make test` and `make lint`.

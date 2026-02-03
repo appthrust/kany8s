@@ -28,6 +28,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"IMG=\"${IMG:-example.com/kany8s:acceptance-kro-infra}\"",
 		"CLEANUP=\"${CLEANUP:-true}\"",
 		"ARTIFACTS_DIR=\"${ARTIFACTS_DIR:-/tmp/kany8s-acceptance-kro-infra-${timestamp}}\"",
+		"KUBECONFIG_FILE=\"${KUBECONFIG_FILE:-${ARTIFACTS_DIR}/kubeconfig}\"",
 		"RGD_NAME=\"demo-infra.kro.run\"",
 		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
 	}
