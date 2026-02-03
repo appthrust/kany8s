@@ -54,6 +54,27 @@ func TestMakefileHasAcceptanceTarget(t *testing.T) {
 	}
 }
 
+func TestMakefileHasKroInfraReflectionAcceptanceTarget(t *testing.T) {
+	root := findRepoRoot(t)
+
+	makefilePath := filepath.Join(root, "Makefile")
+	makefileBytes, err := os.ReadFile(makefilePath)
+	if err != nil {
+		t.Fatalf("read %q: %v", makefilePath, err)
+	}
+
+	makefile := string(makefileBytes)
+	wantSubstrings := []string{
+		"test-acceptance-kro-infra-reflection:",
+		"bash hack/acceptance-test-kro-infra-reflection.sh",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(makefile, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(makefilePath), want)
+		}
+	}
+}
+
 func TestSelfManagedAcceptanceTestScriptExists(t *testing.T) {
 	root := findRepoRoot(t)
 

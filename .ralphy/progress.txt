@@ -246,3 +246,5 @@
 - 2026-02-02: Documented Parent RGD (infra + control plane) status projection guidance in `docs/rgd-contract.md`; extended the devtools doc test; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-02: Documented Approach A guidance for wiring infra outputs into the control plane spec (missing-field tolerance via `.?` + `orValue(...)` and `includeWhen` gating) in `docs/rgd-guidelines.md`; updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added Makefile target `test-acceptance-kro-infra-reflection` and a devtools unit test to enforce its presence; verified `make test` and `make lint`.
