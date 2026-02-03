@@ -149,7 +149,7 @@
 ## 2.11 kind クラスタ作成
 
 - [x] `kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 60s --kubeconfig "${KUBECONFIG_FILE}"` を追加する
-- [ ] `k get nodes -o wide` を追加する
+- [x] `k get nodes -o wide` を追加する
 
 ## 2.12 kro install（vendor キャッシュ込み）
 

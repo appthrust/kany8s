@@ -348,3 +348,5 @@
 - 2026-02-03: Added `need_cmd curl` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added kind cluster creation (`kind create cluster --wait 60s --kubeconfig ...`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Listed kind nodes right after cluster creation in `hack/acceptance-test-kro-infra-reflection.sh` and added a devtools assertion; verified `make test` and `make lint`.
