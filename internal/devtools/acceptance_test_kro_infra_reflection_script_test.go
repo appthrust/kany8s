@@ -21,6 +21,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
 		"KIND_CLUSTER_NAME=\"${KIND_CLUSTER_NAME:-kany8s-acceptance-infra-${timestamp}}\"",
+		"KUBECTL_CONTEXT=\"${KUBECTL_CONTEXT:-kind-${KIND_CLUSTER_NAME}}\"",
 		"NAMESPACE=\"${NAMESPACE:-default}\"",
 		"CLUSTER_NAME=\"${CLUSTER_NAME:-demo-cluster}\"",
 		"KRO_VERSION=\"${KRO_VERSION:-0.7.1}\"",
