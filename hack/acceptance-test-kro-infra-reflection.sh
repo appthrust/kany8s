@@ -182,6 +182,9 @@ sed \
 
 k apply -f "${rendered_cluster_manifest}"
 
+echo "==> Waiting for Kany8sCluster Ready"
+k -n "${NAMESPACE}" wait --for=condition=Ready --timeout=240s "kany8scluster/${CLUSTER_NAME}"
+
 echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
