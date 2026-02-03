@@ -166,9 +166,9 @@
 
 ## 2.14 infra RGD apply + wait
 
-- [ ] `k apply -f "${KRO_RGD_MANIFEST}"` を追加する
-- [ ] `k wait --for=condition=ResourceGraphAccepted --timeout=120s "rgd/${RGD_NAME}"` を追加する
-- [ ] `k get crd "${RGD_INSTANCE_CRD}" -o name` を追加する
+- [x] `k apply -f "${KRO_RGD_MANIFEST}"` を追加する
+- [x] `k wait --for=condition=ResourceGraphAccepted --timeout=120s "rgd/${RGD_NAME}"` を追加する
+- [x] `k get crd "${RGD_INSTANCE_CRD}" -o name` を追加する
 
 ## 2.15 Kany8s の install/build/deploy
 
