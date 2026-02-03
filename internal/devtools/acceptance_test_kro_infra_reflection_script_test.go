@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+const kroInfraReflectionRepoRootCdLine = `cd "${repo_root}"`
+
 func TestKroInfraReflectionAcceptanceHackScriptIsExecutable(t *testing.T) {
 	if runtime.GOOS == goosWindows {
 		t.Skip("executable bit is not enforced on windows")
@@ -270,7 +272,7 @@ func TestKroInfraReflectionAcceptanceHackScriptSetsRGDManifestDefaultAfterRepoRo
 	}
 
 	script := string(scriptBytes)
-	cdLine := "cd \"${repo_root}\""
+	cdLine := kroInfraReflectionRepoRootCdLine
 	rgdDefaultLine := "KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\""
 
 	cdIdx := strings.Index(script, cdLine)
@@ -298,7 +300,7 @@ func TestKroInfraReflectionAcceptanceHackScriptSetsRBACWorkaroundManifestDefault
 	}
 
 	script := string(scriptBytes)
-	cdLine := "cd \"${repo_root}\""
+	cdLine := kroInfraReflectionRepoRootCdLine
 	rbacDefaultLine := "KRO_RBAC_WORKAROUND_MANIFEST=\"${KRO_RBAC_WORKAROUND_MANIFEST:-test/acceptance_test/manifests/kro/rbac-unrestricted.yaml}\""
 
 	cdIdx := strings.Index(script, cdLine)
@@ -313,5 +315,33 @@ func TestKroInfraReflectionAcceptanceHackScriptSetsRBACWorkaroundManifestDefault
 
 	if rbacIdx < cdIdx {
 		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KRO_RBAC_WORKAROUND_MANIFEST default", cdLine)
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptSetsClusterTemplateDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := kroInfraReflectionRepoRootCdLine
+	clusterTemplateDefaultLine := "KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	clusterTemplateIdx := strings.Index(script, clusterTemplateDefaultLine)
+	if clusterTemplateIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), clusterTemplateDefaultLine)
+	}
+
+	if clusterTemplateIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KANY8S_CLUSTER_TEMPLATE default", cdLine)
 	}
 }

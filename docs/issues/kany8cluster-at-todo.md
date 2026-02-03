@@ -92,7 +92,7 @@
 - [x] `cd "${repo_root}"` を追加する
 - [x] `KRO_RBAC_WORKAROUND_MANIFEST` のデフォルトを `test/acceptance_test/manifests/kro/rbac-unrestricted.yaml` に設定する
 - [x] `KRO_RGD_MANIFEST` のデフォルトを `test/acceptance_test/manifests/kro/infra/rgd.yaml` に設定する
-- [ ] `KANY8S_CLUSTER_TEMPLATE` のデフォルトを `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` に設定する
+- [x] `KANY8S_CLUSTER_TEMPLATE` のデフォルトを `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` に設定する
 
 ## 2.5 artifacts/log 設定
 
