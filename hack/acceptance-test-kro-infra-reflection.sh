@@ -157,6 +157,9 @@ k apply -f "${KRO_RGD_MANIFEST}"
 k wait --for=condition=ResourceGraphAccepted --timeout=120s "rgd/${RGD_NAME}"
 k get crd "${RGD_INSTANCE_CRD}" -o name
 
+echo "==> Installing Kany8s CRDs"
+make install
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

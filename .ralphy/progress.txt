@@ -366,3 +366,5 @@
 - 2026-02-03: Applied the kro RBAC workaround manifest in `hack/acceptance-test-kro-infra-reflection.sh` (`k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"`) and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Implemented infra RGD apply + wait in `hack/acceptance-test-kro-infra-reflection.sh` (`k apply -f "${KRO_RGD_MANIFEST}"` + `ResourceGraphAccepted` wait + CRD existence check) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `make install` to `hack/acceptance-test-kro-infra-reflection.sh` (install Kany8s CRDs into the kind cluster) and asserted it in devtools; verified `make test` and `make lint`.

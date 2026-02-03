@@ -44,6 +44,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"k apply -f \"${KRO_RGD_MANIFEST}\"",
 		"k wait --for=condition=ResourceGraphAccepted --timeout=120s \"rgd/${RGD_NAME}\"",
 		"k get crd \"${RGD_INSTANCE_CRD}\" -o name",
+		"make install",
 		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
 		"mkdir -p \"${ARTIFACTS_DIR}\"",
