@@ -133,6 +133,9 @@ kind create cluster --name "${KIND_CLUSTER_NAME}" --wait 60s --kubeconfig "${KUB
 
 k get nodes -o wide
 
+echo "==> Ensuring kro-system namespace exists"
+k get namespace kro-system >/dev/null 2>&1 || k create namespace kro-system
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
