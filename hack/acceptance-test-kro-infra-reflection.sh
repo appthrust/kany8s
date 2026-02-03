@@ -139,6 +139,12 @@ k get namespace kro-system >/dev/null 2>&1 || k create namespace kro-system
 
 mkdir -p "$(dirname "${KRO_CORE_INSTALL_MANIFEST}")"
 
+if [[ ! -f "${KRO_CORE_INSTALL_MANIFEST}" ]]; then
+	echo "==> Downloading kro install manifest to ${KRO_CORE_INSTALL_MANIFEST}"
+	curl -fsSL -o "${KRO_CORE_INSTALL_MANIFEST}" \
+		"https://github.com/kubernetes-sigs/kro/releases/download/v${KRO_VERSION}/kro-core-install-manifests.yaml"
+fi
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1
