@@ -313,7 +313,7 @@
 ## 8.1 repo-policy / unit tests
 
 - [x] `go test ./internal/devtools` を実行する
-- [ ] `go test ./...` を実行する
+- [x] `go test ./...` を実行する
 
 ## 8.2 shell syntax
 
