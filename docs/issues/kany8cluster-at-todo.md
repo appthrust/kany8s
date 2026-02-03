@@ -317,7 +317,7 @@
 
 ## 8.2 shell syntax
 
-- [ ] `bash -n hack/acceptance-test-kro-infra-reflection.sh` を実行する
+- [x] `bash -n hack/acceptance-test-kro-infra-reflection.sh` を実行する
 - [ ] `bash -n test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を実行する
 
 # 9) End-to-end (optional, manual)
