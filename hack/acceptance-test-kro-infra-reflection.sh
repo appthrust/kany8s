@@ -115,6 +115,8 @@ on_exit() {
 	if [[ "${rc}" -ne 0 ]]; then
 		collect_diagnostics || true
 	fi
+
+	cleanup || true
 }
 
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
