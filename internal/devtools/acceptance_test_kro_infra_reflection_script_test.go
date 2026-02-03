@@ -260,6 +260,34 @@ func TestKroInfraReflectionAcceptanceWrapperScriptHasValidBashSyntax(t *testing.
 	}
 }
 
+func TestKroInfraReflectionAcceptanceHackScriptSetsRGDManifestDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := "cd \"${repo_root}\""
+	rgdDefaultLine := "KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	rgdIdx := strings.Index(script, rgdDefaultLine)
+	if rgdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), rgdDefaultLine)
+	}
+
+	if rgdIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KRO_RGD_MANIFEST default", cdLine)
+	}
+}
+
 func TestKroInfraReflectionAcceptanceHackScriptSetsRBACWorkaroundManifestDefaultAfterRepoRootCd(t *testing.T) {
 	root := findRepoRoot(t)
 

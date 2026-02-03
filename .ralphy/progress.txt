@@ -442,3 +442,5 @@
 - 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `RGD_INSTANCE_CRD` constant; verified `go test ./...` and `make lint`.
 
 - 2026-02-04: Added a devtools ordering assertion for the infra reflection hack script `KRO_RBAC_WORKAROUND_MANIFEST` default (after repo_root cd) and marked the PRD item complete; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-04: Marked infra reflection acceptance `KRO_RGD_MANIFEST` default PRD item complete; added a devtools ordering test to keep the default after `cd "${repo_root}"`; verified `make test` and `make lint`.
