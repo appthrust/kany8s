@@ -137,6 +137,8 @@ k get nodes -o wide
 echo "==> Ensuring kro-system namespace exists"
 k get namespace kro-system >/dev/null 2>&1 || k create namespace kro-system
 
+mkdir -p "$(dirname "${KRO_CORE_INSTALL_MANIFEST}")"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

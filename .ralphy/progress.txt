@@ -354,3 +354,5 @@
 - 2026-02-03: Ensured `kro-system` namespace exists in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added infra reflection acceptance default `KRO_CORE_INSTALL_MANIFEST` path and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Ensured the kro infra reflection acceptance script creates the vendor cache dir for `KRO_CORE_INSTALL_MANIFEST`; updated devtools assertions; verified `make test` and `make lint`.

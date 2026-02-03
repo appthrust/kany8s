@@ -155,7 +155,7 @@
 
 - [x] kro-system namespace が無ければ作成する
 - [x] `KRO_CORE_INSTALL_MANIFEST` のデフォルトを `test/acceptance_test/vendor/kro/v${KRO_VERSION}/kro-core-install-manifests.yaml` に設定する
-- [ ] `mkdir -p "$(dirname "${KRO_CORE_INSTALL_MANIFEST}")"` を追加する
+- [x] `mkdir -p "$(dirname "${KRO_CORE_INSTALL_MANIFEST}")"` を追加する
 - [ ] install manifest が無ければ GitHub releases から `curl -fsSL -o ...` で取得する
 - [ ] `k apply -f "${KRO_CORE_INSTALL_MANIFEST}"` を追加する
 - [ ] `k -n kro-system rollout status deploy/kro --timeout=180s` を追加する
