@@ -28,6 +28,8 @@ KANY8S_CLUSTER_TEMPLATE="${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifes
 
 mkdir -p "${ARTIFACTS_DIR}"
 
+export KUBECONFIG="${KUBECONFIG_FILE}"
+
 log_file="${ARTIFACTS_DIR}/acceptance-infra.log"
 touch "${log_file}"
 exec > >(tee -a "${log_file}") 2>&1

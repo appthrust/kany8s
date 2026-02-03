@@ -98,7 +98,7 @@
 
 - [x] `mkdir -p "${ARTIFACTS_DIR}"` を追加する
 - [x] log ファイル（例: `${ARTIFACTS_DIR}/acceptance-infra.log`）を作って `tee` を設定する
-- [ ] `export KUBECONFIG="${KUBECONFIG_FILE}"` を追加する
+- [x] `export KUBECONFIG="${KUBECONFIG_FILE}"` を追加する
 
 ## 2.6 kustomization の退避/復元
 
