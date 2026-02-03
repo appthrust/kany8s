@@ -58,7 +58,7 @@
 ## 1.3 テンプレ render の静的検証
 
 - [x] `sed -e 's/__CLUSTER_NAME__/demo-cluster/g' -e 's/__NAMESPACE__/default/g' -e 's/__RGD_NAME__/demo-infra.kro.run/g' test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl > /tmp/kany8scluster.yaml` を実行する
-- [ ] `kubectl apply --dry-run=client -f /tmp/kany8scluster.yaml` を実行して exit 0 を確認する
+- [x] `kubectl apply --dry-run=client -f /tmp/kany8scluster.yaml` を実行して exit 0 を確認する
 
 # 2) Acceptance script (hack)
 

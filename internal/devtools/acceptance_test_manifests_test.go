@@ -119,6 +119,11 @@ func TestKroInfraAcceptanceKany8sClusterTemplateRendersToValidYAML(t *testing.T)
 		"__RGD_NAME__", "demo-infra.kro.run",
 	)
 	rendered := replacer.Replace(string(tplBytes))
+	for _, placeholder := range []string{"__CLUSTER_NAME__", "__NAMESPACE__", "__RGD_NAME__"} {
+		if strings.Contains(rendered, placeholder) {
+			t.Fatalf("%s rendered output still contains %q", filepath.ToSlash(tplPath), placeholder)
+		}
+	}
 
 	jsonBytes, err := utilyaml.ToJSON([]byte(rendered))
 	if err != nil {
