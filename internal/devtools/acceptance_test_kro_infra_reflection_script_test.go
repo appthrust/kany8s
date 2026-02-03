@@ -29,6 +29,26 @@ func TestKroInfraReflectionAcceptanceHackScriptIsExecutable(t *testing.T) {
 	}
 }
 
+func TestKroInfraReflectionAcceptanceWrapperScriptIsExecutable(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("executable bit is not enforced on windows")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "test", "acceptance_test", "run-acceptance-kro-infra-reflection.sh")
+	info, err := os.Stat(scriptPath)
+	if err != nil {
+		t.Fatalf("stat %q: %v", scriptPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatalf("%s is not a regular file", filepath.ToSlash(scriptPath))
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		t.Errorf("%s is not executable (mode=%#o)", filepath.ToSlash(scriptPath), info.Mode().Perm())
+	}
+}
+
 func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	root := findRepoRoot(t)
 
