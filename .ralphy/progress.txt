@@ -252,3 +252,5 @@
 - 2026-02-03: Added Makefile keep target `test-acceptance-kro-infra-reflection-keep` and extended devtools assertions; verified `make test` and `make lint`.
 
 - 2026-02-03: Added acceptance source-of-truth infra kro RGD manifest at `test/acceptance_test/manifests/kro/infra/rgd.yaml` with a devtools test enforcing key contents; verified `make test` and `make lint`.
+
+- 2026-02-03: Added stub `hack/acceptance-test-kro-infra-reflection.sh` plus a devtools test enforcing it exists; verified `make test` and `make lint`.
