@@ -53,6 +53,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
+		`timestamp="$(date +%Y%m%d%H%M%S)"`,
 		"KIND_CLUSTER_NAME=\"${KIND_CLUSTER_NAME:-kany8s-acceptance-infra-${timestamp}}\"",
 		"KUBECTL_CONTEXT=\"${KUBECTL_CONTEXT:-kind-${KIND_CLUSTER_NAME}}\"",
 		"NAMESPACE=\"${NAMESPACE:-default}\"",
