@@ -43,7 +43,7 @@
 
 ## 1.1 infra RGD
 
-- [ ] ディレクトリ `test/acceptance_test/manifests/kro/infra/` を作成する
+- [x] ディレクトリ `test/acceptance_test/manifests/kro/infra/` を作成する
 - [x] `examples/kro/infra/rgd.yaml` を `test/acceptance_test/manifests/kro/infra/rgd.yaml` にコピーする
 - [ ] `test/acceptance_test/manifests/kro/infra/rgd.yaml` の `metadata.name` が `demo-infra.kro.run` であることを確認する
 - [x] `kubectl apply --dry-run=client -f test/acceptance_test/manifests/kro/infra/rgd.yaml` を実行して exit 0 を確認する

@@ -13,6 +13,15 @@ import (
 func TestKroInfraAcceptanceRGDManifestExists(t *testing.T) {
 	root := findRepoRoot(t)
 
+	dirPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "infra")
+	info, err := os.Stat(dirPath)
+	if err != nil {
+		t.Fatalf("stat %q: %v", dirPath, err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("%s is not a directory", filepath.ToSlash(dirPath))
+	}
+
 	rgdPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "infra", "rgd.yaml")
 	rgdBytes, err := os.ReadFile(rgdPath)
 	if err != nil {

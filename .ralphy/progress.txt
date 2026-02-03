@@ -314,3 +314,5 @@
 - 2026-02-03: Added `need_cmd()` helper to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added a `kubectl --context` wrapper (`k()`) to `hack/acceptance-test-kro-infra-reflection.sh` and extended the devtools script policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools assertion that `test/acceptance_test/manifests/kro/infra/` exists as a directory and marked the PRD item complete; verified `go test ./...` and `make lint`.
