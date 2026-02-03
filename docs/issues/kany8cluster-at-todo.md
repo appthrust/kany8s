@@ -243,7 +243,7 @@
 ## 3.5 wrapper の静的検証
 
 - [ ] `chmod +x test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を実行する
-- [ ] `bash -n test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を実行して exit 0 を確認する
+- [x] `bash -n test/acceptance_test/run-acceptance-kro-infra-reflection.sh` を実行して exit 0 を確認する
 
 # 4) Makefile targets
 

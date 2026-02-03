@@ -406,3 +406,5 @@
 - 2026-02-03: Added infra reflection execution to `test/acceptance_test/run-all.sh` with a devtools policy test; verified `go test ./internal/devtools` and `make lint`.
 
 - 2026-02-03: Added `make test-acceptance-kro-infra-reflection` to `acceptance.md` and enforced it via a devtools test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools repo-policy test enforcing `bash -n` succeeds for `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`; verified `go test ./...` and `make lint`.

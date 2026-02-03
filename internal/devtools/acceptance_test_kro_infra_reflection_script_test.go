@@ -183,3 +183,21 @@ func TestKroInfraReflectionAcceptanceWrapperScriptExists(t *testing.T) {
 		}
 	}
 }
+
+func TestKroInfraReflectionAcceptanceWrapperScriptHasValidBashSyntax(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("bash -n is not supported on windows")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not found")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "test", "acceptance_test", "run-acceptance-kro-infra-reflection.sh")
+	cmd := exec.Command("bash", "-n", scriptPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash -n %s: %v\n%s", filepath.ToSlash(scriptPath), err, string(out))
+	}
+}
