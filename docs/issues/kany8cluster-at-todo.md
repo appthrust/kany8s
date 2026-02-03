@@ -175,9 +175,9 @@
 - [x] `make install` を追加する
 - [x] `make docker-build IMG="${IMG}"` を追加する
 - [x] `kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"` を追加する
-- [ ] `backup_kustomization` を呼ぶ
-- [ ] `make deploy IMG="${IMG}"` を追加する
-- [ ] `k -n kany8s-system rollout status deployment/kany8s-controller-manager --timeout=180s` を追加する
+- [x] `backup_kustomization` を呼ぶ
+- [x] `make deploy IMG="${IMG}"` を追加する
+- [x] `k -n kany8s-system rollout status deployment/kany8s-controller-manager --timeout=180s` を追加する
 
 ## 2.16 `Kany8sCluster` apply（テンプレ render）
 

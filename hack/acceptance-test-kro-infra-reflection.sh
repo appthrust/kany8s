@@ -166,6 +166,11 @@ make docker-build IMG="${IMG}"
 echo "==> Loading controller image into kind cluster"
 kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"
 
+echo "==> Deploying Kany8s controller-manager"
+backup_kustomization
+make deploy IMG="${IMG}"
+k -n kany8s-system rollout status deployment/kany8s-controller-manager --timeout=180s
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

@@ -372,3 +372,5 @@
 - 2026-02-03: Added `make docker-build IMG="${IMG}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools` and `make lint`.
 
 - 2026-02-03: Added `kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Deployed the Kany8s controller-manager in `hack/acceptance-test-kro-infra-reflection.sh` (`backup_kustomization` + `make deploy` + rollout wait) and updated devtools assertions; verified `make test` and `make lint`.
