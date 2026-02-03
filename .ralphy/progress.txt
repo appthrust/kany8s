@@ -258,3 +258,5 @@
 - 2026-02-03: Added wrapper runner `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` and a devtools test enforcing it delegates to the hack script; verified `make test` and `make lint`.
 
 - 2026-02-03: Fixed the kro infra reflection acceptance RGD name (`demo-infra.kro.run`) as a constant in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Fixed the kro infra reflection acceptance kro instance CRD name (`demoinfrastructures.kro.run`) as a constant in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools tests; verified `make test` and `make lint`.

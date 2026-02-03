@@ -16,7 +16,7 @@
 ## 0.2 テストで固定する値
 
 - [x] RGD 名を `demo-infra.kro.run` に確定する
-- [ ] kro instance CRD 名を `demoinfrastructures.kro.run` に確定する
+- [x] kro instance CRD 名を `demoinfrastructures.kro.run` に確定する
 - [ ] Namespace のデフォルトを `default` に確定する
 - [ ] Cluster 名のデフォルトを `demo-cluster` に確定する
 - [ ] `KRO_VERSION` のデフォルトを `0.7.1` に確定する
