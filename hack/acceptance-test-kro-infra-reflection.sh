@@ -124,6 +124,7 @@ trap on_exit EXIT
 need_cmd docker
 need_cmd kind
 need_cmd kubectl
+need_cmd make
 
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
