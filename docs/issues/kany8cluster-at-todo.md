@@ -298,7 +298,7 @@
 
 ## 7.3 `docs/e2e-and-acceptance-test.md`
 
-- [ ] `docs/e2e-and-acceptance-test.md` の acceptance targets 一覧に `test-acceptance-kro-infra-reflection` を追記する
+- [x] `docs/e2e-and-acceptance-test.md` の acceptance targets 一覧に `test-acceptance-kro-infra-reflection` を追記する
 
 ## 7.4 `docs/codebase.md`
 

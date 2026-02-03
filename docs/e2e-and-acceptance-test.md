@@ -6,9 +6,14 @@ This repo uses two different "end-to-end" layers on purpose:
   - Goal: validate the controller can be built, deployed into a fresh kind cluster, and serves metrics.
   - Fast and stable enough to run in CI on every PR.
 
-- `hack/acceptance-test.sh` + `make test-acceptance`: acceptance-level e2e
-  - Goal: automate the exact demo flow documented in `e2e-guide.md` (kro -> RGD acceptance -> Kany8s -> Kany8sControlPlane reflection).
-  - Shell-based so the "source of truth" stays the guide's concrete kubectl/kind/make commands.
+- Acceptance tests (shell): deeper end-to-end checks
+  - `make test-acceptance-kro-reflection`: kro demo flow (kro -> RGD -> Kany8sControlPlane reflection)
+    - legacy alias: `make test-acceptance`
+  - `make test-acceptance-kro-infra-reflection`: kro infra demo flow (kro -> RGD -> Kany8sCluster reflection)
+  - `make test-acceptance-kro-reflection-multi-rgd`: kro demo flow with 2 RGDs (proves `Kany8sControlPlane` can drive multiple instance kinds)
+    - legacy alias: `make test-acceptance-multi-rgd`
+  - `make test-acceptance-capd-kubeadm`: CAPD + kubeadm workload provisioning (real API server)
+    - legacy alias: `make test-acceptance-self-managed`
 
 This split keeps "CI e2e" small while still having a reproducible acceptance script for deeper verification.
 
@@ -32,14 +37,18 @@ This split keeps "CI e2e" small while still having a reproducible acceptance scr
   - applying demo RGDs
   - verifying `Kany8sControlPlane` reflects kro status
 
-### Acceptance test
+### Acceptance tests (shell)
 
-- Command: `make test-acceptance` (will run `bash hack/acceptance-test.sh`)
-- Scope: automate `e2e-guide.md` end-to-end demo on a fresh kind cluster:
+This repo intentionally keeps acceptance checks as shell scripts so the command sequence stays close to the human-readable guides.
+
+#### 1) kro demo flow (managed control plane reflection)
+
+- Command: `make test-acceptance-kro-reflection` (runs `bash hack/acceptance-test-kro-reflection.sh`)
+- Scope: automate the `e2e-guide.md` demo on a fresh kind cluster:
   1) Create a fresh kind cluster
   2) Install kro v0.7.1
   3) Apply kro RBAC workaround (unrestricted aggregation ClusterRole)
-  4) Apply demo RGD `examples/kro/ready-endpoint/rgd.yaml` and wait for:
+  4) Apply demo RGD `test/acceptance_test/manifests/kro/rgd.yaml` and wait for:
      - `ResourceGraphAccepted=True`
      - generated instance CRD exists: `democontrolplanes.kro.run`
   5) Install + deploy Kany8s in-cluster (CRDs + controller image load + deploy)
@@ -55,9 +64,19 @@ This split keeps "CI e2e" small while still having a reproducible acceptance scr
   - Install/upgrade CAPI providers to v1beta2 via `clusterctl v1.12.2`
   - Apply `examples/capi/cluster.yaml`
   - Verify `Cluster.spec.controlPlaneEndpoint` is mirrored from `Kany8sControlPlane`
-  - Note: demo RGD is not a real API server, so `RemoteConnectionProbe=False` / `Cluster Available=False` is expected (see `e2e-guide.md`).
+  - Note: demo RGD is not a real API server, so `RemoteConnectionProbe=False` / `Cluster Available=False` is expected.
 
-## Acceptance Script Design (`hack/acceptance-test.sh`)
+#### 2) self-managed flow (CAPD + kubeadm)
+
+- Command: `make test-acceptance-capd-kubeadm` (runs `bash hack/acceptance-test-capd-kubeadm.sh`)
+- Scope:
+  - Install Cluster API providers (CAPD + CABPK) via clusterctl
+  - Deploy Kany8s (including `Kany8sKubeadmControlPlane`)
+  - Render + apply `test/acceptance_test/manifests/self-managed-docker/cluster.yaml.tpl` (equivalent to `examples/self-managed-docker/cluster.yaml`)
+  - Wait for `RemoteConnectionProbe=True` and `Available=True`
+  - Fetch workload kubeconfig and verify connectivity
+
+## Acceptance Script Design (`hack/acceptance-test-kro-reflection.sh`)
 
 ### Inputs (environment variables)
 
@@ -120,17 +139,30 @@ This split keeps "CI e2e" small while still having a reproducible acceptance scr
 - Wait for `Cluster.spec.controlPlaneEndpoint.host` to equal the expected host.
 - Do NOT fail the script just because `Cluster Available=False` (expected for demo).
 
-## Makefile Integration
+## Makefile integration
 
-Add targets:
+Preferred targets:
 
-- `make test-acceptance` -> `bash hack/acceptance-test.sh`
-- (optional convenience) `make test-acceptance-keep` -> `CLEANUP=false make test-acceptance`
+- `make test-acceptance-kro-reflection` -> `bash hack/acceptance-test-kro-reflection.sh`
+- `make test-acceptance-kro-reflection-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-reflection.sh`
+- `make test-acceptance-kro-infra-reflection` -> `bash hack/acceptance-test-kro-infra-reflection.sh`
+- `make test-acceptance-kro-infra-reflection-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh`
+- `make test-acceptance-kro-reflection-multi-rgd` -> `bash hack/acceptance-test-kro-reflection-multi-rgd.sh`
+- `make test-acceptance-kro-reflection-multi-rgd-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-reflection-multi-rgd.sh`
+- `make test-acceptance-capd-kubeadm` -> `bash hack/acceptance-test-capd-kubeadm.sh`
+- `make test-acceptance-capd-kubeadm-keep` -> `CLEANUP=false bash hack/acceptance-test-capd-kubeadm.sh`
+
+Legacy aliases are still supported:
+
+- `make test-acceptance` -> `make test-acceptance-kro-reflection`
+- `make test-acceptance-multi-rgd` -> `make test-acceptance-kro-reflection-multi-rgd`
+- `make test-acceptance-self-managed` -> `make test-acceptance-capd-kubeadm`
 
 ## References
 
 - Manual guide (source of truth for acceptance flow): `e2e-guide.md`
 - Troubleshooting checklist: `docs/runbooks/e2e.md`
-- Demo RGD: `examples/kro/ready-endpoint/rgd.yaml`
+- Demo RGD (acceptance): `test/acceptance_test/manifests/kro/rgd.yaml`
+- Demo RGD (manual): `examples/kro/ready-endpoint/rgd.yaml`
 - Optional CAPI sample: `examples/capi/cluster.yaml`
 - Existing smoke e2e: `test/e2e/e2e_test.go`

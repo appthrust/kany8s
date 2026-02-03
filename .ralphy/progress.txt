@@ -398,3 +398,5 @@
 - 2026-02-03: Added a Purpose line for the kro infra reflection runner in `test/acceptance_test/README.md` and enforced it via devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Documented the kro infra reflection acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Documented the kro infra reflection acceptance target in `docs/e2e-and-acceptance-test.md` and added a devtools test enforcing it; verified `go test ./...` and `make lint`.
