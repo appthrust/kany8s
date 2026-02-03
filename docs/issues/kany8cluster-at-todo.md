@@ -87,7 +87,7 @@
 ## 2.4 repo_root と manifest パス
 
 - [x] `repo_root` を `hack/acceptance-test-kro-reflection.sh` と同じ方式で解決する
-- [ ] `cd "${repo_root}"` を追加する
+- [x] `cd "${repo_root}"` を追加する
 - [ ] `KRO_RBAC_WORKAROUND_MANIFEST` のデフォルトを `test/acceptance_test/manifests/kro/rbac-unrestricted.yaml` に設定する
 - [ ] `KRO_RGD_MANIFEST` のデフォルトを `test/acceptance_test/manifests/kro/infra/rgd.yaml` に設定する
 - [ ] `KANY8S_CLUSTER_TEMPLATE` のデフォルトを `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` に設定する
