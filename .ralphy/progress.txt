@@ -288,3 +288,5 @@
 - 2026-02-03: Marked the kro infra reflection acceptance PRD item for `NAMESPACE` env-var support complete (script already accepted it + devtools assertion); verified `make test` and `make lint`.
 
 - 2026-02-03: Made the kro infra reflection acceptance hack script accept `KANY8S_CLUSTER_TEMPLATE` override (default `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro infra reflection acceptance `Kany8sCluster` manifest template at `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` with required placeholders and a devtools test enforcing it; verified `make test` and `make lint`.

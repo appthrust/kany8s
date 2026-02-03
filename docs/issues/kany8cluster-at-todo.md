@@ -48,10 +48,10 @@
 
 ## 1.2 `Kany8sCluster` manifest template
 
-- [ ] `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` を新規作成する
-- [ ] テンプレに `__CLUSTER_NAME__` を含める
-- [ ] テンプレに `__NAMESPACE__` を含める
-- [ ] テンプレに `__RGD_NAME__` を含める
+- [x] `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` を新規作成する
+- [x] テンプレに `__CLUSTER_NAME__` を含める
+- [x] テンプレに `__NAMESPACE__` を含める
+- [x] テンプレに `__RGD_NAME__` を含める
 
 ## 1.3 テンプレ render の静的検証
 

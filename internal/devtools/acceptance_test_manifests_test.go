@@ -35,3 +35,29 @@ func TestKroInfraAcceptanceRGDManifestExists(t *testing.T) {
 		}
 	}
 }
+
+func TestKroInfraAcceptanceKany8sClusterTemplateExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	tplPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "kany8scluster.yaml.tpl")
+	tplBytes, err := os.ReadFile(tplPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", tplPath, err)
+	}
+
+	tpl := string(tplBytes)
+	wantSubstrings := []string{
+		"apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1",
+		"kind: Kany8sCluster",
+		"name: __CLUSTER_NAME__",
+		"namespace: __NAMESPACE__",
+		"resourceGraphDefinitionRef:",
+		"name: __RGD_NAME__",
+		"kroSpec:",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(tpl, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(tplPath), want)
+		}
+	}
+}
