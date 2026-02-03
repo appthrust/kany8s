@@ -96,7 +96,7 @@
 
 ## 2.5 artifacts/log 設定
 
-- [ ] `mkdir -p "${ARTIFACTS_DIR}"` を追加する
+- [x] `mkdir -p "${ARTIFACTS_DIR}"` を追加する
 - [ ] log ファイル（例: `${ARTIFACTS_DIR}/acceptance-infra.log`）を作って `tee` を設定する
 - [ ] `export KUBECONFIG="${KUBECONFIG_FILE}"` を追加する
 
