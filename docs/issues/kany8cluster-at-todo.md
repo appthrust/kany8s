@@ -130,7 +130,7 @@
 ## 2.9 cleanup / trap
 
 - [x] `cleanup()` を追加する（先頭で `restore_kustomization` を呼ぶ）
-- [ ] `cleanup()` に `CLEANUP=true` の場合の `kind delete cluster --name ... --kubeconfig ...` を追加する
+- [x] `cleanup()` に `CLEANUP=true` の場合の `kind delete cluster --name ... --kubeconfig ...` を追加する
 - [ ] `cleanup()` に `CLEANUP=false` の場合の “keep” メッセージを追加する
 - [ ] `on_exit()` を追加する（rc != 0 なら `collect_diagnostics`）
 - [ ] `on_exit()` で `cleanup` を呼ぶ

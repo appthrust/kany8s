@@ -65,6 +65,11 @@ restore_kustomization() {
 
 cleanup() {
 	restore_kustomization
+
+	if [[ "${CLEANUP}" == "true" ]]; then
+		echo "==> Cleaning up kind cluster ${KIND_CLUSTER_NAME}"
+		kind delete cluster --name "${KIND_CLUSTER_NAME}" --kubeconfig "${KUBECONFIG_FILE}" || true
+	fi
 }
 
 collect_diagnostics() {
