@@ -20,6 +20,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
+		"RGD_NAME=\"demo-infra.kro.run\"",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(script, want) {
