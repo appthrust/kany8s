@@ -46,6 +46,10 @@ need_cmd() {
 	}
 }
 
+k() {
+	kubectl --context "${KUBECTL_CONTEXT}" "$@"
+}
+
 backup_kustomization() {
 	if [[ -f "${kustomization_path}" ]]; then
 		kustomization_backup="${ARTIFACTS_DIR}/kustomization.yaml.bak"
