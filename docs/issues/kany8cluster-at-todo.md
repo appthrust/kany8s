@@ -325,5 +325,5 @@
 ## 9.1 kind 上で実行
 
 - [x] `make test-acceptance-kro-infra-reflection-keep` を実行する
-- [ ] `kubectl --context kind-<KIND_CLUSTER_NAME> -n <NAMESPACE> get kany8scluster <CLUSTER_NAME> -o yaml` で `provisioned=true` を確認する
+- [x] `kubectl --context kind-<KIND_CLUSTER_NAME> -n <NAMESPACE> get kany8scluster <CLUSTER_NAME> -o yaml` で `provisioned=true` を確認する
 - [ ] `kubectl --context kind-<KIND_CLUSTER_NAME> -n <NAMESPACE> get demoinfrastructures.kro.run <CLUSTER_NAME> -o yaml` で `.spec.clusterName/.spec.clusterNamespace` を確認する

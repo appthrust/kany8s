@@ -188,6 +188,10 @@ k -n "${NAMESPACE}" wait --for=condition=Ready --timeout=240s "kany8scluster/${C
 echo "==> Waiting for Kany8sCluster provisioned"
 k -n "${NAMESPACE}" wait --for=jsonpath='{.status.initialization.provisioned}'=true --timeout=240s "kany8scluster/${CLUSTER_NAME}"
 
+echo "==> Capturing Kany8sCluster YAML"
+observed_kany8scluster_yaml="${ARTIFACTS_DIR}/kany8scluster.observed.yaml"
+k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o yaml >"${observed_kany8scluster_yaml}"
+
 echo "==> Verifying Kany8sCluster has no failure fields"
 failure_reason="$(k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o jsonpath='{.status.failureReason}')"
 failure_message="$(k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o jsonpath='{.status.failureMessage}')"
