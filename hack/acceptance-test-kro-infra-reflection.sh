@@ -224,6 +224,30 @@ fi
 echo "==> Waiting for kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} Ready"
 k -n "${NAMESPACE}" wait --for=jsonpath='{.status.ready}'=true --timeout=180s "${RGD_INSTANCE_CRD}/${CLUSTER_NAME}"
 
-echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
-echo "see docs/issues/kany8cluster-at-todo.md" >&2
-exit 1
+echo "==> Verifying kro instance spec injection"
+injected_cluster_name="$(k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o jsonpath='{.spec.clusterName}')"
+injected_cluster_namespace="$(k -n "${NAMESPACE}" get "${RGD_INSTANCE_CRD}" "${CLUSTER_NAME}" -o jsonpath='{.spec.clusterNamespace}')"
+
+injected_cluster_name="${injected_cluster_name//$'\n'/}"
+injected_cluster_name="${injected_cluster_name//$'\r'/}"
+injected_cluster_namespace="${injected_cluster_namespace//$'\n'/}"
+injected_cluster_namespace="${injected_cluster_namespace//$'\r'/}"
+
+if [[ -z "${injected_cluster_name}" || "${injected_cluster_name}" == "<no value>" ]]; then
+	echo "error: kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} missing spec.clusterName" >&2
+	exit 1
+fi
+if [[ -z "${injected_cluster_namespace}" || "${injected_cluster_namespace}" == "<no value>" ]]; then
+	echo "error: kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} missing spec.clusterNamespace" >&2
+	exit 1
+fi
+if [[ "${injected_cluster_name}" != "${CLUSTER_NAME}" ]]; then
+	echo "error: kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} spec.clusterName=${injected_cluster_name} want ${CLUSTER_NAME}" >&2
+	exit 1
+fi
+if [[ "${injected_cluster_namespace}" != "${NAMESPACE}" ]]; then
+	echo "error: kro instance ${RGD_INSTANCE_CRD}/${CLUSTER_NAME} spec.clusterNamespace=${injected_cluster_namespace} want ${NAMESPACE}" >&2
+	exit 1
+fi
+
+echo "==> Success"

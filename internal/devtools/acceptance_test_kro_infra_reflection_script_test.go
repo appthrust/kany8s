@@ -17,6 +17,9 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 	}
 
 	script := string(scriptBytes)
+	if strings.Contains(script, "not fully implemented") || strings.Contains(script, "kany8cluster-at-todo.md") {
+		t.Errorf("%s still contains stub failure block", filepath.ToSlash(scriptPath))
+	}
 	wantSubstrings := []string{
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
@@ -61,6 +64,9 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"k -n \"${NAMESPACE}\" get kany8scluster \"${CLUSTER_NAME}\" -o jsonpath='{.status.failureMessage}'",
 		"k -n \"${NAMESPACE}\" get \"${RGD_INSTANCE_CRD}\" \"${CLUSTER_NAME}\" -o name",
 		"k -n \"${NAMESPACE}\" wait --for=jsonpath='{.status.ready}'=true --timeout=180s \"${RGD_INSTANCE_CRD}/${CLUSTER_NAME}\"",
+		"==> Verifying kro instance spec injection",
+		"jsonpath='{.spec.clusterName}'",
+		"jsonpath='{.spec.clusterNamespace}'",
 		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
 		"mkdir -p \"${ARTIFACTS_DIR}\"",

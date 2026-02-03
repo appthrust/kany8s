@@ -204,8 +204,8 @@
 
 ## 2.20 kro instance spec 注入の確認
 
-- [ ] `spec.clusterName` が `CLUSTER_NAME` と一致することを確認する
-- [ ] `spec.clusterNamespace` が `NAMESPACE` と一致することを確認する
+- [x] `spec.clusterName` が `CLUSTER_NAME` と一致することを確認する
+- [x] `spec.clusterNamespace` が `NAMESPACE` と一致することを確認する
 
 ## 2.21 スクリプトの静的検証
 
