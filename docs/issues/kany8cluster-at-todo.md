@@ -279,11 +279,11 @@
 
 ## 6.2 Makefile target exists
 
-- [ ] `internal/devtools/acceptance_test_script_test.go` に infra 用の "Makefile target exists" テストを追加する
-- [ ] `wantSubstrings` に `test-acceptance-kro-infra-reflection:` を含める
-- [ ] `wantSubstrings` に `bash hack/acceptance-test-kro-infra-reflection.sh` を含める
-- [ ] `wantSubstrings` に `test-acceptance-kro-infra-reflection-keep:` を含める
-- [ ] `wantSubstrings` に `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh` を含める
+- [x] `internal/devtools/acceptance_test_script_test.go` に infra 用の "Makefile target exists" テストを追加する
+- [x] `wantSubstrings` に `test-acceptance-kro-infra-reflection:` を含める
+- [x] `wantSubstrings` に `bash hack/acceptance-test-kro-infra-reflection.sh` を含める
+- [x] `wantSubstrings` に `test-acceptance-kro-infra-reflection-keep:` を含める
+- [x] `wantSubstrings` に `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh` を含める
 
 # 7) Docs updates
 
