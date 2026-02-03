@@ -188,6 +188,24 @@ k -n "${NAMESPACE}" wait --for=condition=Ready --timeout=240s "kany8scluster/${C
 echo "==> Waiting for Kany8sCluster provisioned"
 k -n "${NAMESPACE}" wait --for=jsonpath='{.status.initialization.provisioned}'=true --timeout=240s "kany8scluster/${CLUSTER_NAME}"
 
+echo "==> Verifying Kany8sCluster has no failure fields"
+failure_reason="$(k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o jsonpath='{.status.failureReason}')"
+failure_message="$(k -n "${NAMESPACE}" get kany8scluster "${CLUSTER_NAME}" -o jsonpath='{.status.failureMessage}')"
+
+failure_reason="${failure_reason//$'\n'/}"
+failure_reason="${failure_reason//$'\r'/}"
+failure_message="${failure_message//$'\n'/}"
+failure_message="${failure_message//$'\r'/}"
+
+if [[ -n "${failure_reason}" && "${failure_reason}" != "<no value>" ]]; then
+	echo "error: kany8scluster/${CLUSTER_NAME} has failureReason: ${failure_reason}" >&2
+	exit 1
+fi
+if [[ -n "${failure_message}" && "${failure_message}" != "<no value>" ]]; then
+	echo "error: kany8scluster/${CLUSTER_NAME} has failureMessage: ${failure_message}" >&2
+	exit 1
+fi
+
 echo "error: kro infra reflection acceptance script is not fully implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

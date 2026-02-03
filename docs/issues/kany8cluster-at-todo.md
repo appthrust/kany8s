@@ -194,8 +194,8 @@
 
 ## 2.18 failure fields が空であることを確認
 
-- [ ] `failureReason` を jsonpath で取得し、空（または `<no value>`）以外なら fail する
-- [ ] `failureMessage` を jsonpath で取得し、空（または `<no value>`）以外なら fail する
+- [x] `failureReason` を jsonpath で取得し、空（または `<no value>`）以外なら fail する
+- [x] `failureMessage` を jsonpath で取得し、空（または `<no value>`）以外なら fail する
 
 ## 2.19 kro instance の存在/ready の確認
 

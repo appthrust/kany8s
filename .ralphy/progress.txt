@@ -380,3 +380,5 @@
 - 2026-02-03: Added a `Kany8sCluster` Ready wait (`kubectl wait --for=condition=Ready`) to `hack/acceptance-test-kro-infra-reflection.sh` and added a devtools repo-policy test; verified `make test` and `make lint`.
 
 - 2026-02-03: Added a `Kany8sCluster` provisioned wait (`kubectl wait --for=jsonpath='{.status.initialization.provisioned}'=true`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added infra kro reflection acceptance checks to fail when `Kany8sCluster.status.failureReason/failureMessage` are set (jsonpath) and asserted them in devtools; verified `make test` and `make lint`.
