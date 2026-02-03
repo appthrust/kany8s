@@ -209,7 +209,7 @@
 
 ## 2.21 スクリプトの静的検証
 
-- [ ] `chmod +x hack/acceptance-test-kro-infra-reflection.sh` を実行する
+- [x] `chmod +x hack/acceptance-test-kro-infra-reflection.sh` を実行する
 - [ ] `bash -n hack/acceptance-test-kro-infra-reflection.sh` を実行して exit 0 を確認する
 
 # 3) Wrapper runner (test/acceptance_test)
