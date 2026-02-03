@@ -462,3 +462,5 @@
 - 2026-02-04: Verified `bash -n hack/acceptance-test-kro-infra-reflection.sh` and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`; verified `make test` and `make lint`.
 
 - 2026-02-04: Verified `bash -n test/acceptance_test/run-acceptance-kro-infra-reflection.sh` and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`; verified `make test` and `make lint`.
+
+- 2026-02-04: Ran `make test-acceptance-kro-infra-reflection-keep` end-to-end on kind (CLEANUP=false) and marked the PRD item complete; verified `make test` and `make lint`.
