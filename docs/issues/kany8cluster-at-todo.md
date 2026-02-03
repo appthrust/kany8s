@@ -143,7 +143,7 @@
 - [x] `need_cmd kind` を追加する
 - [x] `need_cmd kubectl` を追加する
 - [x] `need_cmd make` を追加する
-- [ ] `need_cmd go` を追加する
+- [x] `need_cmd go` を追加する
 - [ ] `need_cmd curl` を追加する
 
 ## 2.11 kind クラスタ作成

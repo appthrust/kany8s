@@ -125,6 +125,7 @@ need_cmd docker
 need_cmd kind
 need_cmd kubectl
 need_cmd make
+need_cmd go
 
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2

@@ -46,6 +46,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"need_cmd kind",
 		"need_cmd kubectl",
 		"need_cmd make",
+		"need_cmd go",
 		"k() {",
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",

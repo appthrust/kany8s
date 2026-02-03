@@ -342,3 +342,5 @@
 - 2026-02-03: Added `need_cmd kubectl` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added `need_cmd make` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd go` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
