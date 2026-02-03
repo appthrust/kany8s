@@ -362,3 +362,5 @@
 - 2026-02-03: Added kro core install apply (`k apply -f "${KRO_CORE_INSTALL_MANIFEST}"`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./...` and `make lint`.
 
 - 2026-02-03: Added kro rollout wait (`k -n kro-system rollout status deploy/kro --timeout=180s`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Applied the kro RBAC workaround manifest in `hack/acceptance-test-kro-infra-reflection.sh` (`k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"`) and asserted it in devtools; verified `make test` and `make lint`.

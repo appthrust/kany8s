@@ -162,7 +162,7 @@
 
 ## 2.13 kro RBAC workaround
 
-- [ ] `k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"` を追加する
+- [x] `k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"` を追加する
 
 ## 2.14 infra RGD apply + wait
 

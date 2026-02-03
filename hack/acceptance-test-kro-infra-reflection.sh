@@ -150,6 +150,8 @@ k apply -f "${KRO_CORE_INSTALL_MANIFEST}"
 echo "==> Waiting for kro rollout"
 k -n kro-system rollout status deploy/kro --timeout=180s
 
+k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

@@ -40,6 +40,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"https://github.com/kubernetes-sigs/kro/releases/download/v${KRO_VERSION}/kro-core-install-manifests.yaml",
 		"k apply -f \"${KRO_CORE_INSTALL_MANIFEST}\"",
 		"k -n kro-system rollout status deploy/kro --timeout=180s",
+		"k apply -f \"${KRO_RBAC_WORKAROUND_MANIFEST}\"",
 		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
 		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
 		"mkdir -p \"${ARTIFACTS_DIR}\"",
