@@ -163,6 +163,9 @@ make install
 echo "==> Building controller image ${IMG}"
 make docker-build IMG="${IMG}"
 
+echo "==> Loading controller image into kind cluster"
+kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"
+
 echo "error: kro infra reflection acceptance script is not implemented yet" >&2
 echo "see docs/issues/kany8cluster-at-todo.md" >&2
 exit 1

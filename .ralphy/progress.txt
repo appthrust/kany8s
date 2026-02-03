@@ -370,3 +370,5 @@
 - 2026-02-03: Added `make install` to `hack/acceptance-test-kro-infra-reflection.sh` (install Kany8s CRDs into the kind cluster) and asserted it in devtools; verified `make test` and `make lint`.
 
 - 2026-02-03: Added `make docker-build IMG="${IMG}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-03: Added `kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
