@@ -306,7 +306,7 @@
 
 ## 7.5 `acceptance.md`（任意）
 
-- [ ] `acceptance.md` に “kro infra reflection” の受け入れ条件を1項目追記する
+- [x] `acceptance.md` に “kro infra reflection” の受け入れ条件を1項目追記する
 
 # 8) Verification
 

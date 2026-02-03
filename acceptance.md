@@ -9,6 +9,7 @@ The criteria below are intentionally written as verifiable checks (commands + ex
 - `make test` succeeds (unit/envtest).
 - `make test-e2e` succeeds (smoke e2e).
 - `make test-acceptance` succeeds (kro demo flow).
+- `make test-acceptance-kro-infra-reflection` succeeds (kro infra reflection flow).
 - `make build` succeeds.
 - `make docker-build IMG=example.com/kany8s/controller:acceptance` succeeds.
 
