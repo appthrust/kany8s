@@ -336,3 +336,5 @@
 - 2026-02-03: Added `trap on_exit EXIT` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools`, `bash -n hack/acceptance-test-kro-infra-reflection.sh`, and `make lint`.
 
 - 2026-02-03: Added `need_cmd docker` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd kind` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./...` and `make lint`.

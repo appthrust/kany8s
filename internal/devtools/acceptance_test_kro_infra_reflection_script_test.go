@@ -43,6 +43,7 @@ func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
 		"kustomization_path=\"${repo_root}/config/manager/kustomization.yaml\"",
 		"need_cmd()",
 		"need_cmd docker",
+		"need_cmd kind",
 		"k() {",
 		"kubectl --context \"${KUBECTL_CONTEXT}\"",
 		"backup_kustomization()",
