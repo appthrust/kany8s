@@ -390,4 +390,4 @@
 - [x] docs: `test/acceptance_test/README.md` に `run-acceptance-kro-infra-cluster-identity.sh` を追記する
 - [x] docs: `docs/README.md` の acceptance targets/scripts 一覧に `test-acceptance-kro-infra-cluster-identity` を追記する
 - [x] docs: `docs/e2e-and-acceptance-test.md` の acceptance targets 一覧に `test-acceptance-kro-infra-cluster-identity` を追記する
-- [ ] docs: `docs/codebase.md` の Acceptance Scripts/Entry Points に cluster identity を追記する
+- [x] docs: `docs/codebase.md` の Acceptance Scripts/Entry Points に cluster identity を追記する

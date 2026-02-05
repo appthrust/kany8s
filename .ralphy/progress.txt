@@ -492,3 +492,5 @@
 - 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
 
 - 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/e2e-and-acceptance-test.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-05: Documented the kro infra cluster identity acceptance entry points in `docs/reference/codebase.md` and extended the devtools codebase doc test; verified `make test` and `make lint`.
