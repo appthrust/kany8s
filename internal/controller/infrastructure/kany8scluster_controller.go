@@ -94,6 +94,8 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 			requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
 		} else {
+			var ownerClusterUID *string
+
 			hasClusterUID, err := kro.SchemaHasSpecField(ctx, r, rgdName, "clusterUID")
 			if err != nil {
 				log.Error(err, "check ResourceGraphDefinition schema")
@@ -117,6 +119,9 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 						reason = reasonWaitingForOwnerCluster
 						message = "waiting for owner Cluster reference to be set"
 						requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+					} else {
+						uid := string(ownerCluster.UID)
+						ownerClusterUID = &uid
 					}
 				}
 			}
@@ -127,7 +132,7 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				instance.SetName(kc.Name)
 				instance.SetNamespace(kc.Namespace)
 
-				instanceSpec, err := buildKroInstanceSpec(kc)
+				instanceSpec, err := buildKroInstanceSpec(kc, ownerClusterUID)
 				if err != nil {
 					log.Error(err, "invalid kroSpec")
 					reason = "InvalidKroSpec"
@@ -206,7 +211,7 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return ctrl.Result{}, nil
 }
 
-func buildKroInstanceSpec(kc *infrastructurev1alpha1.Kany8sCluster) (map[string]any, error) {
+func buildKroInstanceSpec(kc *infrastructurev1alpha1.Kany8sCluster, ownerClusterUID *string) (map[string]any, error) {
 	if kc == nil {
 		return nil, fmt.Errorf("cluster is nil")
 	}
@@ -229,6 +234,9 @@ func buildKroInstanceSpec(kc *infrastructurev1alpha1.Kany8sCluster) (map[string]
 
 	spec["clusterName"] = kc.Name
 	spec["clusterNamespace"] = kc.Namespace
+	if ownerClusterUID != nil {
+		spec["clusterUID"] = *ownerClusterUID
+	}
 	return spec, nil
 }
 

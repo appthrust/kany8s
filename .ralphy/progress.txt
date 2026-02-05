@@ -472,3 +472,5 @@
 - 2026-02-05: Added kro RGD schema helper `kro.SchemaHasSpecField` for `spec.schema.spec` opt-in checks (e.g., `clusterUID`), with unit tests; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-05: Resolved owner CAPI `Cluster` in infrastructure `Kany8sCluster` kro mode (opt-in when RGD declares `clusterUID`) and surfaced `Ready=False`/`WaitingForOwnerCluster` requeues; added unit tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Injected owner `Cluster` UID into infrastructure kro instance `spec.clusterUID` only when the RGD schema declares it, and added unit tests covering both the inject/no-inject cases; verified `make test` and `make lint`.

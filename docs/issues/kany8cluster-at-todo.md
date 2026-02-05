@@ -347,17 +347,17 @@
   - [x] `sigs.k8s.io/cluster-api/util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)` を使う
   - [x] owner `Cluster` が未解決の場合は terminal failure にせず、`Ready=False`（Reason: `WaitingForOwnerCluster` など）で requeue する
 
-- [ ] kro instance spec の注入を拡張する
-  - [ ] RGD が `spec.clusterUID` を宣言している場合のみ、`instanceSpec["clusterUID"] = string(ownerCluster.UID)` を注入する
-  - [ ] RGD が宣言していない場合は注入しない（CRD validation / pruning を避ける）
+- [x] kro instance spec の注入を拡張する
+  - [x] RGD が `spec.clusterUID` を宣言している場合のみ、`instanceSpec["clusterUID"] = string(ownerCluster.UID)` を注入する
+  - [x] RGD が宣言していない場合は注入しない（CRD validation / pruning を避ける）
 
 - [ ] RBAC 追加（kubebuilder marker）
   - [ ] `cluster.x-k8s.io, resources=clusters, verbs=get;list;watch`
   - [ ] `make manifests` で反映（生成物は直接編集しない）
 
-- [ ] unit test を追加する（最低限）
-  - [ ] RGD が `clusterUID` を宣言していない場合: instance spec に `clusterUID` を含めない
-  - [ ] RGD が `clusterUID` を宣言している場合: owner `Cluster` UID が入る
+- [x] unit test を追加する（最低限）
+  - [x] RGD が `clusterUID` を宣言していない場合: instance spec に `clusterUID` を含めない
+  - [x] RGD が `clusterUID` を宣言している場合: owner `Cluster` UID が入る
 
 ## 10.2 Manifests: ownerReferences を使う infra RGD を追加（acceptance source-of-truth）
 
