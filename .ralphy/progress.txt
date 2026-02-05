@@ -474,3 +474,5 @@
 - 2026-02-05: Resolved owner CAPI `Cluster` in infrastructure `Kany8sCluster` kro mode (opt-in when RGD declares `clusterUID`) and surfaced `Ready=False`/`WaitingForOwnerCluster` requeues; added unit tests; verified `make test` and `make lint`.
 
 - 2026-02-05: Injected owner `Cluster` UID into infrastructure kro instance `spec.clusterUID` only when the RGD schema declares it, and added unit tests covering both the inject/no-inject cases; verified `make test` and `make lint`.
+
+- 2026-02-05: Added manager RBAC markers for CAPI `Cluster` reads (`cluster.x-k8s.io/clusters` get/list/watch) to the infrastructure `Kany8sCluster` controller; enforced via devtools marker test; regenerated manifests; verified `make test` and `make lint`.

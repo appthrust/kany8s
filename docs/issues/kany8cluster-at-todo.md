@@ -351,9 +351,9 @@
   - [x] RGD が `spec.clusterUID` を宣言している場合のみ、`instanceSpec["clusterUID"] = string(ownerCluster.UID)` を注入する
   - [x] RGD が宣言していない場合は注入しない（CRD validation / pruning を避ける）
 
-- [ ] RBAC 追加（kubebuilder marker）
-  - [ ] `cluster.x-k8s.io, resources=clusters, verbs=get;list;watch`
-  - [ ] `make manifests` で反映（生成物は直接編集しない）
+- [x] RBAC 追加（kubebuilder marker）
+  - [x] `cluster.x-k8s.io, resources=clusters, verbs=get;list;watch`
+  - [x] `make manifests` で反映（生成物は直接編集しない）
 
 - [x] unit test を追加する（最低限）
   - [x] RGD が `clusterUID` を宣言していない場合: instance spec に `clusterUID` を含めない
