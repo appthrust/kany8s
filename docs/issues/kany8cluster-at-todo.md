@@ -387,18 +387,18 @@
 
 ## 10.4 Acceptance script: `clusterUID` 注入 + ownerReferences 反映を end-to-end で検証
 
-- [ ] 新しい acceptance script を追加する（既存テストと目的が異なるため分離推奨）
-  - [ ] 例: `hack/acceptance-test-kro-infra-cluster-identity.sh`
-  - [ ] wrapper: `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`
+- [x] 新しい acceptance script を追加する（既存テストと目的が異なるため分離推奨）
+  - [x] 例: `hack/acceptance-test-kro-infra-cluster-identity.sh`
+  - [x] wrapper: `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`
 
-- [ ] script の手順に CAPI core install を含める
-  - [ ] `Cluster` controller が `Kany8sCluster` に OwnerReference を付与できる状態にするため
+- [x] script の手順に CAPI core install を含める
+  - [x] `Cluster` controller が `Kany8sCluster` に OwnerReference を付与できる状態にするため
 
-- [ ] success 条件（Assert）
-  - [ ] `Cluster/<name>` の `metadata.uid` を取得できる
-  - [ ] kro instance `.spec.clusterUID` が `Cluster.metadata.uid` と一致する
-  - [ ] RGD が作った resource の `metadata.ownerReferences[Cluster].uid` が `Cluster.metadata.uid` と一致する
-  - [ ] RGD が作った resource に `cluster.x-k8s.io/cluster-name=<cluster>` が付いている
+- [x] success 条件（Assert）
+  - [x] `Cluster/<name>` の `metadata.uid` を取得できる
+  - [x] kro instance `.spec.clusterUID` が `Cluster.metadata.uid` と一致する
+  - [x] RGD が作った resource の `metadata.ownerReferences[Cluster].uid` が `Cluster.metadata.uid` と一致する
+  - [x] RGD が作った resource に `cluster.x-k8s.io/cluster-name=<cluster>` が付いている
 
 ## 10.5 Makefile / devtools / docs
 
