@@ -478,3 +478,5 @@
 - 2026-02-05: Added manager RBAC markers for CAPI `Cluster` reads (`cluster.x-k8s.io/clusters` get/list/watch) to the infrastructure `Kany8sCluster` controller; enforced via devtools marker test; regenerated manifests; verified `make test` and `make lint`.
 
 - 2026-02-05: Added ownerReference + cluster-name infra acceptance RGD (`test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml`) with `includeWhen` gating and devtools YAML validation tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added CAPI `Cluster` + infra `Kany8sCluster` acceptance template (`test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl`) for ownerRef/UID injection verification; added devtools render/YAML decode tests; verified `make test` and `make lint`.

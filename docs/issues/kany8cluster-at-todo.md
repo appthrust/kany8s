@@ -378,9 +378,9 @@
 
 ## 10.3 Manifests: `Cluster` (CAPI core) + `Kany8sCluster` を apply する acceptance 用テンプレを追加
 
-- [ ] `test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl` を追加する
-  - [ ] `Cluster.spec.infrastructureRef = Kany8sCluster/<name>` を設定する
-  - [ ] このテストの目的は ownerRef/UID 注入の検証なので、controlPlaneRef は省略（または最小）にする
+- [x] `test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl` を追加する
+  - [x] `Cluster.spec.infrastructureRef = Kany8sCluster/<name>` を設定する
+  - [x] このテストの目的は ownerRef/UID 注入の検証なので、controlPlaneRef は省略（または最小）にする
 
 - [ ] 置換後 YAML の dry-run
   - [ ] `sed ... cluster.yaml.tpl | kubectl apply --dry-run=client -f -` を実行して exit 0 を確認する
