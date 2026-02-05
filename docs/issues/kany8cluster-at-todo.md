@@ -382,8 +382,8 @@
   - [x] `Cluster.spec.infrastructureRef = Kany8sCluster/<name>` を設定する
   - [x] このテストの目的は ownerRef/UID 注入の検証なので、controlPlaneRef は省略（または最小）にする
 
-- [ ] 置換後 YAML の dry-run
-  - [ ] `sed ... cluster.yaml.tpl | kubectl apply --dry-run=client -f -` を実行して exit 0 を確認する
+- [x] 置換後 YAML の dry-run
+  - [x] `sed ... cluster.yaml.tpl | kubectl apply --dry-run=client -f -` を実行して exit 0 を確認する
 
 ## 10.4 Acceptance script: `clusterUID` 注入 + ownerReferences 反映を end-to-end で検証
 

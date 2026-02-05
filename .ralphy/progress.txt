@@ -480,3 +480,5 @@
 - 2026-02-05: Added ownerReference + cluster-name infra acceptance RGD (`test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml`) with `includeWhen` gating and devtools YAML validation tests; verified `make test` and `make lint`.
 
 - 2026-02-05: Added CAPI `Cluster` + infra `Kany8sCluster` acceptance template (`test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl`) for ownerRef/UID injection verification; added devtools render/YAML decode tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added an envtest-backed server-side dry-run create check for the rendered infra cluster identity acceptance template (`test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl`); verified `make test` and `make lint`.
