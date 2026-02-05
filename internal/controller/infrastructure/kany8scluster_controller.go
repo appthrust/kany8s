@@ -28,11 +28,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	reasonWaitingForOwnerCluster          = "WaitingForOwnerCluster"
+	reasonResourceGraphDefinitionInvalid  = "ResourceGraphDefinitionInvalid"
+	reasonResourceGraphDefinitionNotFound = "ResourceGraphDefinitionNotFound"
 )
 
 // Kany8sClusterReconciler reconciles a Kany8sCluster object
@@ -75,79 +82,109 @@ func (r *Kany8sClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reason = "Provisioning"
 		message = "waiting for infrastructure to become ready"
 
-		instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, kc.Spec.ResourceGraphDefinitionRef.Name)
+		rgdName := kc.Spec.ResourceGraphDefinitionRef.Name
+		instanceGVK, err := kro.ResolveInstanceGVK(ctx, r, rgdName)
 		if err != nil {
 			log.Error(err, "resolve kro instance GVK")
-			reason = "ResourceGraphDefinitionInvalid"
+			reason = reasonResourceGraphDefinitionInvalid
 			message = err.Error()
 			if apierrors.IsNotFound(err) {
-				reason = "ResourceGraphDefinitionNotFound"
-				message = fmt.Sprintf("ResourceGraphDefinition %q not found", kc.Spec.ResourceGraphDefinitionRef.Name)
+				reason = reasonResourceGraphDefinitionNotFound
+				message = fmt.Sprintf("ResourceGraphDefinition %q not found", rgdName)
 			}
 			requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
 		} else {
-			instance := &unstructured.Unstructured{}
-			instance.SetGroupVersionKind(instanceGVK)
-			instance.SetName(kc.Name)
-			instance.SetNamespace(kc.Namespace)
-
-			instanceSpec, err := buildKroInstanceSpec(kc)
+			hasClusterUID, err := kro.SchemaHasSpecField(ctx, r, rgdName, "clusterUID")
 			if err != nil {
-				log.Error(err, "invalid kroSpec")
-				reason = "InvalidKroSpec"
+				log.Error(err, "check ResourceGraphDefinition schema")
+				reason = reasonResourceGraphDefinitionInvalid
 				message = err.Error()
-				reasonCopy := reason
-				messageCopy := message
-				failureReason = &reasonCopy
-				failureMessage = &messageCopy
+				requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
 			} else {
-				_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
-					instance.SetGroupVersionKind(instanceGVK)
-					instance.SetName(kc.Name)
-					instance.SetNamespace(kc.Namespace)
-					if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
-						return err
+				if hasClusterUID {
+					ownerCluster, err := util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)
+					if err != nil {
+						if apierrors.IsNotFound(err) {
+							log.V(1).Info("owner Cluster not found yet")
+						} else {
+							log.Error(err, "get owner Cluster")
+						}
+						reason = reasonWaitingForOwnerCluster
+						message = fmt.Sprintf("waiting for owner Cluster: %v", err)
+						requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+					} else if ownerCluster == nil {
+						log.V(1).Info("owner Cluster reference not set yet")
+						reason = reasonWaitingForOwnerCluster
+						message = "waiting for owner Cluster reference to be set"
+						requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
 					}
-					instance.Object["spec"] = instanceSpec
-					return nil
-				})
-				if err != nil {
-					log.Error(err, "create or update kro instance")
-					return ctrl.Result{}, err
 				}
+			}
 
-				if err := r.Get(ctx, client.ObjectKey{Name: kc.Name, Namespace: kc.Namespace}, instance); err != nil {
-					log.Error(err, "get kro instance")
-					return ctrl.Result{}, err
-				}
-				instanceStatus, err := kro.ReadInstanceStatus(instance)
-				if err != nil {
-					log.Error(err, "read kro instance status")
-					return ctrl.Result{}, err
-				}
+			if requeueAfter.Duration == 0 {
+				instance := &unstructured.Unstructured{}
+				instance.SetGroupVersionKind(instanceGVK)
+				instance.SetName(kc.Name)
+				instance.SetNamespace(kc.Namespace)
 
-				provisioned = instanceStatus.Ready
-				if provisioned {
-					readyStatus = metav1.ConditionTrue
-					if instanceStatus.Reason != "" {
-						reason = instanceStatus.Reason
-					} else {
-						reason = "Ready"
-					}
-					if instanceStatus.Message != "" {
-						message = instanceStatus.Message
-					} else {
-						message = "infrastructure is ready"
-					}
+				instanceSpec, err := buildKroInstanceSpec(kc)
+				if err != nil {
+					log.Error(err, "invalid kroSpec")
+					reason = "InvalidKroSpec"
+					message = err.Error()
+					reasonCopy := reason
+					messageCopy := message
+					failureReason = &reasonCopy
+					failureMessage = &messageCopy
 				} else {
-					readyStatus = metav1.ConditionFalse
-					if instanceStatus.Reason != "" {
-						reason = instanceStatus.Reason
+					_, err = controllerutil.CreateOrUpdate(ctx, r.Client, instance, func() error {
+						instance.SetGroupVersionKind(instanceGVK)
+						instance.SetName(kc.Name)
+						instance.SetNamespace(kc.Namespace)
+						if err := controllerutil.SetControllerReference(kc, instance, r.Scheme); err != nil {
+							return err
+						}
+						instance.Object["spec"] = instanceSpec
+						return nil
+					})
+					if err != nil {
+						log.Error(err, "create or update kro instance")
+						return ctrl.Result{}, err
 					}
-					if instanceStatus.Message != "" {
-						message = instanceStatus.Message
+
+					if err := r.Get(ctx, client.ObjectKey{Name: kc.Name, Namespace: kc.Namespace}, instance); err != nil {
+						log.Error(err, "get kro instance")
+						return ctrl.Result{}, err
 					}
-					requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+					instanceStatus, err := kro.ReadInstanceStatus(instance)
+					if err != nil {
+						log.Error(err, "read kro instance status")
+						return ctrl.Result{}, err
+					}
+
+					provisioned = instanceStatus.Ready
+					if provisioned {
+						readyStatus = metav1.ConditionTrue
+						if instanceStatus.Reason != "" {
+							reason = instanceStatus.Reason
+						} else {
+							reason = "Ready"
+						}
+						if instanceStatus.Message != "" {
+							message = instanceStatus.Message
+						} else {
+							message = "infrastructure is ready"
+						}
+					} else {
+						readyStatus = metav1.ConditionFalse
+						if instanceStatus.Reason != "" {
+							reason = instanceStatus.Reason
+						}
+						if instanceStatus.Message != "" {
+							message = instanceStatus.Message
+						}
+						requeueAfter = metav1.Duration{Duration: constants.InfrastructureNotReadyRequeueAfter}
+					}
 				}
 			}
 		}

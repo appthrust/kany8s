@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -670,8 +671,8 @@ func TestKany8sClusterReconciler_KroMode_RequeuesWhenResourceGraphDefinitionIsIn
 	if cond.Status != metav1.ConditionFalse {
 		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
 	}
-	if cond.Reason != "ResourceGraphDefinitionInvalid" {
-		t.Fatalf("Ready condition reason = %q, want %q", cond.Reason, "ResourceGraphDefinitionInvalid")
+	if cond.Reason != reasonResourceGraphDefinitionInvalid {
+		t.Fatalf("Ready condition reason = %q, want %q", cond.Reason, reasonResourceGraphDefinitionInvalid)
 	}
 	if !strings.Contains(cond.Message, "missing spec.schema.kind") {
 		t.Fatalf("Ready condition message = %q, want to contain %q", cond.Message, "missing spec.schema.kind")
@@ -681,5 +682,186 @@ func TestKany8sClusterReconciler_KroMode_RequeuesWhenResourceGraphDefinitionIsIn
 	}
 	if got.Status.FailureMessage != nil {
 		t.Fatalf("status.failureMessage = %q, want nil", *got.Status.FailureMessage)
+	}
+}
+
+func TestKany8sClusterReconciler_KroMode_WaitsForOwnerClusterWhenRGDDeclaresClusterUID(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := infrastructurev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sCluster scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "DemoInfra"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("DemoInfraList"), &unstructured.UnstructuredList{})
+
+	kc := &infrastructurev1alpha1.Kany8sCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: testNamespace},
+		Spec: infrastructurev1alpha1.Kany8sClusterSpec{
+			ResourceGraphDefinitionRef: &infrastructurev1alpha1.ResourceGraphDefinitionReference{Name: testRGDName},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": testRGDName,
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+				"spec": map[string]any{
+					"clusterUID": "string",
+				},
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kc, rgd).WithStatusSubresource(kc).Build()
+	r := &Kany8sClusterReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: testClusterName, Namespace: testNamespace}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter == 0 {
+		t.Fatalf("expected RequeueAfter to be set while waiting for owner Cluster")
+	}
+
+	got := &infrastructurev1alpha1.Kany8sCluster{}
+	if err := c.Get(ctx, client.ObjectKey{Name: testClusterName, Namespace: testNamespace}, got); err != nil {
+		t.Fatalf("get Kany8sCluster: %v", err)
+	}
+
+	if got.Status.Initialization.Provisioned {
+		t.Fatalf("status.initialization.provisioned = true, want false")
+	}
+	cond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if cond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if cond.Status != metav1.ConditionFalse {
+		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionFalse)
+	}
+	if cond.Reason != reasonWaitingForOwnerCluster {
+		t.Fatalf("Ready condition reason = %q, want %q", cond.Reason, reasonWaitingForOwnerCluster)
+	}
+	if !strings.Contains(cond.Message, "owner Cluster") {
+		t.Fatalf("Ready condition message = %q, want to contain %q", cond.Message, "owner Cluster")
+	}
+	if got.Status.FailureReason != nil {
+		t.Fatalf("status.failureReason = %q, want nil", *got.Status.FailureReason)
+	}
+	if got.Status.FailureMessage != nil {
+		t.Fatalf("status.failureMessage = %q, want nil", *got.Status.FailureMessage)
+	}
+}
+
+func TestKany8sClusterReconciler_KroMode_ProceedsWhenOwnerClusterResolvedAndRGDDeclaresClusterUID(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	if err := infrastructurev1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kany8sCluster scheme: %v", err)
+	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Cluster scheme: %v", err)
+	}
+
+	rgdGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition"}
+	instanceGVK := schema.GroupVersionKind{Group: "kro.run", Version: "v1alpha1", Kind: "DemoInfra"}
+
+	scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(instanceGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(instanceGVK.GroupVersion().WithKind("DemoInfraList"), &unstructured.UnstructuredList{})
+
+	owner := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: testNamespace, UID: types.UID("owner-uid")}}
+
+	kc := &infrastructurev1alpha1.Kany8sCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName,
+			Namespace: testNamespace,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: clusterv1.GroupVersion.String(),
+				Kind:       "Cluster",
+				Name:       owner.Name,
+				UID:        owner.UID,
+			}},
+		},
+		Spec: infrastructurev1alpha1.Kany8sClusterSpec{
+			ResourceGraphDefinitionRef: &infrastructurev1alpha1.ResourceGraphDefinitionReference{Name: testRGDName},
+		},
+	}
+
+	rgd := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": rgdGVK.GroupVersion().String(),
+		"kind":       rgdGVK.Kind,
+		"metadata": map[string]any{
+			"name": testRGDName,
+		},
+		"spec": map[string]any{
+			"schema": map[string]any{
+				"apiVersion": "v1alpha1",
+				"kind":       instanceGVK.Kind,
+				"spec": map[string]any{
+					"clusterUID": "string",
+				},
+			},
+		},
+	}}
+	rgd.SetGroupVersionKind(rgdGVK)
+
+	instance := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": instanceGVK.GroupVersion().String(),
+		"kind":       instanceGVK.Kind,
+		"metadata": map[string]any{
+			"name":      testClusterName,
+			"namespace": testNamespace,
+		},
+		"status": map[string]any{
+			"ready":   true,
+			"reason":  "Ready",
+			"message": "infrastructure is ready",
+		},
+	}}
+	instance.SetGroupVersionKind(instanceGVK)
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kc, rgd, owner, instance).WithStatusSubresource(kc).Build()
+	r := &Kany8sClusterReconciler{Client: c, Scheme: scheme}
+
+	ctx := context.Background()
+	res, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: testClusterName, Namespace: testNamespace}})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.RequeueAfter != 0 {
+		t.Fatalf("expected no RequeueAfter when provisioned")
+	}
+
+	got := &infrastructurev1alpha1.Kany8sCluster{}
+	if err := c.Get(ctx, client.ObjectKey{Name: testClusterName, Namespace: testNamespace}, got); err != nil {
+		t.Fatalf("get Kany8sCluster: %v", err)
+	}
+
+	if !got.Status.Initialization.Provisioned {
+		t.Fatalf("status.initialization.provisioned = false, want true")
+	}
+	cond := meta.FindStatusCondition(got.Status.Conditions, "Ready")
+	if cond == nil {
+		t.Fatalf("expected Ready condition")
+	}
+	if cond.Status != metav1.ConditionTrue {
+		t.Fatalf("Ready condition status = %q, want %q", cond.Status, metav1.ConditionTrue)
 	}
 }

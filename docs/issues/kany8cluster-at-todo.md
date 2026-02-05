@@ -343,9 +343,9 @@
   - [x] 例: `kro.SchemaHasSpecField(ctx, c, rgdName, "clusterUID") (bool, error)`
   - [x] 実装: `kro.run/v1alpha1 ResourceGraphDefinition` を unstructured で取得し、`spec.schema.spec` の map key を確認する
 
-- [ ] `internal/controller/infrastructure/kany8scluster_controller.go` の kro mode で owner `Cluster` を解決する
-  - [ ] `sigs.k8s.io/cluster-api/util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)` を使う
-  - [ ] owner `Cluster` が未解決の場合は terminal failure にせず、`Ready=False`（Reason: `WaitingForOwnerCluster` など）で requeue する
+- [x] `internal/controller/infrastructure/kany8scluster_controller.go` の kro mode で owner `Cluster` を解決する
+  - [x] `sigs.k8s.io/cluster-api/util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)` を使う
+  - [x] owner `Cluster` が未解決の場合は terminal failure にせず、`Ready=False`（Reason: `WaitingForOwnerCluster` など）で requeue する
 
 - [ ] kro instance spec の注入を拡張する
   - [ ] RGD が `spec.clusterUID` を宣言している場合のみ、`instanceSpec["clusterUID"] = string(ownerCluster.UID)` を注入する
