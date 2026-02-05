@@ -228,6 +228,7 @@ For reproducible end-to-end checks (fresh kind clusters + artifacts), see `test/
 
 - kro demo flow (managed control plane reflection): `make test-acceptance-kro-reflection`
 - kro demo flow (managed infra reflection): `make test-acceptance-kro-infra-reflection`
+- kro demo flow (managed infra cluster identity): `make test-acceptance-kro-infra-cluster-identity`
 - kro demo flow with 2 RGDs (multi-instance-kind): `make test-acceptance-kro-reflection-multi-rgd`
 - self-managed (CAPD + kubeadm): `make test-acceptance-capd-kubeadm`
 

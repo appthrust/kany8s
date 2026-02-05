@@ -487,3 +487,5 @@
 
 - 2026-02-05: Documented the kro infra cluster identity acceptance runner (`test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`) in `test/acceptance_test/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
 
+- 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+

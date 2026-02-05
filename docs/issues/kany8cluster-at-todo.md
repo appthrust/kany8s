@@ -410,6 +410,6 @@
 
 - [ ] docs 更新
   - [x] `test/acceptance_test/README.md`
-  - [ ] `docs/README.md`
+  - [x] `docs/README.md`
   - [ ] `docs/e2e-and-acceptance-test.md`
   - [ ] `docs/codebase.md`
