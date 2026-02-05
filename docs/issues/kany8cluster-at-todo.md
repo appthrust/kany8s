@@ -361,20 +361,20 @@
 
 ## 10.2 Manifests: ownerReferences を使う infra RGD を追加（acceptance source-of-truth）
 
-- [ ] `test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を追加する
-  - [ ] RGD name を固定する（例: `demo-infra-ownerref.kro.run`）
-  - [ ] schema.kind は衝突しない kind にする（例: `DemoInfrastructureOwned`）
-  - [ ] schema.spec に `clusterName`, `clusterNamespace`, `clusterUID` を定義する
-  - [ ] RGD resource に以下を付与する
-    - [ ] `metadata.labels["cluster.x-k8s.io/cluster-name"]=${schema.spec.clusterName}`
-    - [ ] `metadata.ownerReferences[]` に `apiVersion/kind/name/uid` を持つ `Cluster` を設定する
+- [x] `test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を追加する
+  - [x] RGD name を固定する（例: `demo-infra-ownerref.kro.run`）
+  - [x] schema.kind は衝突しない kind にする（例: `DemoInfrastructureOwned`）
+  - [x] schema.spec に `clusterName`, `clusterNamespace`, `clusterUID` を定義する
+  - [x] RGD resource に以下を付与する
+    - [x] `metadata.labels["cluster.x-k8s.io/cluster-name"]=${schema.spec.clusterName}`
+    - [x] `metadata.ownerReferences[]` に `apiVersion/kind/name/uid` を持つ `Cluster` を設定する
 
-- [ ] `ownerReferences.uid` が空だと apiserver validation で弾かれるため、resource 作成を gate する
-  - [ ] 例: `includeWhen: ${schema.spec.clusterUID != ""}`
-  - [ ] 注意: optional resource を status 式で参照すると field が欠落し得る（`docs/rgd-guidelines.md` の pitfall）ため、status の設計は欠落しても壊れないようにする
+- [x] `ownerReferences.uid` が空だと apiserver validation で弾かれるため、resource 作成を gate する
+  - [x] 例: `includeWhen: ${schema.spec.clusterUID != ""}`
+  - [x] 注意: optional resource を status 式で参照すると field が欠落し得る（`docs/rgd-guidelines.md` の pitfall）ため、status の設計は欠落しても壊れないようにする
 
-- [ ] 静的検証
-  - [ ] `kubectl apply --dry-run=client -f test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を実行して exit 0 を確認する
+- [x] 静的検証
+  - [x] `kubectl apply --dry-run=client -f test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を実行して exit 0 を確認する
 
 ## 10.3 Manifests: `Cluster` (CAPI core) + `Kany8sCluster` を apply する acceptance 用テンプレを追加
 

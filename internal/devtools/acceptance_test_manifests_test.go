@@ -78,6 +78,88 @@ func TestKroInfraAcceptanceRGDManifestIsValidYAML(t *testing.T) {
 	}
 }
 
+func TestKroInfraAcceptanceOwnerRefRGDManifestExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rgdPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "infra", "rgd-ownerref.yaml")
+	rgdBytes, err := os.ReadFile(rgdPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rgdPath, err)
+	}
+
+	rgd := string(rgdBytes)
+	wantSubstrings := []string{
+		"apiVersion: kro.run/v1alpha1",
+		"kind: ResourceGraphDefinition",
+		"name: demo-infra-ownerref.kro.run",
+		"kind: DemoInfrastructureOwned",
+		"clusterUID:",
+		"includeWhen:",
+		"${schema.spec.?clusterUID.orValue(\"\") != \"\"}",
+		"cluster.x-k8s.io/cluster-name:",
+		"ownerReferences:",
+		"apiVersion: cluster.x-k8s.io/v1beta2",
+		"kind: Cluster",
+		"uid: ${schema.spec.?clusterUID.orValue(\"\")}",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(rgd, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(rgdPath), want)
+		}
+	}
+}
+
+func TestKroInfraAcceptanceOwnerRefRGDManifestIsValidYAML(t *testing.T) {
+	root := findRepoRoot(t)
+
+	rgdPath := filepath.Join(root, "test", "acceptance_test", "manifests", "kro", "infra", "rgd-ownerref.yaml")
+	rgdBytes, err := os.ReadFile(rgdPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", rgdPath, err)
+	}
+
+	jsonBytes, err := utilyaml.ToJSON(rgdBytes)
+	if err != nil {
+		t.Fatalf("parse %q as YAML: %v", rgdPath, err)
+	}
+
+	var obj unstructured.Unstructured
+	if err := obj.UnmarshalJSON(jsonBytes); err != nil {
+		t.Fatalf("decode %q into unstructured object: %v", rgdPath, err)
+	}
+
+	if got, want := obj.GetAPIVersion(), "kro.run/v1alpha1"; got != want {
+		t.Fatalf("%s apiVersion=%q, want %q", filepath.ToSlash(rgdPath), got, want)
+	}
+	if got, want := obj.GetKind(), "ResourceGraphDefinition"; got != want {
+		t.Fatalf("%s kind=%q, want %q", filepath.ToSlash(rgdPath), got, want)
+	}
+	if got, want := obj.GetName(), "demo-infra-ownerref.kro.run"; got != want {
+		t.Fatalf("%s metadata.name=%q, want %q", filepath.ToSlash(rgdPath), got, want)
+	}
+
+	if got, found, err := unstructured.NestedString(obj.Object, "spec", "schema", "kind"); err != nil {
+		t.Fatalf("%s get spec.schema.kind: %v", filepath.ToSlash(rgdPath), err)
+	} else if !found {
+		t.Fatalf("%s missing spec.schema.kind", filepath.ToSlash(rgdPath))
+	} else if want := "DemoInfrastructureOwned"; got != want {
+		t.Fatalf("%s spec.schema.kind=%q, want %q", filepath.ToSlash(rgdPath), got, want)
+	}
+
+	specMap, found, err := unstructured.NestedMap(obj.Object, "spec", "schema", "spec")
+	if err != nil {
+		t.Fatalf("%s get spec.schema.spec: %v", filepath.ToSlash(rgdPath), err)
+	}
+	if !found {
+		t.Fatalf("%s missing spec.schema.spec", filepath.ToSlash(rgdPath))
+	}
+	for _, key := range []string{"clusterName", "clusterNamespace", "clusterUID"} {
+		if _, ok := specMap[key]; !ok {
+			t.Fatalf("%s missing spec.schema.spec.%s", filepath.ToSlash(rgdPath), key)
+		}
+	}
+}
+
 func TestKroInfraAcceptanceKany8sClusterTemplateExists(t *testing.T) {
 	root := findRepoRoot(t)
 
