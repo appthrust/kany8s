@@ -468,3 +468,5 @@
 - 2026-02-04: Captured observed `Kany8sCluster` YAML into acceptance artifacts (`${ARTIFACTS_DIR}/kany8scluster.observed.yaml`) in `hack/acceptance-test-kro-infra-reflection.sh` (supports manual provisioned verification); added a devtools assertion; verified `make test` and `make lint`.
 
 - 2026-02-04: Captured observed infra kro instance YAML into acceptance artifacts (`${ARTIFACTS_DIR}/rgd-instance.observed.yaml`) in `hack/acceptance-test-kro-infra-reflection.sh` (supports manual `.spec.clusterName/.spec.clusterNamespace` verification); added a devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-05: Added kro RGD schema helper `kro.SchemaHasSpecField` for `spec.schema.spec` opt-in checks (e.g., `clusterUID`), with unit tests; marked the PRD item complete; verified `make test` and `make lint`.

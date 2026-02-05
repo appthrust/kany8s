@@ -44,7 +44,7 @@ func TestResolveInstanceGVK(t *testing.T) {
 			scheme.AddKnownTypeWithName(rgdGVK, &unstructured.Unstructured{})
 			scheme.AddKnownTypeWithName(rgdGVK.GroupVersion().WithKind("ResourceGraphDefinitionList"), &unstructured.UnstructuredList{})
 
-			rgdName := "test-rgd"
+			rgdName := testRGDName
 			rgd := &unstructured.Unstructured{
 				Object: map[string]any{
 					"apiVersion": rgdGVK.GroupVersion().String(),
@@ -93,12 +93,12 @@ func TestResolveInstanceGVK_Errors(t *testing.T) {
 		},
 		{
 			name:    "missing spec.schema.apiVersion",
-			rgdName: "test-rgd",
+			rgdName: testRGDName,
 			rgdObject: map[string]any{
 				"apiVersion": rgdGVK.GroupVersion().String(),
 				"kind":       rgdGVK.Kind,
 				"metadata": map[string]any{
-					"name": "test-rgd",
+					"name": testRGDName,
 				},
 				"spec": map[string]any{
 					"schema": map[string]any{
@@ -110,12 +110,12 @@ func TestResolveInstanceGVK_Errors(t *testing.T) {
 		},
 		{
 			name:    "missing spec.schema.kind",
-			rgdName: "test-rgd",
+			rgdName: testRGDName,
 			rgdObject: map[string]any{
 				"apiVersion": rgdGVK.GroupVersion().String(),
 				"kind":       rgdGVK.Kind,
 				"metadata": map[string]any{
-					"name": "test-rgd",
+					"name": testRGDName,
 				},
 				"spec": map[string]any{
 					"schema": map[string]any{
@@ -127,12 +127,12 @@ func TestResolveInstanceGVK_Errors(t *testing.T) {
 		},
 		{
 			name:    "invalid spec.schema.apiVersion",
-			rgdName: "test-rgd",
+			rgdName: testRGDName,
 			rgdObject: map[string]any{
 				"apiVersion": rgdGVK.GroupVersion().String(),
 				"kind":       rgdGVK.Kind,
 				"metadata": map[string]any{
-					"name": "test-rgd",
+					"name": testRGDName,
 				},
 				"spec": map[string]any{
 					"schema": map[string]any{
