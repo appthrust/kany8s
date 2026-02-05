@@ -485,7 +485,10 @@
 
 - 2026-02-05: Added a kro infra cluster identity acceptance script + wrapper (`hack/acceptance-test-kro-infra-cluster-identity.sh`, `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`) that installs CAPI core (clusterctl) and asserts clusterUID injection + ownerRef/label on the owned ConfigMap; added devtools repo-policy tests; verified `make test` and `make lint`.
 
+- 2026-02-05: Added Makefile targets for the kro infra cluster identity acceptance test (`test-acceptance-kro-infra-cluster-identity{,-keep}`) and enforced them via a devtools unit test; verified `make test` and `make lint`.
+
 - 2026-02-05: Documented the kro infra cluster identity acceptance runner (`test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`) in `test/acceptance_test/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
 
 - 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
 
+- 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/e2e-and-acceptance-test.md` and added a devtools test enforcing it; verified `make test` and `make lint`.

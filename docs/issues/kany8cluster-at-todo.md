@@ -8,9 +8,9 @@
 
 ## 0.1 Naming
 
- - [x] Make target 名を `test-acceptance-kro-infra-reflection` に確定する
+- [x] Make target 名を `test-acceptance-kro-infra-reflection` に確定する
 - [x] Make target 名を `test-acceptance-kro-infra-reflection-keep` に確定する
- - [x] Script 名を `hack/acceptance-test-kro-infra-reflection.sh` に確定する
+- [x] Script 名を `hack/acceptance-test-kro-infra-reflection.sh` に確定する
 - [x] Wrapper runner 名を `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` に確定する
 
 ## 0.2 テストで固定する値
@@ -267,7 +267,7 @@
 
 ## 6.1 script exists
 
-- [x] `internal/devtools/acceptance_test_script_test.go` に infra 用の "script exists" テストを追加する
+- [x] `internal/devtools/acceptance_test_kro_infra_reflection_script_test.go` に infra 用の "script exists" テストを追加する
 - [x] 新テストで `hack/acceptance-test-kro-infra-reflection.sh` を読み込む
 - [x] `wantSubstrings` に `kind create cluster` を含める
 - [x] `wantSubstrings` に `kro-core-install-manifests.yaml` を含める
@@ -330,86 +330,64 @@
 
 # 10) Cluster identity injection (clusterUID) / provider OwnerReference
 
-`docs/design-report.md` の CAPD facade 方針（RGD 側で `ownerReferences` を付与する）に対応するための follow-up。
+`docs/design-report.md` の CAPD facade 方針（RGD 側で `ownerReferences` / `cluster.x-k8s.io/cluster-name` を付与する）に対応するための follow-up。
 
 狙い:
 
 - kro instance spec に `clusterUID` を注入できるようにする（RGD opt-in）
-- RGD が `metadata.ownerReferences[]` と `cluster.x-k8s.io/cluster-name` label を provider resource に付与できるようにする
+- RGD が provider resource に `metadata.ownerReferences[]` と `cluster.x-k8s.io/cluster-name` label を付与できるようにする
 
 ## 10.1 Controller: kro instance spec へ `clusterUID` を注入（RGD opt-in）
 
-- [x] `internal/kro/` に RGD schema が `spec.clusterUID` を宣言しているか確認する helper を追加する
-  - [x] 例: `kro.SchemaHasSpecField(ctx, c, rgdName, "clusterUID") (bool, error)`
-  - [x] 実装: `kro.run/v1alpha1 ResourceGraphDefinition` を unstructured で取得し、`spec.schema.spec` の map key を確認する
-
-- [x] `internal/controller/infrastructure/kany8scluster_controller.go` の kro mode で owner `Cluster` を解決する
-  - [x] `sigs.k8s.io/cluster-api/util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)` を使う
-  - [x] owner `Cluster` が未解決の場合は terminal failure にせず、`Ready=False`（Reason: `WaitingForOwnerCluster` など）で requeue する
-
-- [x] kro instance spec の注入を拡張する
-  - [x] RGD が `spec.clusterUID` を宣言している場合のみ、`instanceSpec["clusterUID"] = string(ownerCluster.UID)` を注入する
-  - [x] RGD が宣言していない場合は注入しない（CRD validation / pruning を避ける）
-
-- [x] RBAC 追加（kubebuilder marker）
-  - [x] `cluster.x-k8s.io, resources=clusters, verbs=get;list;watch`
-  - [x] `make manifests` で反映（生成物は直接編集しない）
-
-- [x] unit test を追加する（最低限）
-  - [x] RGD が `clusterUID` を宣言していない場合: instance spec に `clusterUID` を含めない
-  - [x] RGD が `clusterUID` を宣言している場合: owner `Cluster` UID が入る
+- [x] `internal/kro/schema.go` に helper `SchemaHasSpecField(ctx, c, rgdName, "clusterUID") (bool, error)` を追加する
+- [x] `SchemaHasSpecField` は `kro.run/v1alpha1 ResourceGraphDefinition` を unstructured で取得し、`spec.schema.spec` の map key を確認する
+- [x] `internal/controller/infrastructure/kany8scluster_controller.go` の kro mode で owner `Cluster` を `util.GetOwnerCluster(ctx, r.Client, kc.ObjectMeta)` で解決する
+- [x] owner `Cluster` が未解決の場合は terminal failure にせず、`Ready=False`（Reason: `WaitingForOwnerCluster`）で requeue する
+- [x] RGD が `spec.schema.spec.clusterUID` を宣言している場合のみ kro instance spec に `clusterUID` を注入する
+- [x] RGD が宣言していない場合は `clusterUID` を注入しない（CRD validation / pruning を避ける）
+- [x] RBAC marker: `cluster.x-k8s.io, resources=clusters, verbs=get;list;watch` を追加する
+- [x] `make manifests` を実行して RBAC/CRD を更新する（生成物は直接編集しない）
+- [x] unit test: RGD が `clusterUID` を宣言していない場合に instance spec に `clusterUID` が含まれないことを検証する
+- [x] unit test: RGD が `clusterUID` を宣言している場合に instance spec `clusterUID` が owner Cluster UID と一致することを検証する
 
 ## 10.2 Manifests: ownerReferences を使う infra RGD を追加（acceptance source-of-truth）
 
 - [x] `test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を追加する
-  - [x] RGD name を固定する（例: `demo-infra-ownerref.kro.run`）
-  - [x] schema.kind は衝突しない kind にする（例: `DemoInfrastructureOwned`）
-  - [x] schema.spec に `clusterName`, `clusterNamespace`, `clusterUID` を定義する
-  - [x] RGD resource に以下を付与する
-    - [x] `metadata.labels["cluster.x-k8s.io/cluster-name"]=${schema.spec.clusterName}`
-    - [x] `metadata.ownerReferences[]` に `apiVersion/kind/name/uid` を持つ `Cluster` を設定する
+- [x] `rgd-ownerref.yaml` の `metadata.name` を `demo-infra-ownerref.kro.run` に固定する
+- [x] `rgd-ownerref.yaml` の schema.kind を衝突しない kind（例: `DemoInfrastructureOwned`）にする
+- [x] `rgd-ownerref.yaml` の schema.spec に `clusterName`, `clusterNamespace`, `clusterUID` を定義する
+- [x] RGD resource に `metadata.labels["cluster.x-k8s.io/cluster-name"]=${schema.spec.clusterName}` を付与する
+- [x] RGD resource に `metadata.ownerReferences[]`（Cluster apiVersion/kind/name/uid）を設定する
+- [x] `ownerReferences.uid` が空だと apiserver validation で弾かれるため `includeWhen: ${schema.spec.?clusterUID.orValue("") != ""}` で gate する
+- [x] optional resource を status 式で参照すると field 欠落し得るため、status は欠落しても壊れないようにする
+- [x] 静的検証: `kubectl apply --dry-run=client -f test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml`
 
-- [x] `ownerReferences.uid` が空だと apiserver validation で弾かれるため、resource 作成を gate する
-  - [x] 例: `includeWhen: ${schema.spec.clusterUID != ""}`
-  - [x] 注意: optional resource を status 式で参照すると field が欠落し得る（`docs/rgd-guidelines.md` の pitfall）ため、status の設計は欠落しても壊れないようにする
-
-- [x] 静的検証
-  - [x] `kubectl apply --dry-run=client -f test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml` を実行して exit 0 を確認する
-
-## 10.3 Manifests: `Cluster` (CAPI core) + `Kany8sCluster` を apply する acceptance 用テンプレを追加
+## 10.3 Manifests: `Cluster` (CAPI core) + `Kany8sCluster` を apply するテンプレを追加
 
 - [x] `test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl` を追加する
-  - [x] `Cluster.spec.infrastructureRef = Kany8sCluster/<name>` を設定する
-  - [x] このテストの目的は ownerRef/UID 注入の検証なので、controlPlaneRef は省略（または最小）にする
-
-- [x] 置換後 YAML の dry-run
-  - [x] `sed ... cluster.yaml.tpl | kubectl apply --dry-run=client -f -` を実行して exit 0 を確認する
+- [x] `Cluster.spec.infrastructureRef = Kany8sCluster/<name>` を設定する
+- [x] このテストの目的は ownerRef/UID 注入の検証なので、`controlPlaneRef` は省略（または最小）にする
+- [x] 静的検証: `sed ... cluster.yaml.tpl | kubectl apply --dry-run=client -f -`
 
 ## 10.4 Acceptance script: `clusterUID` 注入 + ownerReferences 反映を end-to-end で検証
 
-- [x] 新しい acceptance script を追加する（既存テストと目的が異なるため分離推奨）
-  - [x] 例: `hack/acceptance-test-kro-infra-cluster-identity.sh`
-  - [x] wrapper: `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`
-
-- [x] script の手順に CAPI core install を含める
-  - [x] `Cluster` controller が `Kany8sCluster` に OwnerReference を付与できる状態にするため
-
-- [x] success 条件（Assert）
-  - [x] `Cluster/<name>` の `metadata.uid` を取得できる
-  - [x] kro instance `.spec.clusterUID` が `Cluster.metadata.uid` と一致する
-  - [x] RGD が作った resource の `metadata.ownerReferences[Cluster].uid` が `Cluster.metadata.uid` と一致する
-  - [x] RGD が作った resource に `cluster.x-k8s.io/cluster-name=<cluster>` が付いている
+- [x] hack script: `hack/acceptance-test-kro-infra-cluster-identity.sh` を追加する
+- [x] wrapper: `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh` を追加する
+- [x] script に CAPI core install（Cluster controller が動く）を含める
+- [x] script に kro install + RBAC workaround + RGD apply + wait（ResourceGraphAccepted）を含める
+- [x] script に Kany8s build/deploy を含める
+- [x] Assert: `Cluster/<name>` の `metadata.uid` を取得できる
+- [x] Assert: kro instance `.spec.clusterUID` が `Cluster.metadata.uid` と一致する
+- [x] Assert: owned resource の `metadata.ownerReferences[0].uid` が `Cluster.metadata.uid` と一致する
+- [x] Assert: owned resource に `cluster.x-k8s.io/cluster-name=<cluster>` が付いている
 
 ## 10.5 Makefile / devtools / docs
 
-- [ ] Makefile targets を追加する
-  - [ ] `test-acceptance-kro-infra-cluster-identity`
-  - [ ] `test-acceptance-kro-infra-cluster-identity-keep`
-
-- [ ] `internal/devtools/acceptance_test_script_test.go` に "script exists" / "Makefile target exists" を追加する
-
-- [ ] docs 更新
-  - [x] `test/acceptance_test/README.md`
-  - [x] `docs/README.md`
-  - [ ] `docs/e2e-and-acceptance-test.md`
-  - [ ] `docs/codebase.md`
+- [x] Makefile target: `test-acceptance-kro-infra-cluster-identity` を追加する
+- [x] Makefile target: `test-acceptance-kro-infra-cluster-identity-keep` を追加する
+- [x] repo-policy(devtools): `internal/devtools/acceptance_test_script_test.go` に Makefile target exists テストを追加する
+- [x] repo-policy(devtools): `internal/devtools/acceptance_test_kro_infra_cluster_identity_script_test.go` を追加する
+- [x] docs: `test/acceptance_test/README.md` に `run-acceptance-kro-infra-cluster-identity.sh` を追記する
+- [x] docs: `docs/README.md` の acceptance targets/scripts 一覧に `test-acceptance-kro-infra-cluster-identity` を追記する
+- [x] docs: `docs/e2e-and-acceptance-test.md` の acceptance targets 一覧に `test-acceptance-kro-infra-cluster-identity` を追記する
+- [ ] docs: `docs/codebase.md` の Acceptance Scripts/Entry Points に cluster identity を追記する

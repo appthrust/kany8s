@@ -10,6 +10,7 @@ This repo uses two different "end-to-end" layers on purpose:
   - `make test-acceptance-kro-reflection`: kro demo flow (kro -> RGD -> Kany8sControlPlane reflection)
     - legacy alias: `make test-acceptance`
   - `make test-acceptance-kro-infra-reflection`: kro infra demo flow (kro -> RGD -> Kany8sCluster reflection)
+  - `make test-acceptance-kro-infra-cluster-identity`: kro infra cluster identity demo (CAPI `Cluster` ownerRef + `clusterUID` injection)
   - `make test-acceptance-kro-reflection-multi-rgd`: kro demo flow with 2 RGDs (proves `Kany8sControlPlane` can drive multiple instance kinds)
     - legacy alias: `make test-acceptance-multi-rgd`
   - `make test-acceptance-capd-kubeadm`: CAPD + kubeadm workload provisioning (real API server)
@@ -147,6 +148,8 @@ Preferred targets:
 - `make test-acceptance-kro-reflection-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-reflection.sh`
 - `make test-acceptance-kro-infra-reflection` -> `bash hack/acceptance-test-kro-infra-reflection.sh`
 - `make test-acceptance-kro-infra-reflection-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh`
+- `make test-acceptance-kro-infra-cluster-identity` -> `bash hack/acceptance-test-kro-infra-cluster-identity.sh`
+- `make test-acceptance-kro-infra-cluster-identity-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-infra-cluster-identity.sh`
 - `make test-acceptance-kro-reflection-multi-rgd` -> `bash hack/acceptance-test-kro-reflection-multi-rgd.sh`
 - `make test-acceptance-kro-reflection-multi-rgd-keep` -> `CLEANUP=false bash hack/acceptance-test-kro-reflection-multi-rgd.sh`
 - `make test-acceptance-capd-kubeadm` -> `bash hack/acceptance-test-capd-kubeadm.sh`
