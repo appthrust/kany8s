@@ -10,7 +10,7 @@ import (
 func TestE2EAndAcceptanceDocListsKroInfraReflectionTargets(t *testing.T) {
 	root := findRepoRoot(t)
 
-	docPath := filepath.Join(root, "docs", "e2e-and-acceptance-test.md")
+	docPath := filepath.Join(root, "docs", "guides", "e2e-and-acceptance-test.md")
 	docBytes, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", docPath, err)
@@ -32,7 +32,7 @@ func TestE2EAndAcceptanceDocListsKroInfraReflectionTargets(t *testing.T) {
 func TestE2EAndAcceptanceDocListsKroInfraClusterIdentityTargets(t *testing.T) {
 	root := findRepoRoot(t)
 
-	docPath := filepath.Join(root, "docs", "e2e-and-acceptance-test.md")
+	docPath := filepath.Join(root, "docs", "guides", "e2e-and-acceptance-test.md")
 	docBytes, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", docPath, err)

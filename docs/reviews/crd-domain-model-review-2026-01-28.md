@@ -18,9 +18,9 @@
   - `docs/design.md`
   - `docs/idea.md`
   - `docs/PRD.md`
-  - `docs/rgd-contract.md`
-  - `docs/rgd-guidelines.md`
-  - `docs/kro.md`
+  - `docs/reference/rgd-contract.md`
+  - `docs/reference/rgd-guidelines.md`
+  - `docs/reference/kro-v0.7.1-kind-notes.md`
 
 - API/CRD
   - `api/v1alpha1/kany8scontrolplane_types.go`
@@ -69,13 +69,13 @@
 
 ### 3.1 provider-agnostic の境界が成立している（ControlPlane）
 
-- Kany8sControlPlane controller は kro instance の `status.ready` / `status.endpoint` / `status.reason` / `status.message` を読むだけで意思決定している（契約は `docs/rgd-contract.md`）。
+- Kany8sControlPlane controller は kro instance の `status.ready` / `status.endpoint` / `status.reason` / `status.message` を読むだけで意思決定している（契約は `docs/reference/rgd-contract.md`）。
 - endpoint の解釈も provider 非依存（`internal/endpoint/parse.go`）。
 
 ### 3.2 RGD の「正規化インターフェース」が実体化している
 
-- `docs/rgd-contract.md` の最小契約（ready/endpoint/reason/message）に合わせて、読み取りヘルパーが用意されている（`internal/kro/status.go`）。
-- kro v0.7.1 の落とし穴（bool materialization 等）も `docs/rgd-guidelines.md` / `docs/kro.md` に整理され、例 RGD に反映されている（例: `examples/kro/eks/eks-control-plane-rgd.yaml`）。
+- `docs/reference/rgd-contract.md` の最小契約（ready/endpoint/reason/message）に合わせて、読み取りヘルパーが用意されている（`internal/kro/status.go`）。
+- kro v0.7.1 の落とし穴（bool materialization 等）も `docs/reference/rgd-guidelines.md` / `docs/reference/kro-v0.7.1-kind-notes.md` に整理され、例 RGD に反映されている（例: `examples/kro/eks/eks-control-plane-rgd.yaml`）。
 
 ### 3.3 CAPI contract に沿った ControlPlane provider の最小実装
 
@@ -150,11 +150,11 @@
 
 - 進捗（provisioning）は Conditions の Reason/Message に集約し、failure* は回復不能/停止判断のみ、などのルールを決めて揃える。
 
-### P2: `docs/rgd-contract.md` の “required” と実装の “欠落許容” のズレ
+### P2: `docs/reference/rgd-contract.md` の “required” と実装の “欠落許容” のズレ
 
 現状:
 
-- `docs/rgd-contract.md` は `status.ready`/`status.endpoint` を required とする。
+- `docs/reference/rgd-contract.md` は `status.ready`/`status.endpoint` を required とする。
 - 実装（`internal/kro/status.go`）は欠落を false/empty として扱える。
 
 注意点:
@@ -223,7 +223,7 @@ Kany8s が infra 側も提供する場合、次のどちらを目指すかで CR
 
 - Topology の template cloning は `spec.template` を実体オブジェクトの雛形として扱うため、**Template の API group を間違えると生成先の API group も間違う**。
 - CAPI v1beta2 の InfrastructureCluster は `status.ready` ではなく `status.initialization.provisioned` を参照する（設計/実装時の落とし穴）。
-- kro v0.7.1 の既知罠（`docs/kro.md` / `docs/rgd-guidelines.md`）:
+- kro v0.7.1 の既知罠（`docs/reference/kro-v0.7.1-kind-notes.md` / `docs/reference/rgd-guidelines.md`）:
   - `spec.schema.status` で `schema.*` を参照できない
   - `readyWhen` は self resource のみ
   - 文字列テンプレートでリテラル欠落が起こり得るため CEL 1式で連結する

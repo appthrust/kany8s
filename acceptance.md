@@ -8,7 +8,8 @@ The criteria below are intentionally written as verifiable checks (commands + ex
 
 - `make test` succeeds (unit/envtest).
 - `make test-e2e` succeeds (smoke e2e).
-- `make test-acceptance` succeeds (kro demo flow).
+- `make test-acceptance-kro-reflection` succeeds (kro demo flow).
+  - Legacy alias: `make test-acceptance`.
 - `make test-acceptance-kro-infra-reflection` succeeds (kro infra reflection flow).
 - `make build` succeeds.
 - `make docker-build IMG=example.com/kany8s/controller:acceptance` succeeds.
@@ -96,9 +97,11 @@ Certificates:
 
 ## 7. Acceptance Automation
 
-- `make test-acceptance` remains the supported automated check for the kro demo flow.
+- `make test-acceptance-kro-reflection` remains the supported automated check for the kro demo flow.
+  - Legacy alias: `make test-acceptance`.
 - A dedicated acceptance script/target exists for self-managed provisioning (CAPD + kubeadm) and passes on a fresh kind cluster:
-  - Example: `make test-acceptance-self-managed`
+  - Example: `make test-acceptance-capd-kubeadm`
+  - Legacy alias: `make test-acceptance-self-managed`
 
 ## 8. Security / Safety
 

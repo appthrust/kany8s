@@ -10,7 +10,7 @@ import (
 func TestRgdContractDocExists(t *testing.T) {
 	root := findRepoRoot(t)
 
-	docPath := filepath.Join(root, "docs", "rgd-contract.md")
+	docPath := filepath.Join(root, "docs", "reference", "rgd-contract.md")
 	docBytes, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", docPath, err)
@@ -32,7 +32,7 @@ func TestRgdContractDocExists(t *testing.T) {
 		"`status.initialization.provisioned`",
 		"RGD authors",
 		"tolerates missing",
-		"docs/rgd-guidelines.md",
+		"docs/reference/rgd-guidelines.md",
 		"https://host[:port]",
 		"host[:port]",
 		"443",

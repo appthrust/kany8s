@@ -86,13 +86,13 @@ test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expect
 	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
 	$(MAKE) cleanup-test-e2e
 
-.PHONY: test-acceptance
-test-acceptance: ## Run acceptance test script (kind + kro + demo flow).
-	bash hack/acceptance-test.sh
+.PHONY: test-acceptance-kro-reflection
+test-acceptance-kro-reflection: ## Run acceptance test script (kind + kro + Kany8sControlPlane status reflection).
+	bash hack/acceptance-test-kro-reflection.sh
 
-.PHONY: test-acceptance-keep
-test-acceptance-keep: ## Run acceptance test script and keep the kind cluster.
-	CLEANUP=false bash hack/acceptance-test.sh
+.PHONY: test-acceptance-kro-reflection-keep
+test-acceptance-kro-reflection-keep: ## Run kro reflection acceptance test and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-kro-reflection.sh
 
 .PHONY: test-acceptance-kro-infra-reflection
 test-acceptance-kro-infra-reflection: ## Run acceptance test script (kind + kro + Kany8sCluster infra reflection).
@@ -102,13 +102,48 @@ test-acceptance-kro-infra-reflection: ## Run acceptance test script (kind + kro 
 test-acceptance-kro-infra-reflection-keep: ## Run kro infra reflection acceptance test and keep the kind cluster.
 	CLEANUP=false bash hack/acceptance-test-kro-infra-reflection.sh
 
+.PHONY: test-acceptance-kro-infra-cluster-identity
+test-acceptance-kro-infra-cluster-identity: ## Run kro infra cluster identity acceptance test (clusterUID injection + ownerRef/label).
+	bash hack/acceptance-test-kro-infra-cluster-identity.sh
+
+.PHONY: test-acceptance-kro-infra-cluster-identity-keep
+test-acceptance-kro-infra-cluster-identity-keep: ## Run kro infra cluster identity acceptance test and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-kro-infra-cluster-identity.sh
+
+.PHONY: test-acceptance-capd-kubeadm
+test-acceptance-capd-kubeadm: ## Run acceptance test script (kind + clusterctl + CAPD + kubeadm).
+	bash hack/acceptance-test-capd-kubeadm.sh
+
+.PHONY: test-acceptance-capd-kubeadm-keep
+test-acceptance-capd-kubeadm-keep: ## Run CAPD+kubeadm acceptance test and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-capd-kubeadm.sh
+
+.PHONY: test-acceptance-kro-reflection-multi-rgd
+test-acceptance-kro-reflection-multi-rgd: ## Run kro reflection acceptance test with multiple RGDs.
+	bash hack/acceptance-test-kro-reflection-multi-rgd.sh
+
+.PHONY: test-acceptance-kro-reflection-multi-rgd-keep
+test-acceptance-kro-reflection-multi-rgd-keep: ## Run kro reflection multi-RGD acceptance test and keep the kind cluster.
+	CLEANUP=false bash hack/acceptance-test-kro-reflection-multi-rgd.sh
+
+# Legacy aliases (kept for compatibility)
+.PHONY: test-acceptance
+test-acceptance: test-acceptance-kro-reflection ## Legacy alias for kro reflection.
+
+.PHONY: test-acceptance-keep
+test-acceptance-keep: test-acceptance-kro-reflection-keep ## Legacy alias for kro reflection (keep cluster).
+
 .PHONY: test-acceptance-self-managed
-test-acceptance-self-managed: ## Run self-managed acceptance test script (kind + clusterctl + CAPD + kubeadm).
-	bash hack/acceptance-test-self-managed.sh
+test-acceptance-self-managed: test-acceptance-capd-kubeadm ## Legacy alias for CAPD+kubeadm.
 
 .PHONY: test-acceptance-self-managed-keep
-test-acceptance-self-managed-keep: ## Run self-managed acceptance test script and keep the kind cluster.
-	CLEANUP=false bash hack/acceptance-test-self-managed.sh
+test-acceptance-self-managed-keep: test-acceptance-capd-kubeadm-keep ## Legacy alias for CAPD+kubeadm (keep cluster).
+
+.PHONY: test-acceptance-multi-rgd
+test-acceptance-multi-rgd: test-acceptance-kro-reflection-multi-rgd ## Legacy alias for kro reflection (multi RGD).
+
+.PHONY: test-acceptance-multi-rgd-keep
+test-acceptance-multi-rgd-keep: test-acceptance-kro-reflection-multi-rgd-keep ## Legacy alias for kro reflection (multi RGD; keep cluster).
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests

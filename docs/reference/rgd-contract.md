@@ -10,7 +10,7 @@ Note:
 
 - For RGD authors: treat `status.ready` and `status.endpoint` as required outputs of your RGD instance.
 - Runtime behavior: the Kany8s controller tolerates missing fields by treating them as "not ready" (`ready=false`, empty endpoint) so it can keep reconciling safely even if kro status materialization is imperfect.
-  - See `docs/rgd-guidelines.md` for pitfalls and recommended patterns.
+  - See `docs/reference/rgd-guidelines.md` for pitfalls and recommended patterns.
 
 ### ControlPlane (for `Kany8sControlPlane`)
 

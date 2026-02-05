@@ -23,14 +23,14 @@
 - `README.md`
 - `docs/PRD.md`
 - `docs/design.md`
-- `docs/rgd-contract.md`
-- `docs/rgd-guidelines.md`
-- `docs/kro.md`
+- `docs/reference/rgd-contract.md`
+- `docs/reference/rgd-guidelines.md`
+- `docs/reference/kro-v0.7.1-kind-notes.md`
 - `docs/runbooks/kind-kro.md`
 - `docs/runbooks/ack.md`
 - `docs/runbooks/e2e.md`
 - `docs/runbooks/clusterctl.md`
-- `docs/release.md`
+- `docs/runbooks/release.md`
 
 ### 2.2 実装/成果物
 
@@ -91,7 +91,7 @@
 
 ## 4. 要求事項チェックリスト (Docs → 実装の対応)
 
-以下は `README.md` / `docs/PRD.md` / `docs/design.md` / `docs/rgd-contract.md` で読み取れる要件を中心に、実装と証拠を紐付けたもの。
+以下は `README.md` / `docs/PRD.md` / `docs/design.md` / `docs/reference/rgd-contract.md` で読み取れる要件を中心に、実装と証拠を紐付けたもの。
 
 | 要件 | 出典 | 実装/証拠 | 評価 |
 |---|---|---|---|
@@ -101,8 +101,8 @@
 | RGD の schema(apiVersion/kind) から instance GVK を解決 | `docs/PRD.md` | `internal/kro/gvk.go` + `internal/kro/gvk_test.go` | OK |
 | kro instance 1:1 作成/更新 (name/namespace 同一) | `README.md`, `docs/PRD.md` | CreateOrUpdate + tests | OK |
 | kro instance spec に version を必ず注入(上書き) | `README.md`, `docs/PRD.md` | `spec["version"] = cp.Spec.Version` + drift 修正 test | OK |
-| status.ready/endpoint/reason/message の安全な読み取り | `docs/rgd-contract.md` | `internal/kro/status.go` | OK |
-| endpoint parse (`https://host[:port]` or `host[:port]`, default 443) | `README.md`, `docs/rgd-contract.md` | `internal/endpoint/parse.go` + tests | OK |
+| status.ready/endpoint/reason/message の安全な読み取り | `docs/reference/rgd-contract.md` | `internal/kro/status.go` | OK |
+| endpoint parse (`https://host[:port]` or `host[:port]`, default 443) | `README.md`, `docs/reference/rgd-contract.md` | `internal/endpoint/parse.go` + tests | OK |
 | endpoint を `Kany8sControlPlane.spec.controlPlaneEndpoint` に反映 | `README.md`, `docs/design.md` | controller 実装 + tests | OK |
 | endpoint 確定後に `status.initialization.controlPlaneInitialized=true` | `README.md`, `docs/PRD.md` | controller 実装 + tests | OK |
 | Conditions/failureReason/failureMessage の更新 | `docs/PRD.md` | controller 実装 + tests | OK |
@@ -213,8 +213,8 @@ kubectl describe rgd demo-control-plane.kro.run
 
 #### 備考 (ドキュメントとの齟齬)
 
-- `docs/PRD.md` と `docs/rgd-guidelines.md` に `int(<expr>) == 1` の記述があるが、`<expr>` が bool になるケースではこの形式は成立しない。
-  - 参照: `docs/PRD.md`, `docs/rgd-guidelines.md`
+- `docs/PRD.md` と `docs/reference/rgd-guidelines.md` に `int(<expr>) == 1` の記述があるが、`<expr>` が bool になるケースではこの形式は成立しない。
+  - 参照: `docs/PRD.md`, `docs/reference/rgd-guidelines.md`
 
 ### 6.2 `examples/capi/cluster.yaml` の apiVersion 不整合 (重大)
 
@@ -279,7 +279,7 @@ kubectl describe rgd demo-control-plane.kro.run
 - 目的: README の "kind + kro" デモを成立させ、Kany8s の核である "RGD → instance → status 消費" を実際に確認可能にする
 - 方針案:
   - `int(<bool>)` を撤廃し、`int(<int>)` で数値化した上で比較する、または条件演算子 `cond ? 1 : 0` を使って int を生成する
-  - `docs/kro.md` / `docs/issues.md` で記載されている kro v0.7.1 の癖(特に "bool status field が欠落する" 系)に配慮して "常に field が materialize される" 形へ寄せる
+  - `docs/reference/kro-v0.7.1-kind-notes.md` / `docs/reviews/issues-2026-01-28.md` で記載されている kro v0.7.1 の癖(特に "bool status field が欠落する" 系)に配慮して "常に field が materialize される" 形へ寄せる
 
 ### 8.2 次点: `examples/capi/cluster.yaml` の apiVersion を実 CRD に合わせる
 

@@ -10,7 +10,7 @@ import (
 func TestReleaseDocExists(t *testing.T) {
 	root := findRepoRoot(t)
 
-	docPath := filepath.Join(root, "docs", "release.md")
+	docPath := filepath.Join(root, "docs", "runbooks", "release.md")
 	docBytes, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", docPath, err)

@@ -10,7 +10,7 @@ import (
 func TestDesignDocExplainsKroDynamicRBACTradeoffs(t *testing.T) {
 	root := findRepoRoot(t)
 
-	designPath := filepath.Join(root, "docs", "design.md")
+	designPath := filepath.Join(root, "docs", "adr", "0007-dynamic-gvk-rbac-tradeoffs.md")
 	designBytes, err := os.ReadFile(designPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", designPath, err)
@@ -25,7 +25,7 @@ func TestDesignDocExplainsKroDynamicRBACTradeoffs(t *testing.T) {
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(design, want) {
-			t.Errorf("docs/design.md missing %q", want)
+			t.Errorf("docs/adr/0007-dynamic-gvk-rbac-tradeoffs.md missing %q", want)
 		}
 	}
 }

@@ -10,7 +10,7 @@ import (
 func TestRgdGuidelinesDocExists(t *testing.T) {
 	root := findRepoRoot(t)
 
-	docPath := filepath.Join(root, "docs", "rgd-guidelines.md")
+	docPath := filepath.Join(root, "docs", "reference", "rgd-guidelines.md")
 	docBytes, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", docPath, err)
@@ -31,7 +31,7 @@ func TestRgdGuidelinesDocExists(t *testing.T) {
 		"orValue",
 		".?",
 		"NetworkPolicy",
-		"docs/kro.md",
+		"docs/reference/kro-v0.7.1-kind-notes.md",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(doc, want) {

@@ -197,7 +197,7 @@ Prereqs:
    - `kubectl rollout status -n kro-system deploy/kro`
 
    Note: kro v0.7.1 may require relaxed RBAC for its dynamic controller to watch generated CRDs.
-   See `docs/kro.md` for details and the exact manifest.
+   See `docs/reference/kro-v0.7.1-kind-notes.md` for details and the exact manifest.
 
 3. Install Kany8s CRDs:
 
@@ -263,9 +263,13 @@ For code generation only:
 
 ## Documents
 
-- `design.md`: architecture and controller ↔ kro contract
-- `idea.md`: ACK CR examples and RGD modularization ideas
-- `capt/`: reference implementation (Cluster API Provider Terraform) used for comparison
+- `docs/PRD.md`: product requirements (Why/What/How)
+- `docs/adr/README.md`: design decisions (ADR)
+- `docs/reference/rgd-contract.md`: normalized status contract for RGD instances
+- `docs/reference/rgd-guidelines.md`: RGD authoring guidance (kro pitfalls)
+- `docs/guides/e2e-and-acceptance-test.md`: test layers and acceptance runners
+- `docs/runbooks/`: operational runbooks
+- `docs/archive/`: historical notes/drafts
 
 ## Roadmap (Sketch)
 

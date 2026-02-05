@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: example.com/kany8s
-  newTag: capd-kany8s-simple-docker-1769652356
+  newTag: acceptance-kro-self-managed

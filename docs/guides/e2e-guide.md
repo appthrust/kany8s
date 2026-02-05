@@ -11,7 +11,7 @@ Scope:
 Notes:
 
 - The demo RGD (`examples/kro/ready-endpoint/`) creates an `nginx` Deployment/Service. This is **not** a real Kubernetes API server, so Cluster API's `RemoteConnectionProbe` will fail and `Cluster Available=False` is expected.
-- kro v0.7.1 may require relaxed RBAC to watch generated CRDs; this guide applies the unrestricted aggregation ClusterRole from `docs/kro.md`.
+- kro v0.7.1 may require relaxed RBAC to watch generated CRDs; this guide applies the unrestricted aggregation ClusterRole from `docs/reference/kro-v0.7.1-kind-notes.md`.
 
 ## Prerequisites
 

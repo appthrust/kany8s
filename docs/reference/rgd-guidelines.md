@@ -2,7 +2,7 @@
 
 This document captures practical guidelines for authoring kro `ResourceGraphDefinition` (RGD) objects that work well with Kany8s.
 
-For deeper investigation notes and minimal reproductions on kind + kro v0.7.1, see `docs/kro.md`.
+For deeper investigation notes and minimal reproductions on kind + kro v0.7.1, see `docs/reference/kro-v0.7.1-kind-notes.md`.
 
 ## Static Analysis / Validation
 
@@ -95,4 +95,34 @@ resources:
 
 ## Kany8s Compatibility
 
-If an RGD is intended to back `Kany8sControlPlane`, it MUST follow the normalized status contract in `docs/rgd-contract.md` (`status.ready`, `status.endpoint`, etc.).
+If an RGD is intended to back `Kany8sControlPlane`, it MUST follow the normalized status contract in `docs/reference/rgd-contract.md` (`status.ready`, `status.endpoint`, etc.).
+
+## Provider Ownership (Cluster Identity)
+
+Many Cluster API providers expect provider resources to be associated with the owning CAPI `Cluster` via:
+
+- `metadata.ownerReferences[]` pointing to `cluster.x-k8s.io/v1beta2, Kind=Cluster` (name + uid)
+- `metadata.labels["cluster.x-k8s.io/cluster-name"]=<cluster-name>`
+
+Normally, the CAPI Cluster controller sets these fields on the objects referenced by `Cluster.spec.infrastructureRef` / `Cluster.spec.controlPlaneRef`.
+However, if your kro graph creates additional provider resources "behind" a facade (i.e., resources that are not directly referenced by the `Cluster` spec), the CAPI Cluster controller will not touch them.
+Some provider controllers will then refuse to reconcile until the owner Cluster can be resolved.
+
+Guidelines:
+
+- For each provider "cluster" resource you create in an RGD (e.g., `DockerCluster`, `AWSCluster`, etc.), add the owner reference + cluster-name label.
+- Pass the owner `Cluster` UID into the instance spec (for example as `schema.spec.clusterUID`) so the RGD can set a valid OwnerReference.
+  - In Kany8s, the controller can inject this value into the kro instance spec after resolving the owner Cluster.
+
+Example (snippet):
+
+```yaml
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: ${schema.spec.clusterName}
+  ownerReferences:
+    - apiVersion: cluster.x-k8s.io/v1beta2
+      kind: Cluster
+      name: ${schema.spec.clusterName}
+      uid: ${schema.spec.clusterUID}
+```
