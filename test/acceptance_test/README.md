@@ -29,6 +29,9 @@ Third-party YAML is downloaded on-demand (and cached) under:
 - `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`
   - wraps `hack/acceptance-test-kro-infra-reflection.sh`
   - Purpose: validate managed-kro infra "status reflection" (kro instance create/Ready + `Kany8sCluster` Ready/provisioned + spec injection)
+- `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`
+  - wraps `hack/acceptance-test-kro-infra-cluster-identity.sh`
+  - Purpose: validate managed-kro infra "cluster identity" (CAPI `Cluster` UID -> kro instance `spec.clusterUID` + owned resource ownerReferences/label)
 - `test/acceptance_test/run-acceptance-capd-kubeadm.sh`
   - wraps `hack/acceptance-test-capd-kubeadm.sh`
   - Purpose: validate self-managed provisioning (CAPD + kubeadm) creates a reachable workload cluster

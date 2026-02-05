@@ -409,7 +409,7 @@
 - [ ] `internal/devtools/acceptance_test_script_test.go` に "script exists" / "Makefile target exists" を追加する
 
 - [ ] docs 更新
-  - [ ] `test/acceptance_test/README.md`
+  - [x] `test/acceptance_test/README.md`
   - [ ] `docs/README.md`
   - [ ] `docs/e2e-and-acceptance-test.md`
   - [ ] `docs/codebase.md`
