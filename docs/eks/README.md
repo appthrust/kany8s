@@ -51,6 +51,12 @@ export SUBNET_A_CIDR=10.35.0.0/24
 export SUBNET_A_AZ=ap-northeast-1a
 export SUBNET_B_CIDR=10.35.1.0/24
 export SUBNET_B_AZ=ap-northeast-1c
+
+# (推奨) EKS public endpoint を許可する CIDR
+# - 指定しない場合は RGD の default により "0.0.0.0/0" になります
+# - 検証でも可能なら自分のグローバルIP(/32)に絞ってください
+# - あえて全開放するなら "0.0.0.0/0" を指定します (非推奨)
+export PUBLIC_ACCESS_CIDR="$(curl -fsSL https://checkip.amazonaws.com | tr -d '\n')/32"
 ```
 
 確認:
@@ -171,19 +177,19 @@ export IAM_RELEASE_VERSION="$(curl -sL https://api.github.com/repos/aws-controll
 export EC2_RELEASE_VERSION="$(curl -sL https://api.github.com/repos/aws-controllers-k8s/ec2-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')"
 export EKS_RELEASE_VERSION="$(curl -sL https://api.github.com/repos/aws-controllers-k8s/eks-controller/releases/latest | jq -r '.tag_name | ltrimstr("v")')"
 
-helm install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-iam-controller \
+helm upgrade --install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-iam-controller \
   oci://public.ecr.aws/aws-controllers-k8s/iam-chart \
   --version="$IAM_RELEASE_VERSION" \
   --set=aws.region="$AWS_REGION" \
   --set=aws.credentials.secretName=aws-creds
 
-helm install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-ec2-controller \
+helm upgrade --install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-ec2-controller \
   oci://public.ecr.aws/aws-controllers-k8s/ec2-chart \
   --version="$EC2_RELEASE_VERSION" \
   --set=aws.region="$AWS_REGION" \
   --set=aws.credentials.secretName=aws-creds
 
-helm install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-eks-controller \
+helm upgrade --install --create-namespace -n "$ACK_SYSTEM_NAMESPACE" ack-eks-controller \
   oci://public.ecr.aws/aws-controllers-k8s/eks-chart \
   --version="$EKS_RELEASE_VERSION" \
   --set=aws.region="$AWS_REGION" \
@@ -247,6 +253,8 @@ kubectl wait --for=condition=ResourceGraphAccepted --timeout=120s rgd/eks-contro
 
 ## 8) Cluster / Kany8sControlPlane を apply
 
+`PUBLIC_ACCESS_CIDR` を `publicAccessCIDRs` としてテンプレに注入します。
+
 ### CAPI `Cluster` も作る場合 (推奨)
 
 ```bash
@@ -261,7 +269,11 @@ sed \
   -e "s|__SUBNET_A_AZ__|${SUBNET_A_AZ}|g" \
   -e "s|__SUBNET_B_CIDR__|${SUBNET_B_CIDR}|g" \
   -e "s|__SUBNET_B_AZ__|${SUBNET_B_AZ}|g" \
-  docs/eks/manifests/cluster.yaml.tpl >"${rendered}"
+  docs/eks/manifests/cluster.yaml.tpl \
+| sed \
+  -e 's|^    # publicAccessCIDRs:|    publicAccessCIDRs:|' \
+  -e "s|^    #   - \"203.0.113.10/32\"|      - \"${PUBLIC_ACCESS_CIDR}\"|" \
+>"${rendered}"
 
 kubectl apply -f "${rendered}"
 ```
@@ -280,7 +292,11 @@ sed \
   -e "s|__SUBNET_A_AZ__|${SUBNET_A_AZ}|g" \
   -e "s|__SUBNET_B_CIDR__|${SUBNET_B_CIDR}|g" \
   -e "s|__SUBNET_B_AZ__|${SUBNET_B_AZ}|g" \
-  docs/eks/manifests/controlplane-only.yaml.tpl >"${rendered}"
+  docs/eks/manifests/controlplane-only.yaml.tpl \
+| sed \
+  -e 's|^    # publicAccessCIDRs:|    publicAccessCIDRs:|' \
+  -e "s|^    #   - \"203.0.113.10/32\"|      - \"${PUBLIC_ACCESS_CIDR}\"|" \
+>"${rendered}"
 
 kubectl apply -f "${rendered}"
 ```
@@ -288,6 +304,9 @@ kubectl apply -f "${rendered}"
 ## 9) 進捗を見る
 
 ```bash
+# Kany8s facade が Ready になるまで待つ (EKS 作成は 10-20 分かかることがあります)
+kubectl -n "$NAMESPACE" wait --for=condition=Ready --timeout=25m kany8scontrolplane/"$CLUSTER_NAME" || true
+
 kubectl -n "$NAMESPACE" get kany8scontrolplane "$CLUSTER_NAME" -o wide
 
 # ACK (EC2)
@@ -310,6 +329,7 @@ kubectl -n "$NAMESPACE" get ekscontrolplanes.kro.run "$CLUSTER_NAME" -o yaml || 
 AWS 側:
 
 ```bash
+# NOTE: apply 直後は AWS 側に反映されるまで少し時間がかかり、ResourceNotFound になることがあります。
 aws eks describe-cluster --region "$AWS_REGION" --name "$CLUSTER_NAME" \
   --query 'cluster.[status,endpoint,version]' --output table
 ```
