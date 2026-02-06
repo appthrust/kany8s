@@ -43,7 +43,7 @@ export AWS_REGION=ap-northeast-1
 export CLUSTER_NAME=demo-eks-135-$(date +%Y%m%d%H%M%S)
 export NAMESPACE=default
 
-# EKS version は "1.xx" 形式 (例: 1.29)
+# EKS version は "1.xx" 形式 (例: 1.35)
 export KUBERNETES_VERSION=1.35
 
 export VPC_CIDR=10.35.0.0/16
@@ -316,6 +316,8 @@ aws eks describe-cluster --region "$AWS_REGION" --name "$CLUSTER_NAME" \
 
 ## 10) Cleanup
 
+詳しい手順は `docs/eks/cleanup.md` を参照してください。
+
 1) Kubernetes 側を消す (ACK finalizer が AWS リソース削除を走らせる)
 
 ```bash
@@ -352,7 +354,7 @@ kind delete cluster --name kany8s-eks
     - `kubectl describe rgd eks-control-plane-smoke.kro.run`
 
 - ACK の EKS Cluster が `terminal` っぽい状態で進まない/イベントに AWS エラー:
-  - `kubectl -n ack-system logs deploy/ack-eks-controller --tail=200`
+  - `kubectl -n "$ACK_SYSTEM_NAMESPACE" logs deploy/ack-eks-controller-eks-chart --tail=200`
   - role policy が足りない / subnets が不正 / region 違い など
 
 - Cleanup で AWS 側にリソースが残る:

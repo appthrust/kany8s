@@ -15,7 +15,7 @@ export AWS_REGION=ap-northeast-1
 export CLUSTER_NAME=demo-eks-135-$(date +%Y%m%d%H%M%S)
 export NAMESPACE=default
 
-# EKS の version は "1.xx" 形式 (例: 1.29)
+# EKS の version は "1.xx" 形式 (例: 1.35)
 export KUBERNETES_VERSION=1.35
 
 # 新規作成する VPC/Subnet の CIDR と AZ
@@ -73,7 +73,7 @@ aws ec2 describe-availability-zones --region "$AWS_REGION" \
 
 ### 4) `KUBERNETES_VERSION`
 
-EKS がサポートしている version の中から選びます（例: `1.29`）。
+EKS がサポートしている version の中から選びます（例: `1.35`）。
 
 手元でざっくり確認する例:
 
