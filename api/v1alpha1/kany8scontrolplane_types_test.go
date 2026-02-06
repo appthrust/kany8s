@@ -29,18 +29,23 @@ func TestKany8sControlPlaneSpec_MVPFields(t *testing.T) {
 		return nil
 	})
 
-	rgdRefField, ok := assertField(t, specType, "ResourceGraphDefinitionRef", "resourceGraphDefinitionRef", nil)
+	rgdRefField, ok := assertField(t, specType, "ResourceGraphDefinitionRef", "resourceGraphDefinitionRef,omitempty", nil)
 	if ok {
 		rgdRefType := rgdRefField.Type
-		if rgdRefType.Kind() != reflect.Struct {
-			t.Errorf("ResourceGraphDefinitionRef should be a struct, got %s", rgdRefType.String())
+		if rgdRefType.Kind() != reflect.Ptr {
+			t.Errorf("ResourceGraphDefinitionRef should be a pointer, got %s", rgdRefType.String())
 		} else {
-			assertField(t, rgdRefType, "Name", "name", func(f reflect.StructField) error {
-				if f.Type.Kind() != reflect.String {
-					return newTypeErr(f.Type.String(), "string")
-				}
-				return nil
-			})
+			elem := rgdRefType.Elem()
+			if elem.Kind() != reflect.Struct {
+				t.Errorf("ResourceGraphDefinitionRef should point to a struct, got %s", elem.String())
+			} else {
+				assertField(t, elem, "Name", "name", func(f reflect.StructField) error {
+					if f.Type.Kind() != reflect.String {
+						return newTypeErr(f.Type.String(), "string")
+					}
+					return nil
+				})
+			}
 		}
 	}
 

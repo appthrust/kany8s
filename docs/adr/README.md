@@ -18,4 +18,5 @@ Conventions:
 - `docs/adr/0007-dynamic-gvk-rbac-tradeoffs.md` (Accepted)
 - `docs/adr/0008-infra-outputs-policy-parent-rgd-approach-a.md` (Accepted)
 - `docs/adr/0009-self-managed-kubeadm-boundaries.md` (Accepted)
-- `docs/adr/0010-capd-facade-behind-kany8s-suite.md` (Proposed)
+- `docs/adr/0010-capd-facade-behind-kany8s-suite.md` (Superseded)
+- `docs/adr/0011-extensible-controlplane-backends.md` (Accepted)

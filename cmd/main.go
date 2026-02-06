@@ -215,6 +215,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Kany8sKubeadmControlPlane")
 		os.Exit(1)
 	}
+	if err := (&controlplanev1alpha1.Kany8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlane")
+		os.Exit(1)
+	}
+	if err := (&controlplanev1alpha1.Kany8sControlPlaneTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlaneTemplate")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

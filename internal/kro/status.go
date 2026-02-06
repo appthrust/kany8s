@@ -11,6 +11,7 @@ type InstanceStatus struct {
 	Endpoint string
 	Reason   string
 	Message  string
+	Terminal bool
 }
 
 func ReadInstanceStatus(instance *unstructured.Unstructured) (InstanceStatus, error) {
@@ -49,6 +50,14 @@ func ReadInstanceStatus(instance *unstructured.Unstructured) (InstanceStatus, er
 	}
 	if found {
 		s.Message = message
+	}
+
+	terminal, found, err := unstructured.NestedBool(instance.Object, "status", "terminal")
+	if err != nil {
+		return s, fmt.Errorf("read status.terminal: %w", err)
+	}
+	if found {
+		s.Terminal = terminal
 	}
 
 	return s, nil

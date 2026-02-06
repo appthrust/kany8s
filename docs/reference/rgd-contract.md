@@ -1,6 +1,11 @@
 # RGD Contract
 
-This document defines the minimal contract an RGD instance (a custom resource created by kro from a `ResourceGraphDefinition`) MUST expose so `Kany8sControlPlane` (and `Kany8sCluster` in kro mode) can consume it without provider-specific logic.
+This document defines the minimal normalized status contract that a backend resource MUST expose so Kany8s can consume it without provider-specific logic.
+
+This contract applies to:
+
+- kro RGD instances created by `Kany8sControlPlane` / `Kany8sCluster` in kro mode, and
+- external ControlPlane backend CRs created by the `Kany8sControlPlane` facade (see `docs/adr/0011-extensible-controlplane-backends.md`).
 
 ## Status Fields (Normalized)
 
@@ -33,6 +38,15 @@ Note:
 - `status.kubeconfigSecretRef` (optional, object)
   - Meaning: reference to a provider-specific "source" Secret that contains a kubeconfig in `data.value`.
   - If set, Kany8s copies `data.value` into the CAPI-compatible `<cluster>-kubeconfig` Secret and reports progress via the `KubeconfigSecretReconciled` Condition.
+  - Namespace guidance: the referenced Secret SHOULD be in the same namespace as the backend object. Cross-namespace references are discouraged and should require explicit opt-in.
+
+- `status.observedGeneration` (optional, int64)
+  - Meaning: the backend controller has observed and acted on the current `metadata.generation`.
+  - Why: helps users understand whether backend status reflects the latest desired state.
+
+- `status.terminal` (optional, boolean)
+  - Meaning: unrecoverable failure for the current desired state.
+  - Why: enables consistent surfacing of backend-authored terminal failures.
 
 ### Parent RGD (infra + control plane)
 
@@ -79,7 +93,7 @@ kro reserves `status.conditions` and `status.state`. Do not use them for the abo
   - if `status.kubeconfigSecretRef` is set, the kubeconfig Secret has been reconciled (`KubeconfigSecretReconciled=True`).
 
 Kany8s surfaces `status.reason` / `status.message` primarily via Conditions (e.g., Ready/Creating).
-`Kany8sControlPlane.status.failureReason` / `failureMessage` are reserved for terminal, controller-detected errors (for example: invalid `spec.kroSpec`, invalid `status.endpoint`) and are cleared during normal provisioning.
+`Kany8sControlPlane.status.failureReason` / `failureMessage` are reserved for terminal failures. Today they are primarily used for controller-detected errors (for example: invalid `spec.kroSpec`, invalid `status.endpoint`). Planned: backend-authored terminal failures may be surfaced when `status.terminal=true` is supported by the facade.
 
 - For `Kany8sCluster` in kro mode:
   - `Kany8sCluster.status.initialization.provisioned` (i.e., `status.initialization.provisioned`) reflects the infrastructure RGD instance `status.ready`.

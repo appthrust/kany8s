@@ -28,6 +28,7 @@ func TestReadInstanceStatus(t *testing.T) {
 					"endpoint": "example.com:6443",
 					"reason":   "Ready",
 					"message":  "control plane is ready",
+					"terminal": true,
 				},
 			},
 			want: InstanceStatus{
@@ -35,6 +36,7 @@ func TestReadInstanceStatus(t *testing.T) {
 				Endpoint: "example.com:6443",
 				Reason:   "Ready",
 				Message:  "control plane is ready",
+				Terminal: true,
 			},
 		},
 		{

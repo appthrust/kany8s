@@ -54,6 +54,11 @@ RGD (or underlying provider controllers) creates a provider-specific source Secr
 
 Kany8s reads the source Secret's `data.value` and writes/updates the CAPI-compatible `<cluster>-kubeconfig` Secret.
 
+Namespace / security guidance:
+
+- The source Secret SHOULD be in the same namespace as the `Cluster` / `Kany8sControlPlane` (and the kro instance).
+- If a reference points to a different namespace (i.e., `kubeconfigSecretRef.namespace` differs), the installation MUST explicitly opt in by extending RBAC. This is discouraged by default because it creates a cross-namespace Secret read path.
+
 Key properties:
 
 - The source Secret can be provider-specific (metadata contract is minimal).

@@ -10,7 +10,7 @@ spec:
     name: __CLUSTER_NAME__
   controlPlaneRef:
     apiGroup: controlplane.cluster.x-k8s.io
-    kind: Kany8sKubeadmControlPlane
+    kind: Kany8sControlPlane
     name: __CLUSTER_NAME__
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
@@ -31,14 +31,15 @@ spec:
       customImage: __NODE_IMAGE__
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
-kind: Kany8sKubeadmControlPlane
+kind: Kany8sControlPlane
 metadata:
   name: __CLUSTER_NAME__
   namespace: __NAMESPACE__
 spec:
   version: __KUBERNETES_VERSION__
-  machineTemplate:
-    infrastructureRef:
-      apiGroup: infrastructure.cluster.x-k8s.io
-      kind: DockerMachineTemplate
-      name: __CLUSTER_NAME__-control-plane
+  kubeadm:
+    machineTemplate:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: DockerMachineTemplate
+        name: __CLUSTER_NAME__-control-plane

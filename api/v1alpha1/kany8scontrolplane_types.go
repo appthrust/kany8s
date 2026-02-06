@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 )
 
@@ -34,6 +35,46 @@ type ResourceGraphDefinitionReference struct {
 	Name string `json:"name"`
 }
 
+// Kany8sControlPlaneKubeadmSpec configures the builtin kubeadm backend.
+//
+// The facade injects and enforces the Kubernetes version from
+// Kany8sControlPlane.spec.version.
+type Kany8sControlPlaneKubeadmSpec struct {
+	// replicas is the desired number of control plane Machines.
+	//
+	// MVP default is 1.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:default=1
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// machineTemplate is the template used to create control plane Machines.
+	MachineTemplate Kany8sKubeadmControlPlaneMachineTemplate `json:"machineTemplate"`
+
+	// kubeadmConfigSpec is the kubeadm bootstrap configuration for control plane Machines.
+	// +optional
+	KubeadmConfigSpec *bootstrapv1.KubeadmConfigSpec `json:"kubeadmConfigSpec,omitempty"`
+}
+
+// Kany8sControlPlaneExternalBackendSpec selects an out-of-tree backend and
+// supplies its spec as an arbitrary JSON object.
+//
+// The facade injects and enforces `.spec.version` on the backend object.
+type Kany8sControlPlaneExternalBackendSpec struct {
+	// apiVersion is the backend resource apiVersion.
+	// +kubebuilder:validation:MinLength=1
+	APIVersion string `json:"apiVersion"`
+
+	// kind is the backend resource kind.
+	// +kubebuilder:validation:MinLength=1
+	Kind string `json:"kind"`
+
+	// spec is an arbitrary, backend-specific object passed through to the backend
+	// resource `.spec`.
+	// +optional
+	Spec *apiextensionsv1.JSON `json:"spec,omitempty"`
+}
+
 // Kany8sControlPlaneSpec defines the desired state of Kany8sControlPlane.
 type Kany8sControlPlaneSpec struct {
 	// version is the Kubernetes version to use for the control plane.
@@ -41,13 +82,24 @@ type Kany8sControlPlaneSpec struct {
 	Version string `json:"version"`
 
 	// resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
-	// provision the managed control plane.
-	ResourceGraphDefinitionRef ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef"`
+	// provision the managed (kro-backed) control plane.
+	//
+	// When set, this selects the kro backend.
+	// +optional
+	ResourceGraphDefinitionRef *ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef,omitempty"`
 
 	// kroSpec is an arbitrary, provider-specific object passed through to the kro
 	// instance spec.
 	// +optional
 	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`
+
+	// kubeadm selects the builtin kubeadm backend.
+	// +optional
+	Kubeadm *Kany8sControlPlaneKubeadmSpec `json:"kubeadm,omitempty"`
+
+	// externalBackend selects an out-of-tree backend.
+	// +optional
+	ExternalBackend *Kany8sControlPlaneExternalBackendSpec `json:"externalBackend,omitempty"`
 
 	// controlPlaneEndpoint is the endpoint used by Cluster API to communicate with
 	// the control plane.

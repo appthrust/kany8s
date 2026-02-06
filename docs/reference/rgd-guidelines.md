@@ -97,6 +97,11 @@ resources:
 
 If an RGD is intended to back `Kany8sControlPlane`, it MUST follow the normalized status contract in `docs/reference/rgd-contract.md` (`status.ready`, `status.endpoint`, etc.).
 
+Additional guidance:
+
+- Prefer writing kubeconfig source Secrets in the same namespace as the instance and reference them without cross-namespace hops.
+- If possible, set `status.observedGeneration` and `status.terminal` on your instance status to improve debuggability and failure surfacing.
+
 ## Provider Ownership (Cluster Identity)
 
 Many Cluster API providers expect provider resources to be associated with the owning CAPI `Cluster` via:

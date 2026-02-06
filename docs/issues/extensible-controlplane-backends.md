@@ -1,7 +1,7 @@
 # Issue: Self-Managed ControlPlane backends をユーザが拡張できる設計
 
 - 作成日: 2026-02-05
-- ステータス: Open (design needed)
+- ステータス: Designed (ADR drafted)
 
 ## 背景
 
@@ -82,6 +82,24 @@ Kany8s 本体に実装を追加するか fork する必要が出やすい。
   - ControlPlane backend 拡張方針（Option A/B の選定）
   - backend status contract（`docs/adr/0002-...` の再利用 or 拡張）
   - kubeconfig Secret の責務分担（`docs/adr/0004-...` との整合）
+
+## 設計（決定）
+
+- Option A を採用: `Kany8sControlPlane` を facade にし、複数 backend に委譲する
+- Backend status contract: `docs/adr/0002-normalized-rgd-instance-status-contract.md` の ControlPlane contract を "backend contract" として再利用する
+- kubeconfig Secret: `docs/adr/0004-kubeconfig-secret-strategy.md` と同様に Option B をデフォルトとしつつ、backend 側で Option A を実装することも許容する
+
+詳細は ADR を参照:
+
+- `docs/adr/0011-extensible-controlplane-backends.md`
+
+## 調査で判明した制約 / 追記すべき点
+
+- External backend は namespaced CRD 前提（facade からの OwnerReference と watch の都合で cluster-scoped backend は対象外）
+- backend 選択は "exactly one" を webhook 等で強制し、作成後の backend 種別変更は原則禁止（切替は ControlPlane 置換として扱う）
+- dynamic watch は Kind->plural 推測に依存すると壊れるため、GVK->GVR 解決は RESTMapper で行うか、必要なら `resource`(plural) を入力として持てるようにする
+- `status.kubeconfigSecretRef` の cross-namespace 参照はセキュリティ上の踏み抜きポイントになり得るため、デフォルトは同一 namespace 制約（例外は明示 opt-in + RBAC + allowlist 推奨）
+- backend から terminal failure を宣言できる仕組み（例: `status.terminal`）と、デバッグ容易性のための `status.observedGeneration` の推奨がある
 
 - API/Docs の更新方針が決まっている
   - `Kany8sControlPlane` の新 spec フィールド（必要なら）

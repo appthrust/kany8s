@@ -150,6 +150,7 @@ wait_cluster_condition_with_progress() {
 
 		echo "==> Waiting for Cluster ${condition}=True (elapsed=$(( now - start ))s / timeout=${timeout_raw})"
 		k -n "${NAMESPACE}" get cluster "${CLUSTER_NAME}" -o wide || true
+		k -n "${NAMESPACE}" get kany8scontrolplane "${CLUSTER_NAME}" -o wide 2>/dev/null || true
 		k -n "${NAMESPACE}" get kany8skubeadmcontrolplane "${CLUSTER_NAME}" -o wide 2>/dev/null || true
 		k -n "${NAMESPACE}" get secret "${CLUSTER_NAME}-kubeconfig" -o name 2>/dev/null || true
 		k -n "${NAMESPACE}" get machine -l "cluster.x-k8s.io/cluster-name=${CLUSTER_NAME}" -o wide 2>/dev/null || true
@@ -267,6 +268,7 @@ collect_diagnostics() {
 	k get events -A --sort-by=.metadata.creationTimestamp >"${diag_dir}/events.txt" 2>&1 || true
 
 	k -n "${NAMESPACE}" get cluster "${CLUSTER_NAME}" -o yaml >"${diag_dir}/cluster.yaml" 2>&1 || true
+	k -n "${NAMESPACE}" get kany8scontrolplane "${CLUSTER_NAME}" -o yaml >"${diag_dir}/kany8scontrolplane.yaml" 2>&1 || true
 	k -n "${NAMESPACE}" get kany8skubeadmcontrolplane "${CLUSTER_NAME}" -o yaml >"${diag_dir}/kany8skubeadmcontrolplane.yaml" 2>&1 || true
 
 	k -n capi-system logs deploy/capi-controller-manager --tail=200 >"${diag_dir}/capi-controller-logs.txt" 2>&1 || true

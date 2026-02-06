@@ -32,10 +32,22 @@ RGD instances SHOULD expose:
     - `name: string`
     - `namespace: string` (optional; if omitted, the instance namespace is assumed)
 
+RGD instances MAY also expose (recommended for debuggability):
+
+- `status.observedGeneration: int64` (optional)
+  - Meaning: the controller producing the status has observed and acted on the current `metadata.generation`.
+- `status.terminal: boolean` (optional)
+  - Meaning: unrecoverable failure for the current desired state (the instance will not become ready without user intervention).
+
 Controllers MUST tolerate missing fields safely:
 
 - Missing `status.ready` is treated as `false`.
 - Missing `status.endpoint` is treated as empty.
+
+Additional tolerance guidance:
+
+- Missing `status.observedGeneration` is ignored.
+- Missing `status.terminal` is treated as `false`.
 
 This tolerance exists to keep reconciliation safe even if kro does not materialize a field as expected.
 

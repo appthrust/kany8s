@@ -1,6 +1,6 @@
-# ADR 0010: CAPD Facade Behind the Kany8s Suite (Proposed)
+# ADR 0010: CAPD Facade Behind the Kany8s Suite
 
-- Status: Proposed
+- Status: Superseded
 - Date: 2026-02-05
 
 ## Context
@@ -11,6 +11,8 @@ Users may want a local/dev backend where they can apply only:
 - `Cluster.spec.controlPlaneRef = Kany8sControlPlane`
 
 and still reach `Cluster Available=True` on CAPD (Docker) without manually applying `DockerCluster`/`DockerMachineTemplate` or a separate kubeadm control plane object.
+
+This ADR is superseded by `docs/adr/0011-extensible-controlplane-backends.md`, which generalizes the "facade delegates to a backend" pattern.
 
 ## Proposal (Decision)
 

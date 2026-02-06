@@ -8,7 +8,24 @@ metadata:
 spec:
   template:
     spec:
+      # Exactly one backend selector must be set.
       resourceGraphDefinitionRef:
+        # kro backend example:
         # Apply `examples/kro/ready-endpoint/rgd.yaml` first.
         name: demo-control-plane.kro.run
       kroSpec: {}
+
+      # kubeadm backend example:
+      # kubeadm:
+      #   machineTemplate:
+      #     infrastructureRef:
+      #       apiGroup: infrastructure.cluster.x-k8s.io
+      #       kind: DockerMachineTemplate
+      #       name: demo-cluster-control-plane
+
+      # external backend example:
+      # externalBackend:
+      #   apiVersion: controlplane.example.com/v1alpha1
+      #   kind: ExampleSelfManagedControlPlane
+      #   spec:
+      #     datacenter: dc-a

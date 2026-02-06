@@ -65,7 +65,7 @@ func TestClusterTopologyVersionChangePropagatesToKroInstance(t *testing.T) {
 		Spec: controlplanev1alpha1.Kany8sControlPlaneTemplateSpec{
 			Template: controlplanev1alpha1.Kany8sControlPlaneTemplateResource{
 				Spec: controlplanev1alpha1.Kany8sControlPlaneTemplateResourceSpec{
-					ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{Name: rgdName},
+					ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{Name: rgdName},
 				},
 			},
 		},
@@ -97,6 +97,7 @@ func TestClusterTopologyVersionChangePropagatesToKroInstance(t *testing.T) {
 	g.Expect(cp.Name).To(Equal(clusterName))
 	g.Expect(cp.Namespace).To(Equal(clusterNamespace))
 	g.Expect(cp.Spec.Version).To(Equal(initialVersion))
+	g.Expect(cp.Spec.ResourceGraphDefinitionRef).NotTo(BeNil())
 	g.Expect(cp.Spec.ResourceGraphDefinitionRef.Name).To(Equal(rgdName))
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
