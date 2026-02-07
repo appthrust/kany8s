@@ -46,7 +46,7 @@ func TestToolingPinned(t *testing.T) {
 	if f.Go == nil {
 		t.Fatalf("go.mod missing go directive")
 	}
-	if got, want := f.Go.Version, "1.25.0"; got != want {
+	if got, want := f.Go.Version, "1.25.3"; got != want {
 		t.Fatalf("go directive mismatch: got %q, want %q", got, want)
 	}
 

@@ -1,5 +1,6 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
+EKS_PLUGIN_IMG ?= eks-kubeconfig-rotator:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -167,9 +168,17 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 build: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager cmd/main.go
 
+.PHONY: build-eks-plugin
+build-eks-plugin: manifests generate fmt vet ## Build EKS kubeconfig rotator binary.
+	go build -o bin/eks-kubeconfig-rotator cmd/eks-kubeconfig-rotator/main.go
+
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
+
+.PHONY: run-eks-plugin
+run-eks-plugin: manifests generate fmt vet ## Run EKS kubeconfig rotator from your host.
+	go run ./cmd/eks-kubeconfig-rotator/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -178,9 +187,17 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
 
+.PHONY: docker-build-eks-plugin
+docker-build-eks-plugin: ## Build docker image with EKS kubeconfig rotator.
+	$(CONTAINER_TOOL) build -f Dockerfile.eks-plugin -t ${EKS_PLUGIN_IMG} .
+
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
+
+.PHONY: docker-push-eks-plugin
+docker-push-eks-plugin: ## Push docker image with EKS kubeconfig rotator.
+	$(CONTAINER_TOOL) push ${EKS_PLUGIN_IMG}
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -229,6 +246,15 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy-eks-plugin
+deploy-eks-plugin: kustomize ## Deploy EKS kubeconfig rotator to the K8s cluster specified in ~/.kube/config.
+	cd config/eks-plugin && "$(KUSTOMIZE)" edit set image example.com/eks-kubeconfig-rotator=${EKS_PLUGIN_IMG}
+	"$(KUSTOMIZE)" build config/eks-plugin | "$(KUBECTL)" apply -f -
+
+.PHONY: undeploy-eks-plugin
+undeploy-eks-plugin: kustomize ## Undeploy EKS kubeconfig rotator from the K8s cluster specified in ~/.kube/config.
+	"$(KUSTOMIZE)" build config/eks-plugin | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Dependencies
 
