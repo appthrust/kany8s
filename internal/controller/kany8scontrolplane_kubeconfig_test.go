@@ -183,10 +183,10 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 
 	var ownerFound bool
 	for _, ref := range got.OwnerReferences {
-		if ref.APIVersion != "controlplane.cluster.x-k8s.io/v1alpha1" {
+		if ref.APIVersion != kany8sControlPlaneAPIVersion {
 			continue
 		}
-		if ref.Kind != "Kany8sControlPlane" {
+		if ref.Kind != kany8sControlPlaneKind {
 			continue
 		}
 		if ref.Name != demoName {

@@ -131,6 +131,7 @@ type Kany8sControlPlaneReconciler struct {
 // (endpoint/initialized/conditions). It also reconciles the CAPI-compatible
 // <cluster>-kubeconfig Secret when a provider-specific kubeconfig source Secret
 // is referenced via backend status.
+// nolint:gocyclo
 func (r *Kany8sControlPlaneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
@@ -626,6 +627,7 @@ func (r *Kany8sControlPlaneReconciler) reconcileInvalidBackendSpec(
 	return ctrl.Result{}, nil
 }
 
+// nolint:gocyclo
 func (r *Kany8sControlPlaneReconciler) reconcileKubeconfigSecret(
 	ctx context.Context,
 	cp *controlplanev1alpha1.Kany8sControlPlane,

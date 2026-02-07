@@ -480,6 +480,12 @@ func TestEKSKubeconfigRotatorReconciler_MapACKClusterToCAPIClustersUsesControlPl
 	if got, want := requests[0].NamespacedName, (client.ObjectKey{Namespace: "default", Name: "cluster-a"}); got != want {
 		t.Fatalf("mapped request = %v, want %v", got, want)
 	}
+
+	// Namespace mismatch should not map (the controller lists CAPI clusters within the ACK object's namespace).
+	requestsOtherNS := r.mapACKClusterToCAPIClusters(context.Background(), ackClusterObj("other", "cluster-a-cp", "", "", "us-west-2"))
+	if got, want := len(requestsOtherNS), 0; got != want {
+		t.Fatalf("mapped request count (other namespace) = %d, want %d", got, want)
+	}
 }
 
 func ackClusterObj(namespace, name, endpoint, caData, region string) *unstructured.Unstructured {

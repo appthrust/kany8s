@@ -91,7 +91,7 @@ func TestKany8sControlPlaneReconciler_ReconcilesKubeadmBackendAndReflectsStatus(
 		foundClusterOwner    bool
 	)
 	for _, ref := range backend.OwnerReferences {
-		if ref.APIVersion == "controlplane.cluster.x-k8s.io/v1alpha1" && ref.Kind == "Kany8sControlPlane" && ref.Name == cp.Name {
+		if ref.APIVersion == kany8sControlPlaneAPIVersion && ref.Kind == kany8sControlPlaneKind && ref.Name == cp.Name {
 			foundControllerOwner = true
 		}
 		if ref.APIVersion == clusterv1.GroupVersion.String() && ref.Kind == "Cluster" && ref.Name == ownerCluster.Name {

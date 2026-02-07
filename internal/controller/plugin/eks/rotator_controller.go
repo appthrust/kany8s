@@ -3,6 +3,7 @@ package eks
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -152,7 +153,7 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	requeueAfter := coreeks.ComputeNextRequeue(r.now(), expiration, r.policy())
-	log.V(1).Info("reconciled kubeconfig secrets", "cluster", req.NamespacedName.String(), "requeueAfter", requeueAfter)
+	log.V(1).Info("reconciled kubeconfig secrets", "cluster", req.String(), "requeueAfter", requeueAfter)
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
@@ -220,9 +221,7 @@ func mutateManagedSecret(secret *corev1.Secret, ownerCluster *v1beta2.Cluster, k
 		secret.Annotations = map[string]string{}
 	}
 	secret.Annotations[coreeks.ManagedByAnnotationKey] = coreeks.ManagedByAnnotationValue
-	for k, v := range extraAnnotations {
-		secret.Annotations[k] = v
-	}
+	maps.Copy(secret.Annotations, extraAnnotations)
 
 	secret.Type = kubeconfig.SecretType
 	if secret.Data == nil {
