@@ -46,15 +46,14 @@ func TestToolingPinned(t *testing.T) {
 	if f.Go == nil {
 		t.Fatalf("go.mod missing go directive")
 	}
-	if got, want := f.Go.Version, "1.25.3"; got != want {
+	if got, want := f.Go.Version, "1.25.7"; got != want {
 		t.Fatalf("go directive mismatch: got %q, want %q", got, want)
 	}
 
-	if f.Toolchain == nil {
-		t.Fatalf("go.mod missing toolchain directive")
-	}
-	if got, want := f.Toolchain.Name, "go1.25.5"; got != want {
-		t.Fatalf("toolchain directive mismatch: got %q, want %q", got, want)
+	// We pin the patch version via the go directive (e.g. "go 1.25.7").
+	// A toolchain directive is intentionally omitted to avoid CI/toolchain mismatch.
+	if f.Toolchain != nil {
+		t.Fatalf("go.mod should not contain a toolchain directive (got %q)", f.Toolchain.Name)
 	}
 
 	wantTools := []string{

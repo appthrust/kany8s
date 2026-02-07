@@ -4,7 +4,7 @@
 - 調査日時: 2026-01-26
 - 調査対象コミット: `101f6d32edc7733e12ffca06ab748cecf5386db9` (branch: `main`)
 - 調査環境:
-  - Go: `go1.25.5` (toolchain `go1.25.5`, `go.mod` は `toolchain go1.25.5`)
+	- Go: `go1.25.7` (`go.mod` は `go 1.25.7`)
   - kubectl: `v1.35.0`
   - kind: `v0.31.0`
   - docker: `29.1.3`

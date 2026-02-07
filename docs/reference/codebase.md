@@ -15,7 +15,7 @@ Notes:
 ## Quick Facts
 
 - Go module: `github.com/reoring/kany8s` (`go.mod:1`, 303 lines)
-- Go version/toolchain: `go 1.25.0` / `toolchain go1.25.5` (`go.mod:3`, `go.mod:5`)
+- Go version: `go 1.25.7` (`go.mod:3`)
 - Core dependencies:
   - Cluster API v1beta2 (`sigs.k8s.io/cluster-api v1.12.2`, `go.mod:17`)
   - controller-runtime (`sigs.k8s.io/controller-runtime v0.23.0`, `go.mod:18`)

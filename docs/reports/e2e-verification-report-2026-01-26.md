@@ -12,7 +12,7 @@
 - docker: 29.1.3
 - kind: v0.31.0
 - kubectl: v1.35.0
-- go: 1.25.5
+- go: 1.25.7
 - make: 4.4.1
 - (Step 7 用) clusterctl: v1.12.2
 

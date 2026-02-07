@@ -1,8 +1,6 @@
 module github.com/reoring/kany8s
 
-go 1.25.3
-
-toolchain go1.25.5
+go 1.25.7
 
 require (
 	github.com/golangci/golangci-lint/v2 v2.7.2

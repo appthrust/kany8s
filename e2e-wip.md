@@ -20,7 +20,7 @@
 - docker: 29.1.3
 - kind: v0.31.0 (node image: `kindest/node:v1.35.0`)
 - kubectl(client): v1.35.0
-- go: 1.25.5
+- go: 1.25.7
 - clusterctl: v1.12.2
 
 ## 現在の状況 (いま)
