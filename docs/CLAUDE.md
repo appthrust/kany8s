@@ -23,8 +23,18 @@ make deploy IMG=<img>  # Deploy controller to cluster
 
 ```bash
 make test-e2e              # E2E tests (creates isolated Kind cluster)
-make test-acceptance       # Full acceptance test (kind + kro + demo)
-make test-acceptance-keep  # Keep cluster after test for debugging
+
+make test-acceptance-kro-reflection       # kro status -> Kany8sControlPlane reflection
+make test-acceptance-kro-reflection-keep  # Keep cluster after kro reflection test
+make test-acceptance-kro-reflection-multi-rgd  # Same, but proves multiple RGDs / instance kinds
+
+make test-acceptance-capd-kubeadm          # CAPD + kubeadm (real workload cluster)
+make test-acceptance-capd-kubeadm-keep     # Keep cluster after CAPD+kubeadm test
+
+# Legacy aliases still exist:
+# - make test-acceptance -> make test-acceptance-kro-reflection
+# - make test-acceptance-self-managed -> make test-acceptance-capd-kubeadm
+# - make test-acceptance-multi-rgd -> make test-acceptance-kro-reflection-multi-rgd
 ```
 
 ## Architecture
@@ -65,7 +75,7 @@ Kany8s expects RGD instances to expose:
 - `status.reason` (string, optional)
 - `status.message` (string, optional)
 
-See `docs/rgd-contract.md` for full specification.
+See `docs/reference/rgd-contract.md` for full specification.
 
 ## Critical Rules
 
@@ -99,7 +109,9 @@ kubebuilder create webhook --group <group> --version <version> --kind <Kind> --d
 ## Key Documentation
 
 - `AGENTS.md` - Comprehensive Kubebuilder development guide
-- `docs/design.md` - Architecture and design decisions
-- `docs/rgd-contract.md` - RGD status contract specification
-- `docs/rgd-guidelines.md` - RGD authoring best practices
+- `docs/adr/README.md` - Architecture decisions (ADR)
+- `docs/reference/rgd-contract.md` - RGD status contract specification
+- `docs/reference/rgd-guidelines.md` - RGD authoring best practices
+- `docs/reference/kro-v0.7.1-kind-notes.md` - kro pitfalls (kind + kro v0.7.1)
+- `docs/guides/e2e-and-acceptance-test.md` - E2E/Acceptance layers and runners
 - `TODO.md` - Prioritized task list

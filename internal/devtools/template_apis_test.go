@@ -21,8 +21,10 @@ func TestKany8sControlPlaneTemplateAPIScaffoldExists(t *testing.T) {
 		"type Kany8sControlPlaneTemplateSpec struct",
 		"type Kany8sControlPlaneTemplate struct",
 		"type Kany8sControlPlaneTemplateResource struct",
-		"ResourceGraphDefinitionRef ResourceGraphDefinitionReference",
+		"ResourceGraphDefinitionRef *ResourceGraphDefinitionReference",
 		"KroSpec *apiextensionsv1.JSON",
+		"Kubeadm *Kany8sControlPlaneKubeadmSpec",
+		"ExternalBackend *Kany8sControlPlaneExternalBackendSpec",
 		"ObjectMeta clusterv1.ObjectMeta",
 	}
 	for _, want := range wantSubstrings {
@@ -134,7 +136,8 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 		"plural: kany8scontrolplanetemplates",
 		"resourceGraphDefinitionRef:",
 		"kroSpec:",
-		"- resourceGraphDefinitionRef",
+		"kubeadm:",
+		"externalBackend:",
 		"- template",
 	}
 	for _, want := range wantControlPlaneTemplateSubstrings {
@@ -144,6 +147,9 @@ func TestGeneratedCRDBasesContainExpectedSchemaForTemplates(t *testing.T) {
 	}
 	if strings.Contains(controlPlaneTemplateCRD, "- version") {
 		t.Errorf("%s should not require spec.template.spec.version (topology-controlled)", filepath.ToSlash(controlPlaneTemplateCRDPath))
+	}
+	if strings.Contains(controlPlaneTemplateCRD, "- resourceGraphDefinitionRef") {
+		t.Errorf("%s should not require spec.template.spec.resourceGraphDefinitionRef (backend selector is optional per field; webhook enforces exactly one)", filepath.ToSlash(controlPlaneTemplateCRDPath))
 	}
 
 	infraClusterTemplateCRDPath := filepath.Join(root, "config", "crd", "bases", "infrastructure.cluster.x-k8s.io_kany8sclustertemplates.yaml")

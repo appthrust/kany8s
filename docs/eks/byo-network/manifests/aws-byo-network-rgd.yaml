@@ -1,0 +1,35 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-byo-network.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AWSBYONetwork
+    spec:
+      # Injected by Kany8sCluster (ADR 0003)
+      clusterName: string | required=true
+      clusterNamespace: string | required=true
+
+      vpc:
+        subnetIDs: '[]string | default=[] description="BYO subnet IDs"'
+        securityGroupIDs: '[]string | default=[] description="Optional security group IDs"'
+
+    status:
+      # NOTE: boolean materialization workaround (kro v0.7.1)
+      ready: '${int((inputs.?data.?ready.orValue("false") == "true") ? 1 : 0) == 1}'
+      reason: '${(inputs.?data.?ready.orValue("false") == "true") ? "NetworkInputsReady" : "WaitingForNetworkInputs"}'
+      message: '${inputs.?data.?message.orValue("")}'
+
+  resources:
+    - id: inputs
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.metadata.name + "-byo-network"}
+          labels:
+            cluster.x-k8s.io/cluster-name: ${schema.spec.clusterName}
+        data:
+          ready: '${(size(schema.spec.?vpc.?subnetIDs.orValue([])) >= 2) ? "true" : "false"}'
+          message: '${(size(schema.spec.?vpc.?subnetIDs.orValue([])) >= 2) ? "BYO network inputs are set" : "set spec.vpc.subnetIDs with at least 2 subnets (different AZs)"}'

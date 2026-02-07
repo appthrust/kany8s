@@ -19,10 +19,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func attachOwnerClusterToControlPlane(cp *controlplanev1alpha1.Kany8sControlPlane) *clusterv1.Cluster {
+	if cp == nil {
+		return nil
+	}
+
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: cp.Name, Namespace: cp.Namespace, UID: types.UID("11111111-1111-1111-1111-111111111111")}}
+	cp.OwnerReferences = append(cp.OwnerReferences, metav1.OwnerReference{APIVersion: clusterv1.GroupVersion.String(), Kind: "Cluster", Name: cluster.Name, UID: cluster.UID})
+	return cluster
+}
 
 const (
 	validKubeconfigV1 = `apiVersion: v1
@@ -71,6 +82,9 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -91,11 +105,12 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
 	}
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -143,7 +158,7 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 	}}
 	instance.SetGroupVersionKind(instanceGVK)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance, source).WithStatusSubresource(cp).Build()
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -168,10 +183,10 @@ func TestKany8sControlPlaneReconciler_CreatesKubeconfigSecretFromKroInstanceStat
 
 	var ownerFound bool
 	for _, ref := range got.OwnerReferences {
-		if ref.APIVersion != "controlplane.cluster.x-k8s.io/v1alpha1" {
+		if ref.APIVersion != kany8sControlPlaneAPIVersion {
 			continue
 		}
-		if ref.Kind != "Kany8sControlPlane" {
+		if ref.Kind != kany8sControlPlaneKind {
 			continue
 		}
 		if ref.Name != demoName {
@@ -198,6 +213,9 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -218,11 +236,12 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
 	}
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -278,7 +297,7 @@ func TestKany8sControlPlaneReconciler_UpdatesKubeconfigSecretWhenSourceChanges(t
 	delete(existingTarget.Labels, kubeconfig.ClusterNameLabelKey)
 	delete(existingTarget.Data, kubeconfig.DataKey)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source, existingTarget).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance, source, existingTarget).WithStatusSubresource(cp).Build()
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme}
 
 	ctx := context.Background()
@@ -335,6 +354,9 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -355,7 +377,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -404,8 +426,9 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsNotFou
 		},
 	}}
 	instance.SetGroupVersionKind(instanceGVK)
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance).WithStatusSubresource(cp).Build()
 	recorder := record.NewFakeRecorder(16)
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
 
@@ -477,6 +500,9 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsMissin
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -497,11 +523,12 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsMissin
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
 	}
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -542,7 +569,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenKubeconfigSourceSecretIsMissin
 	// Source Secret exists but is not populated yet.
 	source := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "provider-kubeconfig", Namespace: demoNamespace}}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance, source).WithStatusSubresource(cp).Build()
 	recorder := record.NewFakeRecorder(16)
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
 
@@ -640,6 +667,9 @@ func TestKany8sControlPlaneReconciler_DoesNotOverwriteTargetSecretWithInvalidKub
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -660,11 +690,12 @@ func TestKany8sControlPlaneReconciler_DoesNotOverwriteTargetSecretWithInvalidKub
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
 	}
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -718,7 +749,7 @@ func TestKany8sControlPlaneReconciler_DoesNotOverwriteTargetSecretWithInvalidKub
 		},
 	}
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance, source, existingTarget).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance, source, existingTarget).WithStatusSubresource(cp).Build()
 	recorder := record.NewFakeRecorder(16)
 	r := &Kany8sControlPlaneReconciler{Client: c, Scheme: scheme, Recorder: recorder}
 
@@ -780,6 +811,9 @@ func TestKany8sControlPlaneReconciler_SurfacesKubeconfigSourceSecretGetErrorViaC
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatalf("add client-go scheme: %v", err)
 	}
+	if err := clusterv1.AddToScheme(scheme); err != nil {
+		t.Fatalf("add cluster-api scheme: %v", err)
+	}
 	if err := controlplanev1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatalf("add Kany8sControlPlane scheme: %v", err)
 	}
@@ -800,11 +834,12 @@ func TestKany8sControlPlaneReconciler_SurfacesKubeconfigSourceSecretGetErrorViaC
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
 	}
+	ownerCluster := attachOwnerClusterToControlPlane(cp)
 
 	rgd := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": rgdGVK.GroupVersion().String(),
@@ -842,7 +877,7 @@ func TestKany8sControlPlaneReconciler_SurfacesKubeconfigSourceSecretGetErrorViaC
 	}}
 	instance.SetGroupVersionKind(instanceGVK)
 
-	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, rgd, instance).WithStatusSubresource(cp).Build()
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cp, ownerCluster, rgd, instance).WithStatusSubresource(cp).Build()
 	wantKey := client.ObjectKey{Name: "provider-kubeconfig", Namespace: demoNamespace}
 	getErr := apierrors.NewForbidden(schema.GroupResource{Group: "", Resource: "secrets"}, wantKey.Name, nil)
 	wrappedClient := &getErrorClient{Client: c, Key: wantKey, Err: getErr}

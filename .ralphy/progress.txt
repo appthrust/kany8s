@@ -246,3 +246,251 @@
 - 2026-02-02: Documented Parent RGD (infra + control plane) status projection guidance in `docs/rgd-contract.md`; extended the devtools doc test; marked the PRD item complete; verified `make test` and `make lint`.
 
 - 2026-02-02: Documented Approach A guidance for wiring infra outputs into the control plane spec (missing-field tolerance via `.?` + `orValue(...)` and `includeWhen` gating) in `docs/rgd-guidelines.md`; updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added Makefile target `test-acceptance-kro-infra-reflection` and a devtools unit test to enforce its presence; verified `make test` and `make lint`.
+
+- 2026-02-03: Added Makefile keep target `test-acceptance-kro-infra-reflection-keep` and extended devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added acceptance source-of-truth infra kro RGD manifest at `test/acceptance_test/manifests/kro/infra/rgd.yaml` with a devtools test enforcing key contents; verified `make test` and `make lint`.
+
+- 2026-02-03: Added stub `hack/acceptance-test-kro-infra-reflection.sh` plus a devtools test enforcing it exists; verified `make test` and `make lint`.
+
+- 2026-02-03: Added wrapper runner `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` and a devtools test enforcing it delegates to the hack script; verified `make test` and `make lint`.
+
+- 2026-02-03: Fixed the kro infra reflection acceptance RGD name (`demo-infra.kro.run`) as a constant in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Fixed the kro infra reflection acceptance kro instance CRD name (`demoinfrastructures.kro.run`) as a constant in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Set the kro infra reflection acceptance script default `NAMESPACE` to `default` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Set the kro infra reflection acceptance script default `CLUSTER_NAME` to `demo-cluster` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Set the kro infra reflection acceptance script default `KRO_VERSION` to `0.7.1` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Set the kro infra reflection acceptance script default `IMG` to `example.com/kany8s:acceptance-kro-infra` and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KIND_CLUSTER_NAME` (default `kany8s-acceptance-infra-${timestamp}`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KUBECTL_CONTEXT` (default `kind-${KIND_CLUSTER_NAME}`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked the infra kro reflection acceptance PRD item for `KRO_VERSION` env-var support complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `CLEANUP` (default `true`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `ARTIFACTS_DIR` (default `/tmp/kany8s-acceptance-kro-infra-${timestamp}`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KUBECONFIG_FILE` (default `${ARTIFACTS_DIR}/kubeconfig`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked the kro infra reflection acceptance PRD item for `IMG` env-var support complete (script already supported it + devtools assertion); verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KRO_RGD_MANIFEST` (default `test/acceptance_test/manifests/kro/infra/rgd.yaml`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked the kro infra reflection acceptance PRD item for `NAMESPACE` env-var support complete (script already accepted it + devtools assertion); verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KANY8S_CLUSTER_TEMPLATE` override (default `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro infra reflection acceptance `Kany8sCluster` manifest template at `test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl` with required placeholders and a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked the kro infra reflection acceptance PRD item for `CLUSTER_NAME` env-var support complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `repo_root` resolution to `hack/acceptance-test-kro-infra-reflection.sh` (matching `hack/acceptance-test-kro-reflection.sh`) and asserted it in devtools tests; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `cd "${repo_root}"` to `hack/acceptance-test-kro-infra-reflection.sh` (run-from-anywhere safety) and extended the devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-03: Made the kro infra reflection acceptance hack script accept `KRO_RBAC_WORKAROUND_MANIFEST` override (default `test/acceptance_test/manifests/kro/rbac-unrestricted.yaml`) and asserted it in devtools tests; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools test validating the kro infra acceptance RGD manifest parses as a Kubernetes object (YAML->unstructured; dry-run client parse equivalent); verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools test rendering the kro infra acceptance `Kany8sCluster` manifest template and validating it decodes into an unstructured Kubernetes object; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Created the kro infra reflection acceptance artifacts dir (`mkdir -p "${ARTIFACTS_DIR}"`) and asserted it in the devtools script policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro infra reflection acceptance script logging (`${ARTIFACTS_DIR}/acceptance-infra.log`) via `tee` and extended devtools script policy assertions; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Exported `KUBECONFIG` from `hack/acceptance-test-kro-infra-reflection.sh` (points at `${KUBECONFIG_FILE}`) and asserted it in devtools; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kustomization backup/restore helpers to `hack/acceptance-test-kro-infra-reflection.sh` and asserted them in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd()` helper to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a `kubectl --context` wrapper (`k()`) to `hack/acceptance-test-kro-infra-reflection.sh` and extended the devtools script policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools assertion that `test/acceptance_test/manifests/kro/infra/` exists as a directory and marked the PRD item complete; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Verified the kro infra acceptance RGD manifest `metadata.name` is `demo-infra.kro.run` and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Ensured the rendered infra acceptance `Kany8sCluster` template contains no unreplaced placeholder tokens (devtools test); marked the PRD kubectl dry-run checklist item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Implemented kro infra reflection acceptance `collect_diagnostics()` (kind/kubeconfig/kro/kany8s/Kany8sCluster dumps) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `cleanup()` to `hack/acceptance-test-kro-infra-reflection.sh` (calls `restore_kustomization` first) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kind cluster deletion to infra reflection acceptance `cleanup()` when `CLEANUP=true` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a keep-cluster message for infra reflection acceptance `cleanup()` when `CLEANUP=false` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `on_exit()` to `hack/acceptance-test-kro-infra-reflection.sh` to collect diagnostics on failure; extended devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Wired infra reflection acceptance `on_exit()` to call `cleanup` (preserve diagnostics then cleanup); updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `trap on_exit EXIT` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools`, `bash -n hack/acceptance-test-kro-infra-reflection.sh`, and `make lint`.
+
+- 2026-02-03: Added `need_cmd docker` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd kind` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Added `need_cmd kubectl` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd make` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd go` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `need_cmd curl` preflight to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kind cluster creation (`kind create cluster --wait 60s --kubeconfig ...`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Listed kind nodes right after cluster creation in `hack/acceptance-test-kro-infra-reflection.sh` and added a devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-03: Ensured `kro-system` namespace exists in `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added infra reflection acceptance default `KRO_CORE_INSTALL_MANIFEST` path and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Ensured the kro infra reflection acceptance script creates the vendor cache dir for `KRO_CORE_INSTALL_MANIFEST`; updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro install manifest download to `hack/acceptance-test-kro-infra-reflection.sh` (curl from GitHub releases when missing) and extended devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Added kro core install apply (`k apply -f "${KRO_CORE_INSTALL_MANIFEST}"`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Added kro rollout wait (`k -n kro-system rollout status deploy/kro --timeout=180s`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Applied the kro RBAC workaround manifest in `hack/acceptance-test-kro-infra-reflection.sh` (`k apply -f "${KRO_RBAC_WORKAROUND_MANIFEST}"`) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Implemented infra RGD apply + wait in `hack/acceptance-test-kro-infra-reflection.sh` (`k apply -f "${KRO_RGD_MANIFEST}"` + `ResourceGraphAccepted` wait + CRD existence check) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `make install` to `hack/acceptance-test-kro-infra-reflection.sh` (install Kany8s CRDs into the kind cluster) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added `make docker-build IMG="${IMG}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-03: Added `kind load docker-image "${IMG}" --name "${KIND_CLUSTER_NAME}"` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Deployed the Kany8s controller-manager in `hack/acceptance-test-kro-infra-reflection.sh` (`backup_kustomization` + `make deploy` + rollout wait) and updated devtools assertions; verified `make test` and `make lint`.
+
+- 2026-02-03: Rendered and applied the infra `Kany8sCluster` manifest from the template in `hack/acceptance-test-kro-infra-reflection.sh` and extended devtools assertions; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Added a `Kany8sCluster` Ready wait (`kubectl wait --for=condition=Ready`) to `hack/acceptance-test-kro-infra-reflection.sh` and added a devtools repo-policy test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a `Kany8sCluster` provisioned wait (`kubectl wait --for=jsonpath='{.status.initialization.provisioned}'=true`) to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added infra kro reflection acceptance checks to fail when `Kany8sCluster.status.failureReason/failureMessage` are set (jsonpath) and asserted them in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a retry loop to `hack/acceptance-test-kro-infra-reflection.sh` to wait for the infra kro instance to exist (up to 240s) and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a `kubectl wait` for the infra kro instance `status.ready=true` to `hack/acceptance-test-kro-infra-reflection.sh` and asserted it in devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Verified infra kro instance spec injection in `hack/acceptance-test-kro-infra-reflection.sh` (`.spec.clusterName/.spec.clusterNamespace`) and extended devtools coverage; verified `make test` and `make lint`.
+
+- 2026-02-03: Made `hack/acceptance-test-kro-infra-reflection.sh` executable and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools repo-policy test enforcing `bash -n` succeeds for `hack/acceptance-test-kro-infra-reflection.sh`; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Added `test/acceptance_test/run-acceptance-kro-infra-reflection.sh` to `test/acceptance_test/README.md` and added a devtools test enforcing it; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Added a Purpose line for the kro infra reflection runner in `test/acceptance_test/README.md` and enforced it via devtools; verified `make test` and `make lint`.
+
+- 2026-02-03: Documented the kro infra reflection acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Documented the kro infra reflection acceptance target in `docs/e2e-and-acceptance-test.md` and added a devtools test enforcing it; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Documented the kro infra reflection acceptance entry points in `docs/codebase.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-03: Added infra reflection execution to `test/acceptance_test/run-all.sh` with a devtools policy test; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-03: Added `make test-acceptance-kro-infra-reflection` to `acceptance.md` and enforced it via a devtools test; verified `make test` and `make lint`.
+
+- 2026-02-03: Added a devtools repo-policy test enforcing `bash -n` succeeds for `test/acceptance_test/run-acceptance-kro-infra-reflection.sh`; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Marked the kro infra reflection acceptance PRD item for creating `hack/acceptance-test-kro-infra-reflection.sh` complete; verified `go test $(go list ./... | grep -v /e2e)` and `make lint`.
+
+- 2026-02-03: Enforced the infra acceptance hack script shebang as the first line (devtools); verified `make test` and `make lint`.
+
+- 2026-02-03: Enforced early `set -euo pipefail` strict-mode in the kro infra reflection acceptance hack script (devtools test) and marked the PRD item complete; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-03: Enforced the infra reflection acceptance script `timestamp="$(date +%Y%m%d%H%M%S)"` definition via devtools and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Enforced the infra reflection wrapper runner script executable bit via devtools and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked the kro infra reflection acceptance PRD item for `KIND_CLUSTER_NAME` default complete; verified `go test ./...` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KUBECTL_CONTEXT` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KRO_VERSION` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `IMG` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `NAMESPACE` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `CLUSTER_NAME` default; verified `make test` and `make lint`.
+
+- 2026-02-03: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `CLEANUP` default; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `ARTIFACTS_DIR` default; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `KUBECONFIG_FILE` default; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `RGD_NAME` constant; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` item complete for infra reflection `RGD_INSTANCE_CRD` constant; verified `go test ./...` and `make lint`.
+
+- 2026-02-04: Added a devtools ordering assertion for the infra reflection hack script `KRO_RBAC_WORKAROUND_MANIFEST` default (after repo_root cd) and marked the PRD item complete; verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-04: Marked infra reflection acceptance `KRO_RGD_MANIFEST` default PRD item complete; added a devtools ordering test to keep the default after `cd "${repo_root}"`; verified `make test` and `make lint`.
+
+- 2026-02-04: Enforced infra reflection acceptance `KANY8S_CLUSTER_TEMPLATE` default ordering (after repo-root `cd`) via devtools and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked the infra reflection acceptance wrapper runner PRD items complete and tightened the devtools wrapper script assertion to enforce `TIMESTAMP` override support; verified `make test` and `make lint`.
+
+- 2026-02-04: Enforced `.PHONY` for kro infra reflection acceptance Makefile targets via devtools; marked the PRD Makefile target items complete; verified `make test` and `make lint`.
+
+- 2026-02-04: Marked `docs/issues/kany8cluster-at-todo.md` repo-policy infra reflection "script exists" checklist complete (already enforced by devtools); verified `go test ./internal/devtools` and `make lint`.
+
+- 2026-02-04: Marked the infra reflection repo-policy "Makefile target exists" checklist complete (already covered by devtools); verified `go test ./...` and `make lint`.
+
+- 2026-02-04: Verified `go test ./internal/devtools` still passes and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`; verified `make lint`.
+
+- 2026-02-04: Verified `go test ./...` and `make lint` and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`.
+
+- 2026-02-04: Verified `bash -n hack/acceptance-test-kro-infra-reflection.sh` and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`; verified `make test` and `make lint`.
+
+- 2026-02-04: Verified `bash -n test/acceptance_test/run-acceptance-kro-infra-reflection.sh` and marked the corresponding checklist item complete in `docs/issues/kany8cluster-at-todo.md`; verified `make test` and `make lint`.
+
+- 2026-02-04: Ran `make test-acceptance-kro-infra-reflection-keep` end-to-end on kind (CLEANUP=false) and marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-04: Captured observed `Kany8sCluster` YAML into acceptance artifacts (`${ARTIFACTS_DIR}/kany8scluster.observed.yaml`) in `hack/acceptance-test-kro-infra-reflection.sh` (supports manual provisioned verification); added a devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-04: Captured observed infra kro instance YAML into acceptance artifacts (`${ARTIFACTS_DIR}/rgd-instance.observed.yaml`) in `hack/acceptance-test-kro-infra-reflection.sh` (supports manual `.spec.clusterName/.spec.clusterNamespace` verification); added a devtools assertion; verified `make test` and `make lint`.
+
+- 2026-02-05: Added kro RGD schema helper `kro.SchemaHasSpecField` for `spec.schema.spec` opt-in checks (e.g., `clusterUID`), with unit tests; marked the PRD item complete; verified `make test` and `make lint`.
+
+- 2026-02-05: Resolved owner CAPI `Cluster` in infrastructure `Kany8sCluster` kro mode (opt-in when RGD declares `clusterUID`) and surfaced `Ready=False`/`WaitingForOwnerCluster` requeues; added unit tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Injected owner `Cluster` UID into infrastructure kro instance `spec.clusterUID` only when the RGD schema declares it, and added unit tests covering both the inject/no-inject cases; verified `make test` and `make lint`.
+
+- 2026-02-05: Added manager RBAC markers for CAPI `Cluster` reads (`cluster.x-k8s.io/clusters` get/list/watch) to the infrastructure `Kany8sCluster` controller; enforced via devtools marker test; regenerated manifests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added ownerReference + cluster-name infra acceptance RGD (`test/acceptance_test/manifests/kro/infra/rgd-ownerref.yaml`) with `includeWhen` gating and devtools YAML validation tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added CAPI `Cluster` + infra `Kany8sCluster` acceptance template (`test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl`) for ownerRef/UID injection verification; added devtools render/YAML decode tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added an envtest-backed server-side dry-run create check for the rendered infra cluster identity acceptance template (`test/acceptance_test/manifests/kro/infra/cluster.yaml.tpl`); verified `make test` and `make lint`.
+
+- 2026-02-05: Added a kro infra cluster identity acceptance script + wrapper (`hack/acceptance-test-kro-infra-cluster-identity.sh`, `test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`) that installs CAPI core (clusterctl) and asserts clusterUID injection + ownerRef/label on the owned ConfigMap; added devtools repo-policy tests; verified `make test` and `make lint`.
+
+- 2026-02-05: Added Makefile targets for the kro infra cluster identity acceptance test (`test-acceptance-kro-infra-cluster-identity{,-keep}`) and enforced them via a devtools unit test; verified `make test` and `make lint`.
+
+- 2026-02-05: Documented the kro infra cluster identity acceptance runner (`test/acceptance_test/run-acceptance-kro-infra-cluster-identity.sh`) in `test/acceptance_test/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/README.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-05: Documented the kro infra cluster identity acceptance target in `docs/e2e-and-acceptance-test.md` and added a devtools test enforcing it; verified `make test` and `make lint`.
+
+- 2026-02-05: Documented the kro infra cluster identity acceptance entry points in `docs/reference/codebase.md` and extended the devtools codebase doc test; verified `make test` and `make lint`.

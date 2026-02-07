@@ -1,0 +1,37 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-infra-ownerref.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoInfrastructureOwned
+    spec:
+      clusterName: string | required=true description="CAPI Cluster name"
+      clusterNamespace: string | required=true description="CAPI Cluster namespace"
+      clusterUID: string | description="CAPI Cluster UID (metadata.uid) for ownerReferences"
+
+    status:
+      ready: '${int((ownedConfigMap.?metadata.?name.orValue("") != "") ? 1 : 0) == 1}'
+      reason: '${(ownedConfigMap.?metadata.?name.orValue("") != "") ? "Ready" : "Provisioning"}'
+      message: '${(ownedConfigMap.?metadata.?name.orValue("") != "") ? "infrastructure is ready" : "waiting for infrastructure resources"}'
+
+  resources:
+    - id: ownedConfigMap
+      includeWhen:
+        - ${schema.spec.?clusterUID.orValue("") != ""}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.clusterName}-infra-owned
+          namespace: ${schema.spec.clusterNamespace}
+          labels:
+            cluster.x-k8s.io/cluster-name: ${schema.spec.clusterName}
+          ownerReferences:
+            - apiVersion: cluster.x-k8s.io/v1beta2
+              kind: Cluster
+              name: ${schema.spec.clusterName}
+              uid: ${schema.spec.?clusterUID.orValue("")}
+        data:
+          message: "hello from demo infra (owned)"

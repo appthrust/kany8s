@@ -197,7 +197,7 @@ Prereqs:
    - `kubectl rollout status -n kro-system deploy/kro`
 
    Note: kro v0.7.1 may require relaxed RBAC for its dynamic controller to watch generated CRDs.
-   See `docs/kro.md` for details and the exact manifest.
+   See `docs/reference/kro-v0.7.1-kind-notes.md` for details and the exact manifest.
 
 3. Install Kany8s CRDs:
 
@@ -221,6 +221,22 @@ Prereqs:
 
    - `kubectl get kany8scontrolplanes -n default -o wide`
    - `kubectl get democontrolplanes.kro.run -n default -o wide`
+
+## Acceptance runners
+
+For reproducible end-to-end checks (fresh kind clusters + artifacts), see `test/acceptance_test/README.md`.
+
+- kro demo flow (managed control plane reflection): `make test-acceptance-kro-reflection`
+- kro demo flow (managed infra reflection): `make test-acceptance-kro-infra-reflection`
+- kro demo flow (managed infra cluster identity): `make test-acceptance-kro-infra-cluster-identity`
+- kro demo flow with 2 RGDs (multi-instance-kind): `make test-acceptance-kro-reflection-multi-rgd`
+- self-managed (CAPD + kubeadm): `make test-acceptance-capd-kubeadm`
+
+Legacy aliases are still supported:
+
+- `make test-acceptance` -> `make test-acceptance-kro-reflection`
+- `make test-acceptance-multi-rgd` -> `make test-acceptance-kro-reflection-multi-rgd`
+- `make test-acceptance-self-managed` -> `make test-acceptance-capd-kubeadm`
 
 ## Development
 
@@ -247,9 +263,13 @@ For code generation only:
 
 ## Documents
 
-- `design.md`: architecture and controller ↔ kro contract
-- `idea.md`: ACK CR examples and RGD modularization ideas
-- `capt/`: reference implementation (Cluster API Provider Terraform) used for comparison
+- `docs/PRD.md`: product requirements (Why/What/How)
+- `docs/adr/README.md`: design decisions (ADR)
+- `docs/reference/rgd-contract.md`: normalized status contract for RGD instances
+- `docs/reference/rgd-guidelines.md`: RGD authoring guidance (kro pitfalls)
+- `docs/guides/e2e-and-acceptance-test.md`: test layers and acceptance runners
+- `docs/runbooks/`: operational runbooks
+- `docs/archive/`: historical notes/drafts
 
 ## Roadmap (Sketch)
 

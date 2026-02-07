@@ -1,0 +1,351 @@
+package devtools_test
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+)
+
+const kroInfraReflectionRepoRootCdLine = `cd "${repo_root}"`
+
+func TestKroInfraReflectionAcceptanceHackScriptIsExecutable(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("executable bit is not enforced on windows")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	info, err := os.Stat(scriptPath)
+	if err != nil {
+		t.Fatalf("stat %q: %v", scriptPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatalf("%s is not a regular file", filepath.ToSlash(scriptPath))
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		t.Errorf("%s is not executable (mode=%#o)", filepath.ToSlash(scriptPath), info.Mode().Perm())
+	}
+}
+
+func TestKroInfraReflectionAcceptanceWrapperScriptIsExecutable(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("executable bit is not enforced on windows")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "test", "acceptance_test", "run-acceptance-kro-infra-reflection.sh")
+	info, err := os.Stat(scriptPath)
+	if err != nil {
+		t.Fatalf("stat %q: %v", scriptPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		t.Fatalf("%s is not a regular file", filepath.ToSlash(scriptPath))
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		t.Errorf("%s is not executable (mode=%#o)", filepath.ToSlash(scriptPath), info.Mode().Perm())
+	}
+}
+
+func TestKroInfraReflectionAcceptanceTestScriptExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	if strings.Contains(script, "not fully implemented") || strings.Contains(script, "kany8cluster-at-todo.md") {
+		t.Errorf("%s still contains stub failure block", filepath.ToSlash(scriptPath))
+	}
+	firstLine := script
+	if idx := strings.IndexByte(firstLine, '\n'); idx != -1 {
+		firstLine = firstLine[:idx]
+	}
+	firstLine = strings.TrimSuffix(firstLine, "\r")
+	if firstLine != "#!/usr/bin/env bash" {
+		t.Errorf("%s first line=%q want %q", filepath.ToSlash(scriptPath), firstLine, "#!/usr/bin/env bash")
+	}
+	wantSubstrings := []string{
+		"#!/usr/bin/env bash",
+		"set -euo pipefail",
+		`timestamp="$(date +%Y%m%d%H%M%S)"`,
+		"KIND_CLUSTER_NAME=\"${KIND_CLUSTER_NAME:-kany8s-acceptance-infra-${timestamp}}\"",
+		"KUBECTL_CONTEXT=\"${KUBECTL_CONTEXT:-kind-${KIND_CLUSTER_NAME}}\"",
+		"NAMESPACE=\"${NAMESPACE:-default}\"",
+		"CLUSTER_NAME=\"${CLUSTER_NAME:-demo-cluster}\"",
+		"KRO_VERSION=\"${KRO_VERSION:-0.7.1}\"",
+		"IMG=\"${IMG:-example.com/kany8s:acceptance-kro-infra}\"",
+		"CLEANUP=\"${CLEANUP:-true}\"",
+		"ARTIFACTS_DIR=\"${ARTIFACTS_DIR:-/tmp/kany8s-acceptance-kro-infra-${timestamp}}\"",
+		"KUBECONFIG_FILE=\"${KUBECONFIG_FILE:-${ARTIFACTS_DIR}/kubeconfig}\"",
+		"RGD_NAME=\"demo-infra.kro.run\"",
+		"RGD_INSTANCE_CRD=\"demoinfrastructures.kro.run\"",
+		"repo_root=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\"",
+		"cd \"${repo_root}\"",
+		"KRO_RBAC_WORKAROUND_MANIFEST=\"${KRO_RBAC_WORKAROUND_MANIFEST:-test/acceptance_test/manifests/kro/rbac-unrestricted.yaml}\"",
+		"KRO_CORE_INSTALL_MANIFEST=\"${KRO_CORE_INSTALL_MANIFEST:-test/acceptance_test/vendor/kro/v${KRO_VERSION}/kro-core-install-manifests.yaml}\"",
+		"mkdir -p \"$(dirname \"${KRO_CORE_INSTALL_MANIFEST}\")\"",
+		"curl -fsSL -o \"${KRO_CORE_INSTALL_MANIFEST}\"",
+		"https://github.com/kubernetes-sigs/kro/releases/download/v${KRO_VERSION}/kro-core-install-manifests.yaml",
+		"k apply -f \"${KRO_CORE_INSTALL_MANIFEST}\"",
+		"k -n kro-system rollout status deploy/kro --timeout=180s",
+		"k apply -f \"${KRO_RBAC_WORKAROUND_MANIFEST}\"",
+		"k apply -f \"${KRO_RGD_MANIFEST}\"",
+		"k wait --for=condition=ResourceGraphAccepted --timeout=120s \"rgd/${RGD_NAME}\"",
+		"k get crd \"${RGD_INSTANCE_CRD}\" -o name",
+		"make install",
+		"make docker-build IMG=\"${IMG}\"",
+		"kind load docker-image \"${IMG}\" --name \"${KIND_CLUSTER_NAME}\"",
+		"echo \"==> Deploying Kany8s controller-manager\"",
+		"backup_kustomization\nmake deploy IMG=\"${IMG}\"",
+		"k -n kany8s-system rollout status deployment/kany8s-controller-manager --timeout=180s",
+		"rendered_cluster_manifest=\"${ARTIFACTS_DIR}/kany8scluster.yaml\"",
+		"s/__CLUSTER_NAME__/${CLUSTER_NAME}/g",
+		"s/__NAMESPACE__/${NAMESPACE}/g",
+		"s/__RGD_NAME__/${RGD_NAME}/g",
+		"k apply -f \"${rendered_cluster_manifest}\"",
+		"k -n \"${NAMESPACE}\" wait --for=condition=Ready --timeout=240s \"kany8scluster/${CLUSTER_NAME}\"",
+		"k -n \"${NAMESPACE}\" wait --for=jsonpath='{.status.initialization.provisioned}'=true --timeout=240s \"kany8scluster/${CLUSTER_NAME}\"",
+		"kany8scluster.observed.yaml",
+		"rgd-instance.observed.yaml",
+		"k -n \"${NAMESPACE}\" get kany8scluster \"${CLUSTER_NAME}\" -o jsonpath='{.status.failureReason}'",
+		"k -n \"${NAMESPACE}\" get kany8scluster \"${CLUSTER_NAME}\" -o jsonpath='{.status.failureMessage}'",
+		"k -n \"${NAMESPACE}\" get \"${RGD_INSTANCE_CRD}\" \"${CLUSTER_NAME}\" -o name",
+		"k -n \"${NAMESPACE}\" wait --for=jsonpath='{.status.ready}'=true --timeout=180s \"${RGD_INSTANCE_CRD}/${CLUSTER_NAME}\"",
+		"==> Verifying kro instance spec injection",
+		"jsonpath='{.spec.clusterName}'",
+		"jsonpath='{.spec.clusterNamespace}'",
+		"KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\"",
+		"KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\"",
+		"mkdir -p \"${ARTIFACTS_DIR}\"",
+		"export KUBECONFIG=\"${KUBECONFIG_FILE}\"",
+		"log_file=\"${ARTIFACTS_DIR}/acceptance-infra.log\"",
+		"exec > >(tee -a \"${log_file}\") 2>&1",
+		"kustomization_path=\"${repo_root}/config/manager/kustomization.yaml\"",
+		"need_cmd()",
+		"need_cmd docker",
+		"need_cmd kind",
+		"need_cmd kubectl",
+		"need_cmd make",
+		"need_cmd go",
+		"need_cmd curl",
+		"kind create cluster --name \"${KIND_CLUSTER_NAME}\" --wait 60s --kubeconfig \"${KUBECONFIG_FILE}\"",
+		"k get namespace kro-system >/dev/null 2>&1 || k create namespace kro-system",
+		"k() {",
+		"kubectl --context \"${KUBECTL_CONTEXT}\"",
+		"backup_kustomization()",
+		"restore_kustomization()",
+		"cleanup() {\n\trestore_kustomization",
+		"if [[ \"${CLEANUP}\" == \"true\" ]]; then",
+		"kind delete cluster --name \"${KIND_CLUSTER_NAME}\" --kubeconfig \"${KUBECONFIG_FILE}\"",
+		"CLEANUP=false; keeping kind cluster",
+		"collect_diagnostics() {",
+		"kind get clusters",
+		"kubeconfig-contexts.txt",
+		"kubeconfig-minify.yaml",
+		"nodes.txt",
+		"events.txt",
+		"kro-system.txt",
+		"kro-logs.txt",
+		"rgd-instance-crd.yaml",
+		"kany8s-controller-logs.txt",
+		"kany8scluster.yaml",
+		"rgd-instance.yaml",
+		"on_exit() {",
+		"rc=$?",
+		"collect_diagnostics || true",
+		"cleanup || true",
+		"trap on_exit EXIT",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(script, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(scriptPath), want)
+		}
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptUsesStrictMode(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	// Ensure strict mode is enabled before any executable statements.
+	lines := strings.Split(string(scriptBytes), "\n")
+	for i := 1; i < len(lines); i++ {
+		line := strings.TrimSuffix(lines[i], "\r")
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if trimmed != "set -euo pipefail" {
+			t.Fatalf("%s first command line=%q want %q", filepath.ToSlash(scriptPath), trimmed, "set -euo pipefail")
+		}
+		return
+	}
+
+	t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), "set -euo pipefail")
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptHasValidBashSyntax(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("bash -n is not supported on windows")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not found")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	cmd := exec.Command("bash", "-n", scriptPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash -n %s: %v\n%s", filepath.ToSlash(scriptPath), err, string(out))
+	}
+}
+
+func TestKroInfraReflectionAcceptanceWrapperScriptExists(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "test", "acceptance_test", "run-acceptance-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	wantSubstrings := []string{
+		"#!/usr/bin/env bash",
+		"set -euo pipefail",
+		`timestamp="${TIMESTAMP:-$(date +%Y%m%d%H%M%S)}"`,
+		`repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"`,
+		"kany8s-acc-infra-",
+		"kany8s-acceptance-kro-infra-reflection-",
+		"kind delete cluster",
+		"acceptance-test-kro-infra-reflection.sh",
+		"KIND_CLUSTER_NAME=\"${KIND_CLUSTER_NAME}\"",
+		"ARTIFACTS_DIR=\"${ARTIFACTS_DIR}\"",
+		"CLEANUP=\"${CLEANUP}\"",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(script, want) {
+			t.Errorf("%s missing %q", filepath.ToSlash(scriptPath), want)
+		}
+	}
+}
+
+func TestKroInfraReflectionAcceptanceWrapperScriptHasValidBashSyntax(t *testing.T) {
+	if runtime.GOOS == goosWindows {
+		t.Skip("bash -n is not supported on windows")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not found")
+	}
+
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "test", "acceptance_test", "run-acceptance-kro-infra-reflection.sh")
+	cmd := exec.Command("bash", "-n", scriptPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash -n %s: %v\n%s", filepath.ToSlash(scriptPath), err, string(out))
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptSetsRGDManifestDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := kroInfraReflectionRepoRootCdLine
+	rgdDefaultLine := "KRO_RGD_MANIFEST=\"${KRO_RGD_MANIFEST:-test/acceptance_test/manifests/kro/infra/rgd.yaml}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	rgdIdx := strings.Index(script, rgdDefaultLine)
+	if rgdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), rgdDefaultLine)
+	}
+
+	if rgdIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KRO_RGD_MANIFEST default", cdLine)
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptSetsRBACWorkaroundManifestDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := kroInfraReflectionRepoRootCdLine
+	rbacDefaultLine := "KRO_RBAC_WORKAROUND_MANIFEST=\"${KRO_RBAC_WORKAROUND_MANIFEST:-test/acceptance_test/manifests/kro/rbac-unrestricted.yaml}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	rbacIdx := strings.Index(script, rbacDefaultLine)
+	if rbacIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), rbacDefaultLine)
+	}
+
+	if rbacIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KRO_RBAC_WORKAROUND_MANIFEST default", cdLine)
+	}
+}
+
+func TestKroInfraReflectionAcceptanceHackScriptSetsClusterTemplateDefaultAfterRepoRootCd(t *testing.T) {
+	root := findRepoRoot(t)
+
+	scriptPath := filepath.Join(root, "hack", "acceptance-test-kro-infra-reflection.sh")
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("read %q: %v", scriptPath, err)
+	}
+
+	script := string(scriptBytes)
+	cdLine := kroInfraReflectionRepoRootCdLine
+	clusterTemplateDefaultLine := "KANY8S_CLUSTER_TEMPLATE=\"${KANY8S_CLUSTER_TEMPLATE:-test/acceptance_test/manifests/kro/kany8scluster.yaml.tpl}\""
+
+	cdIdx := strings.Index(script, cdLine)
+	if cdIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), cdLine)
+	}
+
+	clusterTemplateIdx := strings.Index(script, clusterTemplateDefaultLine)
+	if clusterTemplateIdx == -1 {
+		t.Fatalf("%s missing %q", filepath.ToSlash(scriptPath), clusterTemplateDefaultLine)
+	}
+
+	if clusterTemplateIdx < cdIdx {
+		t.Fatalf("%s sets %q before %q", filepath.ToSlash(scriptPath), "KANY8S_CLUSTER_TEMPLATE default", cdLine)
+	}
+}

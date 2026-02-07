@@ -1,0 +1,11 @@
+# kustomize nameReference rules for resources in config/default.
+nameReference:
+  # Certificate.spec.issuerRef.name must track prefixed Issuer names.
+  - kind: Issuer
+    group: cert-manager.io
+    version: v1
+    fieldSpecs:
+      - kind: Certificate
+        group: cert-manager.io
+        version: v1
+        path: spec/issuerRef/name

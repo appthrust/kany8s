@@ -35,6 +35,16 @@ const (
 	defaultKindCluster = "kind"
 )
 
+func certManagerSource() string {
+	// Prefer a local manifest when provided (used by acceptance runners).
+	if v, ok := os.LookupEnv("CERT_MANAGER_MANIFEST"); ok {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
+}
+
 func warnError(err error) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
 }
@@ -61,8 +71,8 @@ func Run(cmd *exec.Cmd) (string, error) {
 
 // UninstallCertManager uninstalls the cert manager
 func UninstallCertManager() {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "delete", "-f", url)
+	src := certManagerSource()
+	cmd := exec.Command("kubectl", "delete", "-f", src)
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
@@ -83,8 +93,8 @@ func UninstallCertManager() {
 
 // InstallCertManager installs the cert manager bundle.
 func InstallCertManager() error {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "apply", "-f", url)
+	src := certManagerSource()
+	cmd := exec.Command("kubectl", "apply", "-f", src)
 	if _, err := Run(cmd); err != nil {
 		return err
 	}

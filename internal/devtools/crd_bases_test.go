@@ -28,12 +28,17 @@ func TestGeneratedCRDBasesContainExpectedSchema(t *testing.T) {
 		"x-kubernetes-preserve-unknown-fields: true",
 		"subresources:",
 		"status: {}",
-		"- resourceGraphDefinitionRef",
+		"resourceGraphDefinitionRef:",
+		"kubeadm:",
+		"externalBackend:",
 		"- version",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(crd, want) {
 			t.Errorf("%s missing %q", filepath.ToSlash(crdPath), want)
 		}
+	}
+	if strings.Contains(crd, "- resourceGraphDefinitionRef") {
+		t.Errorf("%s should not require spec.resourceGraphDefinitionRef (backend selector is optional per field; webhook enforces exactly one)", filepath.ToSlash(crdPath))
 	}
 }

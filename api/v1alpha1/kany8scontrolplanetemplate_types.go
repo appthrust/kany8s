@@ -53,15 +53,27 @@ type Kany8sControlPlaneTemplateResource struct {
 type Kany8sControlPlaneTemplateResourceSpec struct {
 	// resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
 	// provision the managed control plane.
-	ResourceGraphDefinitionRef ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef"`
+	//
+	// When set, this selects the kro backend.
+	// +optional
+	ResourceGraphDefinitionRef *ResourceGraphDefinitionReference `json:"resourceGraphDefinitionRef,omitempty"`
 
 	// kroSpec is an arbitrary, provider-specific object passed through to the kro
 	// instance spec.
 	// +optional
 	KroSpec *apiextensionsv1.JSON `json:"kroSpec,omitempty"`
+
+	// kubeadm selects the builtin kubeadm backend.
+	// +optional
+	Kubeadm *Kany8sControlPlaneKubeadmSpec `json:"kubeadm,omitempty"`
+
+	// externalBackend selects an out-of-tree backend.
+	// +optional
+	ExternalBackend *Kany8sControlPlaneExternalBackendSpec `json:"externalBackend,omitempty"`
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
 
 // Kany8sControlPlaneTemplate is the Schema for the kany8scontrolplanetemplates API
 type Kany8sControlPlaneTemplate struct {

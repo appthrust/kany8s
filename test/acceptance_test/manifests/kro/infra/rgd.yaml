@@ -1,0 +1,29 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-infra.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: DemoInfrastructure
+    spec:
+      clusterName: string | required=true description="CAPI Cluster name"
+      clusterNamespace: string | required=true description="CAPI Cluster namespace"
+
+    status:
+      ready: '${int((configMap.?metadata.?name.orValue("") != "") ? 1 : 0) == 1}'
+      reason: '${(configMap.?metadata.?name.orValue("") != "") ? "Ready" : "Provisioning"}'
+      message: '${(configMap.?metadata.?name.orValue("") != "") ? "infrastructure is ready" : "waiting for infrastructure resources"}'
+
+  resources:
+    - id: configMap
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.clusterName}-infra
+          namespace: ${schema.spec.clusterNamespace}
+          labels:
+            kany8s.io/cluster-name: ${schema.spec.clusterName}
+        data:
+          message: "hello from demo infra"

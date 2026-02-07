@@ -20,7 +20,7 @@
 - docker: 29.1.3
 - kind: v0.31.0 (node image: `kindest/node:v1.35.0`)
 - kubectl(client): v1.35.0
-- go: 1.25.5
+- go: 1.25.7
 - clusterctl: v1.12.2
 
 ## 現在の状況 (いま)
@@ -46,8 +46,8 @@
 
 ## 現在やっていること
 
-- 受け入れスクリプト `hack/acceptance-test-self-managed.sh` を「進捗が見える」「詰まったら原因が残る」形に改善しつつ、
-  新規 kind 管理クラスタで `make test-acceptance-self-managed` を最後まで通してログを確定させる。
+- 受け入れスクリプト `hack/acceptance-test-capd-kubeadm.sh` を「進捗が見える」「詰まったら原因が残る」形に改善しつつ、
+  新規 kind 管理クラスタで `make test-acceptance-capd-kubeadm` を最後まで通してログを確定させる。
 
 ## ここまでに実施したこと (実績)
 
@@ -59,7 +59,7 @@
 
 ### 2) self-managed acceptance (初回の試行)
 
-- 実行: `make test-acceptance-self-managed-keep`
+- 実行: `make test-acceptance-capd-kubeadm-keep`
 - kind 管理クラスタを残した:
   - KIND_CLUSTER_NAME: `kany8s-acceptance-self-managed-20260202155212`
   - kubeconfig: `/tmp/kany8s-acceptance-self-managed-20260202155212/kubeconfig`
@@ -80,7 +80,7 @@
 - 症状: `DockerCluster` の `LoadBalancerAvailable` が失敗 (`Cannot connect to the Docker daemon at unix:///var/run/docker.sock`)
 - 原因: kind node container に `/var/run/docker.sock` が無く、CAPD が hostPath mount しても socket に到達できない
 - 対策: kind 作成時に `extraMounts` で host の `/var/run/docker.sock` を node に mount
-  - `hack/acceptance-test-self-managed.sh` で `--config <kind-config.yaml>` を使う
+  - `hack/acceptance-test-capd-kubeadm.sh` で `--config <kind-config.yaml>` を使う
   - mount の実体確認として `docker exec <node> test -S /var/run/docker.sock` を追加
 
 #### 2.3) CAPD webhook が ready になる前に apply して connection refused
@@ -148,7 +148,7 @@
 
 ## 受け入れスクリプトの改善 (進捗可視化 / 再現性)
 
-対象: `hack/acceptance-test-self-managed.sh`
+対象: `hack/acceptance-test-capd-kubeadm.sh`
 
 - kind 作成:
   - host の `/var/run/docker.sock` を kind node に mount
@@ -220,7 +220,7 @@
 
 ## これからやること
 
-1. 新しい kind 管理クラスタで `make test-acceptance-self-managed` を最後まで通し、ログ/成果物で受け入れ完遂を確認する
+1. 新しい kind 管理クラスタで `make test-acceptance-capd-kubeadm` を最後まで通し、ログ/成果物で受け入れ完遂を確認する
 2. `e2e-wip.md` に「最終実行の artifacts/log/cluster 名」「コマンド」「結果」を追記する
 3. (必要なら) CNI を入れて node を Ready にするか、受け入れ条件として node Ready を要求しない方針を明文化する
 
@@ -231,7 +231,7 @@
 
 ```bash
 # クラスタを残してデバッグする
-CLEANUP=false make test-acceptance-self-managed > /tmp/kany8s-acceptance-self-managed-run.log 2>&1 &
+CLEANUP=false make test-acceptance-capd-kubeadm > /tmp/kany8s-acceptance-capd-kubeadm-run.log 2>&1 &
 
 # 進捗を見る
 tail -f /tmp/kany8s-acceptance-self-managed-run.log
@@ -241,7 +241,7 @@ tail -f /tmp/kany8s-acceptance-self-managed-run.log
 
 - 日付: 2026-02-03
 - 実行:
-  - `ARTIFACTS_DIR=/tmp/kany8s-acceptance-self-managed-clean-20260203080511 KIND_CLUSTER_NAME=kany8s-sm-20260203080511 CLEANUP=false make test-acceptance-self-managed`
+  - `ARTIFACTS_DIR=/tmp/kany8s-acceptance-capd-kubeadm-clean-20260203080511 KIND_CLUSTER_NAME=kany8s-capd-20260203080511 CLEANUP=false make test-acceptance-capd-kubeadm`
 - kind:
   - `kany8s-sm-20260203080511`
 - artifacts:
@@ -260,3 +260,26 @@ tail -f /tmp/kany8s-acceptance-self-managed-run.log
 - 重要:
   - `status.initialization.controlPlaneInitialized` の手動 patch は不要
   - workload の Docker コンテナ (`demo-self-managed-docker-*`) は host docker に残り得るため、再実行時は事前削除が必要
+
+## 最終実行 (成功 / clean + cleanup)
+
+- 日付: 2026-02-03
+- 実行:
+  - `ARTIFACTS_DIR=/tmp/kany8s-acceptance-capd-kubeadm-clean-20260203090609 KIND_CLUSTER_NAME=kany8s-capd-20260203090609 CLEANUP=true make test-acceptance-capd-kubeadm`
+- kind:
+  - `kany8s-sm-20260203090609` (スクリプト終了時に削除)
+- artifacts:
+  - `/tmp/kany8s-acceptance-self-managed-clean-20260203090609`
+- management kubeconfig:
+  - `/tmp/kany8s-acceptance-self-managed-clean-20260203090609/kubeconfig`
+- log:
+  - `/tmp/kany8s-acceptance-self-managed-clean-20260203090609/acceptance-self-managed.log`
+- workload kubeconfig (script output):
+  - `/tmp/kany8s-acceptance-self-managed-clean-20260203090609/workload.kubeconfig`
+- 結果 (PRD):
+  - `Cluster Available=True`
+  - `RemoteConnectionProbe=True`
+  - `clusterctl get kubeconfig` OK
+  - `kubectl get nodes` OK (NoWorkers 許容 / node は `NotReady` のまま: `cni plugin not initialized`)
+- cleanup 確認:
+  - `demo-self-managed-docker-*` (workload) の Docker コンテナはスクリプト終了時に削除されている

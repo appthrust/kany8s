@@ -18,6 +18,7 @@ func TestKany8sClusterControllerIncludesKroRBACMarkers(t *testing.T) {
 
 	controllerGo := string(controllerBytes)
 	wantSubstrings := []string{
+		"+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch",
 		"+kubebuilder:rbac:groups=kro.run,resources=resourcegraphdefinitions,verbs=get;list;watch",
 		"+kubebuilder:rbac:groups=kro.run,resources=*,verbs=get;list;watch;create;update;patch",
 	}

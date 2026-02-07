@@ -31,6 +31,9 @@ type Watcher struct {
 	factory dynamicinformer.DynamicSharedInformerFactory
 	events  chan<- event.GenericEvent
 	logger  logrLogger
+	mapper  meta.RESTMapper
+
+	cacheSyncTimeout time.Duration
 
 	mu        sync.Mutex
 	informers map[schema.GroupVersionResource]cache.SharedIndexInformer
@@ -48,14 +51,22 @@ type Ensurer interface {
 	EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) error
 }
 
+const defaultCacheSyncTimeout = 2 * time.Second
+
 func New(dynClient dynamic.Interface, events chan<- event.GenericEvent) *Watcher {
+	return NewWithMapper(dynClient, nil, events)
+}
+
+func NewWithMapper(dynClient dynamic.Interface, mapper meta.RESTMapper, events chan<- event.GenericEvent) *Watcher {
 	return &Watcher{
-		factory:   dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynClient, 0*time.Second, "", nil),
-		events:    events,
-		logger:    log.Log.WithName("dynamicwatch"),
-		informers: map[schema.GroupVersionResource]cache.SharedIndexInformer{},
-		flushCh:   make(chan struct{}, 1),
-		pending:   map[string]*unstructured.Unstructured{},
+		factory:          dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynClient, 0*time.Second, "", nil),
+		events:           events,
+		logger:           log.Log.WithName("dynamicwatch"),
+		mapper:           mapper,
+		cacheSyncTimeout: defaultCacheSyncTimeout,
+		informers:        map[schema.GroupVersionResource]cache.SharedIndexInformer{},
+		flushCh:          make(chan struct{}, 1),
+		pending:          map[string]*unstructured.Unstructured{},
 	}
 }
 
@@ -90,10 +101,9 @@ func (w *Watcher) EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) 
 		return fmt.Errorf("gvk.kind is required")
 	}
 
-	pluralGVR, _ := meta.UnsafeGuessKindToResource(gvk)
-	gvr := pluralGVR
-	if gvr.Resource == "" {
-		return fmt.Errorf("resolved gvr.resource is empty for gvk %s", gvk.String())
+	gvr, err := w.resolveGVR(gvk)
+	if err != nil {
+		return err
 	}
 
 	var informer cache.SharedIndexInformer
@@ -105,7 +115,9 @@ func (w *Watcher) EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) 
 		informer = existing
 		w.mu.Unlock()
 		if stopCh != nil {
-			cache.WaitForCacheSync(ctx.Done(), informer.HasSynced)
+			if err := w.waitForCacheSync(ctx, informer); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -125,9 +137,52 @@ func (w *Watcher) EnsureWatch(ctx context.Context, gvk schema.GroupVersionKind) 
 
 	if stopCh != nil {
 		w.factory.Start(stopCh)
-		cache.WaitForCacheSync(ctx.Done(), informer.HasSynced)
+		if err := w.waitForCacheSync(ctx, informer); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+func (w *Watcher) resolveGVR(gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+	if gvk.Kind == "" {
+		return schema.GroupVersionResource{}, fmt.Errorf("gvk.kind is required")
+	}
+
+	if w.mapper != nil {
+		mapping, err := w.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return schema.GroupVersionResource{}, fmt.Errorf("resolve gvk %s to gvr: %w", gvk.String(), err)
+		}
+		if mapping.Resource.Resource == "" {
+			return schema.GroupVersionResource{}, fmt.Errorf("resolved gvr.resource is empty for gvk %s", gvk.String())
+		}
+		return mapping.Resource, nil
+	}
+
+	pluralGVR, _ := meta.UnsafeGuessKindToResource(gvk)
+	if pluralGVR.Resource == "" {
+		return schema.GroupVersionResource{}, fmt.Errorf("resolved gvr.resource is empty for gvk %s", gvk.String())
+	}
+	return pluralGVR, nil
+}
+
+func (w *Watcher) waitForCacheSync(ctx context.Context, informer cache.SharedIndexInformer) error {
+	if informer == nil {
+		return fmt.Errorf("informer is nil")
+	}
+
+	syncCtx := ctx
+	if w.cacheSyncTimeout > 0 {
+		var cancel context.CancelFunc
+		syncCtx, cancel = context.WithTimeout(ctx, w.cacheSyncTimeout)
+		defer cancel()
+	}
+
+	if ok := cache.WaitForCacheSync(syncCtx.Done(), informer.HasSynced); !ok {
+		return fmt.Errorf("timed out waiting for informer cache to sync")
+	}
 	return nil
 }
 

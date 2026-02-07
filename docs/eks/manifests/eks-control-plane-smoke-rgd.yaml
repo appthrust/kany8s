@@ -1,0 +1,147 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-control-plane-smoke.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: EKSControlPlane
+    spec:
+      # Injected/overwritten by Kany8sControlPlane:
+      # - spec.version
+      version: string | required=true description="Kubernetes version (injected by Kany8sControlPlane)"
+
+      region: string | required=true description="AWS region"
+      vpc:
+        cidrBlock: string | required=true description="VPC CIDR block (e.g. 10.0.0.0/16)"
+        subnetA:
+          cidrBlock: string | required=true description="Subnet CIDR block (e.g. 10.0.0.0/24)"
+          availabilityZone: string | required=true description="AZ name (e.g. ap-northeast-1a)"
+        subnetB:
+          cidrBlock: string | required=true description="Subnet CIDR block (e.g. 10.0.1.0/24)"
+          availabilityZone: string | required=true description="AZ name (e.g. ap-northeast-1c)"
+
+      # IAM managed policy ARNs attached to the EKS control plane role.
+      # Minimum known-good set for cluster creation:
+      # - AmazonEKSClusterPolicy
+      # - AmazonEKSServicePolicy
+      clusterRolePolicies: '[]string | default=["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy","arn:aws:iam::aws:policy/AmazonEKSServicePolicy"] description="Managed policy ARNs attached to the EKS control plane IAM role"'
+
+      # WARNING: default is open to the internet.
+      # For safer testing, set this to your public IP (/32).
+      publicAccessCIDRs: '[]string | default=["0.0.0.0/0"] description="Public endpoint access CIDRs"'
+
+    status:
+      endpoint: ${cluster.?status.?endpoint.orValue("")}
+      ready: '${int((cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? 1 : 0) == 1}'
+      reason: '${(cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? "ControlPlaneReady" : "Provisioning"}'
+      message: '${(cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? "EKS cluster is ACTIVE and endpoint is available" : "waiting for EKS cluster to become ACTIVE"}'
+
+  resources:
+    - id: vpc
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: VPC
+        metadata:
+          name: ${schema.metadata.name}-vpc
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          cidrBlocks:
+            - ${schema.spec.vpc.cidrBlock}
+          enableDNSSupport: true
+          enableDNSHostnames: true
+          tags:
+            - key: Name
+              value: ${schema.metadata.name}-vpc
+
+    - id: subnetA
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: Subnet
+        metadata:
+          name: ${schema.metadata.name}-subnet-a
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          vpcRef:
+            from:
+              name: ${vpc.metadata.name}
+          cidrBlock: ${schema.spec.vpc.subnetA.cidrBlock}
+          availabilityZone: ${schema.spec.vpc.subnetA.availabilityZone}
+          mapPublicIPOnLaunch: true
+          tags:
+            - key: Name
+              value: ${schema.metadata.name}-subnet-a
+            - key: ${"kubernetes.io/cluster/" + schema.metadata.name}
+              value: "shared"
+            - key: kubernetes.io/role/elb
+              value: "1"
+
+    - id: subnetB
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: Subnet
+        metadata:
+          name: ${schema.metadata.name}-subnet-b
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          vpcRef:
+            from:
+              name: ${vpc.metadata.name}
+          cidrBlock: ${schema.spec.vpc.subnetB.cidrBlock}
+          availabilityZone: ${schema.spec.vpc.subnetB.availabilityZone}
+          mapPublicIPOnLaunch: true
+          tags:
+            - key: Name
+              value: ${schema.metadata.name}-subnet-b
+            - key: ${"kubernetes.io/cluster/" + schema.metadata.name}
+              value: "shared"
+            - key: kubernetes.io/role/elb
+              value: "1"
+
+    - id: clusterRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.metadata.name}-eks-control-plane
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}-eks-control-plane
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+          policies: ${schema.spec.clusterRolePolicies}
+
+    - id: cluster
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}
+          version: ${schema.spec.version}
+          roleRef:
+            from:
+              name: ${clusterRole.metadata.name}
+          accessConfig:
+            # Let the cluster creator access the cluster as admin.
+            # (This is still IAM-based auth; you'll typically use awscli to obtain kubeconfig.)
+            bootstrapClusterCreatorAdminPermissions: true
+          resourcesVPCConfig:
+            subnetRefs:
+              - from:
+                  name: ${subnetA.metadata.name}
+              - from:
+                  name: ${subnetB.metadata.name}
+            endpointPublicAccess: true
+            endpointPrivateAccess: false
+            publicAccessCIDRs: ${schema.spec.publicAccessCIDRs}
+
+      readyWhen:
+        - ${cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != ""}

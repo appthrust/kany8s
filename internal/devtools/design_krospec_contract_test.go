@@ -10,7 +10,7 @@ import (
 func TestDesignDocClarifiesKroSpecMustBeJSONObject(t *testing.T) {
 	root := findRepoRoot(t)
 
-	designPath := filepath.Join(root, "docs", "design.md")
+	designPath := filepath.Join(root, "docs", "adr", "0003-kro-instance-lifecycle-and-spec-injection.md")
 	designBytes, err := os.ReadFile(designPath)
 	if err != nil {
 		t.Fatalf("read %q: %v", designPath, err)
@@ -23,7 +23,7 @@ func TestDesignDocClarifiesKroSpecMustBeJSONObject(t *testing.T) {
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(design, want) {
-			t.Errorf("docs/design.md missing %q", want)
+			t.Errorf("docs/adr/0003-kro-instance-lifecycle-and-spec-injection.md missing %q", want)
 		}
 	}
 }

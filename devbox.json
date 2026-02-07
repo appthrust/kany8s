@@ -4,7 +4,8 @@
     "bun",
     "git",
     "k9s",
-    "zig"
+    "zig",
+    "awscli2@latest"
   ],
   "shell": {
     "init_hook": [

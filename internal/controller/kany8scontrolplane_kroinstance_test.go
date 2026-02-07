@@ -47,7 +47,7 @@ func TestKany8sControlPlaneReconciler_CreatesKroInstance(t *testing.T) {
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -114,7 +114,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -153,7 +153,7 @@ func TestKany8sControlPlaneReconciler_SetsOwnerReferenceOnKroInstance(t *testing
 
 	var found bool
 	for _, ref := range got.GetOwnerReferences() {
-		if ref.APIVersion != "controlplane.cluster.x-k8s.io/v1alpha1" {
+		if ref.APIVersion != kany8sControlPlaneAPIVersion {
 			continue
 		}
 		if ref.Kind != kany8sControlPlaneKind {
@@ -200,7 +200,7 @@ func TestKany8sControlPlaneReconciler_BuildsKroInstanceSpec(t *testing.T) {
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 			KroSpec: &apiextensionsv1.JSON{Raw: []byte(`{"region":"ap-northeast-1","version":"0.0"}`)},
@@ -314,7 +314,7 @@ func TestKany8sControlPlaneReconciler_SurfacesInvalidKroSpecViaConditionsAndEven
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 			KroSpec: &apiextensionsv1.JSON{Raw: []byte(`["not-an-object"]`)},
@@ -435,7 +435,7 @@ func TestKany8sControlPlaneReconciler_SetsControlPlaneEndpointFromKroInstanceSta
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -517,7 +517,7 @@ func TestKany8sControlPlaneReconciler_SetsControlPlaneInitializedWhenEndpointIsS
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -618,7 +618,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenRGDNotFound(t *testing.T) {
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -686,7 +686,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenRGDInvalid(t *testing.T) {
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -773,7 +773,7 @@ func TestKany8sControlPlaneReconciler_SetsCreatingConditionAndClearsFailureField
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -888,7 +888,7 @@ func TestKany8sControlPlaneReconciler_RequeuesUntilReadyAndThenStops(t *testing.
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -1000,7 +1000,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenEnsureWatchFailsEvenIfReady(t 
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -1098,7 +1098,7 @@ func TestKany8sControlPlaneReconciler_RequeuesWhenReadyButEndpointMissing(t *tes
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -1185,7 +1185,7 @@ func TestKany8sControlPlaneReconciler_RequeuesAndSetsFailureWhenEndpointInvalid(
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},
@@ -1315,7 +1315,7 @@ func TestKany8sControlPlaneReconciler_SetsReadyConditionAndClearsFailureFieldsWh
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
 			Version: "1.34",
-			ResourceGraphDefinitionRef: controlplanev1alpha1.ResourceGraphDefinitionReference{
+			ResourceGraphDefinitionRef: &controlplanev1alpha1.ResourceGraphDefinitionReference{
 				Name: "eks-control-plane",
 			},
 		},

@@ -29,7 +29,7 @@ kubectl rollout status -n kro-system deploy/kro
 ```
 
 Note: kro v0.7.1 may require relaxed RBAC for its dynamic controller to watch generated CRDs.
-See `docs/kro.md` for details.
+See `docs/reference/kro-v0.7.1-kind-notes.md` for details.
 
 ## 3. (Optional) Relax kro controller RBAC
 

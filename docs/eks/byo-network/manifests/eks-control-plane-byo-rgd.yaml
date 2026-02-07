@@ -1,0 +1,78 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: eks-control-plane-byo.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: EKSControlPlaneBYO
+    spec:
+      # Injected/overwritten by Kany8sControlPlane:
+      # - spec.version
+      # NOTE: When using CAPI ClusterClass/Topology, this is typically a semantic version
+      # like "v1.35.0". EKS itself expects a major.minor string (e.g. "1.35"), so
+      # this RGD does not pass spec.version directly to ACK EKS Cluster.
+      version: string | required=true description="Kubernetes version (injected by Kany8sControlPlane; often semver when using Topology)"
+
+      # EKS expects major.minor (e.g. "1.35").
+      eksVersion: string | required=true description="EKS Kubernetes version in major.minor form (e.g. 1.35)"
+
+      region: string | required=true description="AWS region"
+      vpc:
+        subnetIDs: '[]string | required=true description="BYO subnet IDs (must be in at least two AZs for EKS)"'
+        securityGroupIDs: '[]string | default=[] description="Optional security group IDs"'
+
+      # Force explicit selection. (Safer default is to restrict to your public IP.)
+      publicAccessCIDRs: '[]string | required=true description="Public endpoint access CIDRs"'
+
+      # IAM managed policy ARNs attached to the EKS control plane role.
+      clusterRolePolicies: '[]string | default=["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy","arn:aws:iam::aws:policy/AmazonEKSServicePolicy"] description="Managed policy ARNs attached to the EKS control plane IAM role"'
+
+    status:
+      endpoint: ${cluster.?status.?endpoint.orValue("")}
+      ready: '${int((cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? 1 : 0) == 1}'
+      reason: '${(cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? "ControlPlaneReady" : "Provisioning"}'
+      message: '${(cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != "") ? "EKS cluster is ACTIVE and endpoint is available" : "waiting for EKS cluster to become ACTIVE"}'
+
+  resources:
+    - id: clusterRole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.metadata.name}-eks-control-plane
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}-eks-control-plane
+          assumeRolePolicyDocument: |
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}
+          policies: ${schema.spec.clusterRolePolicies}
+
+    - id: cluster
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+        spec:
+          name: ${schema.metadata.name}
+          version: ${schema.spec.eksVersion}
+          roleRef:
+            from:
+              name: ${clusterRole.metadata.name}
+          accessConfig:
+            # Let the cluster creator access the cluster as admin.
+            # (This is still IAM-based auth; you'll typically use awscli to obtain kubeconfig.)
+            bootstrapClusterCreatorAdminPermissions: true
+          resourcesVPCConfig:
+            subnetIDs: ${schema.spec.vpc.subnetIDs}
+            securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
+            endpointPublicAccess: true
+            endpointPrivateAccess: false
+            publicAccessCIDRs: ${schema.spec.publicAccessCIDRs}
+
+      readyWhen:
+        - ${cluster.?status.?status.orValue("") == "ACTIVE" && cluster.?status.?endpoint.orValue("") != ""}
