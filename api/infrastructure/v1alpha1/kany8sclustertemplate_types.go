@@ -60,6 +60,7 @@ type Kany8sClusterTemplateResourceSpec struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
 
 // Kany8sClusterTemplate is the Schema for the kany8sclustertemplates API
 type Kany8sClusterTemplate struct {

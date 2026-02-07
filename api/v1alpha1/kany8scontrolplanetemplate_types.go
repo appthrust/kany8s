@@ -73,6 +73,7 @@ type Kany8sControlPlaneTemplateResourceSpec struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
 
 // Kany8sControlPlaneTemplate is the Schema for the kany8scontrolplanetemplates API
 type Kany8sControlPlaneTemplate struct {
