@@ -1,10 +1,12 @@
-# Step 0 values (EKS smoke test)
+# Step 0 values (EKS smoke / BYO network)
 
-`docs/eks/README.md` の Step 0 で設定する値を決めるためのメモです。
+`docs/eks/README.md` の環境変数を決めるためのメモです。
 
-この smoke test は `docs/eks/manifests/eks-control-plane-smoke-rgd.yaml` (Parent RGD) で
+smoke test は `docs/eks/manifests/eks-control-plane-smoke-rgd.yaml` (Parent RGD) で
 VPC/Subnet を ACK(EC2) で作り、同じ kro graph の中で EKS に配線します。
 そのため既存の Subnet ID (`subnet-xxxx`) を事前に用意する必要はありません。
+
+BYO network は `docs/eks/byo-network/manifests/*` を使い、既存の subnet IDs を `Cluster.spec.topology.variables` に渡します。
 
 ## 何を決めるか
 
@@ -15,7 +17,7 @@ export AWS_REGION=ap-northeast-1
 export CLUSTER_NAME=demo-eks-135-$(date +%Y%m%d%H%M%S)
 export NAMESPACE=default
 
-# EKS の version は "1.xx" 形式 (例: 1.35)
+# smoke: EKS の version は "1.xx" 形式 (例: 1.35)
 export KUBERNETES_VERSION=1.35
 
 # 新規作成する VPC/Subnet の CIDR と AZ
@@ -29,6 +31,25 @@ export SUBNET_B_AZ=ap-northeast-1c
 # - 検証でも可能なら自分のグローバルIP(/32)に絞ってください。
 # - あえて全開放するなら "0.0.0.0/0" を指定します(非推奨)。
 export PUBLIC_ACCESS_CIDR="$(curl -fsSL https://checkip.amazonaws.com | tr -d '\n')/32"
+```
+
+BYO network で追加で必要な値:
+
+```bash
+# 既存 subnet IDs (最低2つ)
+export SUBNET_ID_1=subnet-aaaa1111
+export SUBNET_ID_2=subnet-bbbb2222
+
+# 任意 SG IDs
+# - 空の場合は [] を使う
+# - 例: ["sg-xxxx","sg-yyyy"]
+export SECURITY_GROUP_IDS_JSON='[]'
+
+# BYO (Topology):
+# - Cluster.spec.topology.version は semver が必須 (例: v1.35.0)
+# - EKS 自体は major.minor (例: 1.35)
+export KUBERNETES_VERSION=v1.35.0
+export EKS_VERSION=1.35
 ```
 
 補足:
@@ -102,6 +123,34 @@ export PUBLIC_ACCESS_CIDR="${my_ip}/32"
 反映方法は `docs/eks/README.md` Step 8 のテンプレ render コマンドで
 `PUBLIC_ACCESS_CIDR` を `publicAccessCIDRs` に注入します。
 
+BYO network では `eks.publicAccessCIDRs` が ClusterClass 変数として required です。
+`PUBLIC_ACCESS_CIDR` は省略せず、明示的に設定してください。
+
+## BYO: Topology variables への対応
+
+`docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml` の変数と環境変数の対応例:
+
+- `region` <- `AWS_REGION`
+- `eks-version` <- `EKS_VERSION`
+- `vpc-subnet-ids` <- `SUBNET_ID_1`, `SUBNET_ID_2`
+- `vpc-security-group-ids` <- `SECURITY_GROUP_IDS_JSON`
+- `eks-public-access-cidrs` <- `PUBLIC_ACCESS_CIDR`
+
+namespace 注意:
+
+- `docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml` は template の `metadata.namespace` を固定していません。
+- `kubectl -n "$NAMESPACE" apply -f docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml` のように、対象 `Cluster` と同じ namespace に apply してください。
+
+`docs/eks/byo-network/manifests/cluster.yaml.tpl` の render で置換する値:
+
+```bash
+__AWS_REGION__               -> ${AWS_REGION}
+__SUBNET_ID_1__              -> ${SUBNET_ID_1}
+__SUBNET_ID_2__              -> ${SUBNET_ID_2}
+__SECURITY_GROUP_IDS_JSON__  -> ${SECURITY_GROUP_IDS_JSON}
+__PUBLIC_ACCESS_CIDR__       -> ${PUBLIC_ACCESS_CIDR}
+```
+
 ## 最終的に貼る値 (テンプレ)
 
 ```bash
@@ -118,4 +167,8 @@ export SUBNET_A_CIDR=
 export SUBNET_A_AZ=
 export SUBNET_B_CIDR=
 export SUBNET_B_AZ=
+
+export SUBNET_ID_1=
+export SUBNET_ID_2=
+export SECURITY_GROUP_IDS_JSON='[]'
 ```

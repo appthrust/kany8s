@@ -10,6 +10,72 @@
 - kro instance の正規化 status (`ready/endpoint/reason/message`) が `Kany8sControlPlane` に反映される
 - (任意) CAPI `Cluster` を作って、owner `Cluster` 解決/label 注入などの facade 側ロジックが動く
 
+## BYO network (既存 VPC/Subnet を使う場合)
+
+既存の VPC/Subnet を使って EKS Control Plane のみを作成する場合は、smoke 用 (`*-smoke-*`) ではなく BYO 用 manifest を使ってください。
+
+- サンプル: `docs/eks/byo-network/README.md`
+- 設計: `docs/eks/byo-network/design.md`
+- infra input-gate RGD: `docs/eks/byo-network/manifests/aws-byo-network-rgd.yaml`
+- control plane RGD: `docs/eks/byo-network/manifests/eks-control-plane-byo-rgd.yaml`
+- ClusterClass: `docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml`
+- Topology Cluster template: `docs/eks/byo-network/manifests/cluster.yaml.tpl`
+
+最短 apply 手順（Step 1-6 で kind/CAPI/kro/ACK/Kany8s を入れた後）:
+
+```bash
+kubectl apply -f docs/eks/byo-network/manifests/aws-byo-network-rgd.yaml
+kubectl wait --for=condition=ResourceGraphAccepted --timeout=120s rgd/aws-byo-network.kro.run
+
+kubectl apply -f docs/eks/byo-network/manifests/eks-control-plane-byo-rgd.yaml
+kubectl wait --for=condition=ResourceGraphAccepted --timeout=120s rgd/eks-control-plane-byo.kro.run
+
+# ClusterClass + Template は Cluster と同じ namespace へ apply する
+kubectl -n "$NAMESPACE" apply -f docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml
+```
+
+BYO Topology Cluster の render/apply 例:
+
+```bash
+export SUBNET_ID_1=subnet-aaaa1111
+export SUBNET_ID_2=subnet-bbbb2222
+export SECURITY_GROUP_IDS_JSON='[]' # 例: '["sg-xxxx","sg-yyyy"]'
+
+# CAPI Topology は semver が必須 (例: v1.35.0)
+# EKS 自体は major.minor 形式 (例: 1.35)
+export EKS_VERSION=1.35
+
+rendered=/tmp/eks-cluster-byo.yaml
+sed \
+  -e "s|__CLUSTER_NAME__|${CLUSTER_NAME}|g" \
+  -e "s|__NAMESPACE__|${NAMESPACE}|g" \
+  -e "s|__KUBERNETES_VERSION__|${KUBERNETES_VERSION}|g" \
+  -e "s|__AWS_REGION__|${AWS_REGION}|g" \
+  -e "s|__EKS_VERSION__|${EKS_VERSION}|g" \
+  -e "s|__SUBNET_ID_1__|${SUBNET_ID_1}|g" \
+  -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
+  -e "s|__SECURITY_GROUP_IDS_JSON__|${SECURITY_GROUP_IDS_JSON}|g" \
+  -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
+  docs/eks/byo-network/manifests/cluster.yaml.tpl > "${rendered}"
+
+kubectl apply -f "${rendered}"
+```
+
+BYO 進捗確認例:
+
+```bash
+# BYO の kro instance リソース名を確認
+kubectl api-resources --api-group=kro.run | grep -E 'awsbyonetwork|ekscontrolplane' || true
+
+# BYO infra input-gate
+kubectl -n "$NAMESPACE" get awsbyonetworks.kro.run "$CLUSTER_NAME" -o yaml || true
+
+# BYO control plane
+kubectl -n "$NAMESPACE" get ekscontrolplanebyos.kro.run "$CLUSTER_NAME" -o yaml || true
+```
+
+BYO フローでは既存 VPC/Subnet は管理対象に入れません。Cleanup でも VPC/Subnet は削除されません（`docs/eks/cleanup.md` 参照）。
+
 ## 注意 (コスト/安全)
 
 - EKS control plane は課金対象です。検証後は必ず削除してください。
@@ -88,6 +154,8 @@ kubectl get nodes -o wide
 clusterctl version
 
 # v1beta2 contract に合わせて、Core provider の version を明示するのがおすすめです。
+# ClusterClass/Topology を使う場合は有効化しておく。
+export CLUSTER_TOPOLOGY=true
 export CAPI_VERSION=v1.12.2
 clusterctl init \
   --core cluster-api:${CAPI_VERSION} \
@@ -322,8 +390,9 @@ kubectl -n "$NAMESPACE" describe clusters.eks.services.k8s.aws "$CLUSTER_NAME" |
 kubectl -n "$NAMESPACE" get roles.iam.services.k8s.aws "${CLUSTER_NAME}-eks-control-plane" -o wide
 
 # kro instance (CRD 名は RGD の schema.kind から生成される)
-kubectl get crd | grep -i 'ekscontrolplanes.*kro\.run' || true
+kubectl api-resources --api-group=kro.run | grep -E 'awsbyonetwork|ekscontrolplane' || true
 kubectl -n "$NAMESPACE" get ekscontrolplanes.kro.run "$CLUSTER_NAME" -o yaml || true
+kubectl -n "$NAMESPACE" get ekscontrolplanebyos.kro.run "$CLUSTER_NAME" -o yaml || true
 ```
 
 AWS 側:

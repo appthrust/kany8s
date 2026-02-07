@@ -1,7 +1,7 @@
 # Issue: 既存 VPC/Subnet(BYO network) で EKS ControlPlane を作るときの InfrastructureCluster の責務
 
 - 作成日: 2026-02-06
-- ステータス: Open
+- ステータス: Open (実装済み / manual validation pending)
 
 ## 背景
 
@@ -119,7 +119,29 @@ Cons:
 ## 参考
 
 - EKS smoke: `docs/eks/README.md`
+- BYO design: `docs/eks/byo-network/design.md`
 - Infra outputs policy: `docs/adr/0008-infra-outputs-policy-parent-rgd-approach-a.md`
 - Normalized status contract: `docs/adr/0002-normalized-rgd-instance-status-contract.md`
 - Spec injection: `docs/adr/0003-kro-instance-lifecycle-and-spec-injection.md`
 - Parent RGD pattern (historical): `docs/archive/patterns/parent-rgd-includes-infra.md`
+
+## 実装済み成果物
+
+- `docs/eks/byo-network/manifests/aws-byo-network-rgd.yaml`
+- `docs/eks/byo-network/manifests/eks-control-plane-byo-rgd.yaml`
+- `docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml`
+- `docs/eks/byo-network/manifests/cluster.yaml.tpl`
+- `docs/eks/byo-network/README.md`
+- `docs/eks/byo-network/design.md` (manifest path を明示)
+- `docs/eks/README.md` (BYO セクション追加)
+- `docs/eks/values.md` (BYO 必須値と topology 変数対応を追加)
+- `docs/eks/cleanup.md` (BYO 削除セマンティクスを明記)
+
+## クローズ条件
+
+以下が実施できたらステータスを `Closed` に更新する:
+
+- BYO RGD 2本が `ResourceGraphAccepted=True`
+- `clusterclass-eks-byo.yaml` が apply され、Topology Cluster が期待どおり `Kany8sCluster` / `Kany8sControlPlane` を生成
+- Ready 判定（infra input-gate / control plane ACTIVE+endpoint）が設計どおり
+- `kubectl delete cluster` 後に EKS/IAM は削除され、既存 VPC/Subnet は不変

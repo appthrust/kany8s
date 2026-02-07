@@ -1,6 +1,11 @@
-# Cleanup (EKS smoke test)
+# Cleanup (EKS smoke / BYO network)
 
 このドキュメントは `docs/eks/README.md` の手順で作成した EKS (Control Plane) + 付随リソースを削除する手順です。
+
+BYO network の削除セマンティクス:
+
+- 削除対象: EKS Cluster / IAM Role（ACK 管理）
+- 削除対象外: 既存 VPC/Subnet（BYO infra RGD は ConfigMap のみを管理）
 
 重要:
 
@@ -17,6 +22,8 @@ export NAMESPACE=default
 kubectl -n "$NAMESPACE" get kany8scontrolplane -o wide
 kubectl -n "$NAMESPACE" get clusters.eks.services.k8s.aws -o wide || true
 kubectl -n "$NAMESPACE" get ekscontrolplanes.kro.run -o wide || true
+kubectl -n "$NAMESPACE" get ekscontrolplanebyos.kro.run -o wide || true
+kubectl api-resources --api-group=kro.run | grep -E 'ekscontrolplane|awsbyonetwork' || true
 ```
 
 削除するクラスタ名をセット:
@@ -27,7 +34,7 @@ export CLUSTER_NAME=<your-cluster-name>
 
 ## 1) Kubernetes 側の削除 (ACK/kro に削除を走らせる)
 
-この smoke test では `Kany8sControlPlane` -> kro instance (`EKSControlPlane.kro.run`) が 1:1 で作られているので、
+`Kany8sControlPlane` -> kro instance は 1:1 で作られるため、
 ControlPlane を消すと GC により kro instance も消え、そこから ACK リソース削除が走ります。
 
 ```bash
@@ -39,7 +46,9 @@ kubectl -n "$NAMESPACE" delete kany8scontrolplane "$CLUSTER_NAME" --ignore-not-f
 kubectl -n "$NAMESPACE" delete kany8scluster "$CLUSTER_NAME" --ignore-not-found
 
 # kro instance (残っていれば明示的に削除)
-kubectl -n "$NAMESPACE" delete ekscontrolplanes.kro.run "$CLUSTER_NAME" --ignore-not-found
+kubectl -n "$NAMESPACE" delete ekscontrolplanes.kro.run "$CLUSTER_NAME" --ignore-not-found || true
+kubectl -n "$NAMESPACE" delete ekscontrolplanebyos.kro.run "$CLUSTER_NAME" --ignore-not-found || true
+kubectl -n "$NAMESPACE" delete awsbyonetworks.kro.run "$CLUSTER_NAME" --ignore-not-found || true
 ```
 
 ## 2) AWS リソースが消えるまで待つ
@@ -50,7 +59,7 @@ EKS cluster の削除は 10-20 分かかることがあります。
 # ACK (EKS) が消えるまで待つ
 kubectl -n "$NAMESPACE" wait --for=delete --timeout=40m clusters.eks.services.k8s.aws/"$CLUSTER_NAME" || true
 
-# ACK (EC2) が消えるまで待つ
+# ACK (EC2): smoke フローのみ対象
 kubectl -n "$NAMESPACE" wait --for=delete --timeout=20m subnets.ec2.services.k8s.aws/"${CLUSTER_NAME}-subnet-a" || true
 kubectl -n "$NAMESPACE" wait --for=delete --timeout=20m subnets.ec2.services.k8s.aws/"${CLUSTER_NAME}-subnet-b" || true
 kubectl -n "$NAMESPACE" wait --for=delete --timeout=20m vpcs.ec2.services.k8s.aws/"${CLUSTER_NAME}-vpc" || true
@@ -64,6 +73,11 @@ AWS CLI でも確認:
 ```bash
 aws eks describe-cluster --region "$AWS_REGION" --name "$CLUSTER_NAME" || true
 ```
+
+BYO 補足:
+
+- `kubectl delete cluster ...` 後も、既存 VPC/Subnet はそのまま残るのが正しい挙動です。
+- BYO フローで VPC/Subnet が削除される場合は、BYO ではない manifest（`*-smoke-*`）を適用していないか確認してください。
 
 ## 3) (任意) 管理クラスタ(kind)も消す
 
