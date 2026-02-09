@@ -1,0 +1,37 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: __CLUSTER_NAME__
+  namespace: __NAMESPACE__
+  # Standard: enable both plugins for this example.
+  labels:
+    eks.kany8s.io/karpenter: enabled
+  annotations:
+    eks.kany8s.io/kubeconfig-rotator: enabled
+spec:
+  topology:
+    classRef:
+      name: kany8s-eks-byo
+    version: "__KUBERNETES_VERSION__"
+    variables:
+      - name: region
+        value: "__AWS_REGION__"
+      - name: eks-version
+        value: "__EKS_VERSION__"
+      - name: vpc-subnet-ids
+        value:
+          - "__SUBNET_ID_1__"
+          - "__SUBNET_ID_2__"
+      - name: vpc-security-group-ids
+        # Standard: let eks-karpenter-bootstrapper create/inject the node SG.
+        value: []
+      - name: eks-public-access-cidrs
+        value:
+          - "__PUBLIC_ACCESS_CIDR__"
+      # Standard recommended values (override if needed).
+      - name: eks-access-mode
+        value: API_AND_CONFIG_MAP
+      - name: eks-endpoint-private-access
+        value: true
+      - name: eks-endpoint-public-access
+        value: true
