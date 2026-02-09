@@ -23,3 +23,9 @@ spec:
       - name: eks-public-access-cidrs
         value:
           - "__PUBLIC_ACCESS_CIDR__"
+      - name: eks-access-mode
+        value: "__EKS_ACCESS_MODE__"
+      - name: eks-endpoint-private-access
+        value: __EKS_ENDPOINT_PRIVATE_ACCESS__
+      - name: eks-endpoint-public-access
+        value: __EKS_ENDPOINT_PUBLIC_ACCESS__

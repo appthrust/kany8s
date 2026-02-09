@@ -9,7 +9,8 @@
 
 ## 含まれるマニフェスト
 
-- (任意) ネットワーク bootstrap (VPC/Subnet を ACK で新規作成): `docs/eks/byo-network/manifests/bootstrap-network.yaml.tpl`
+- (任意) ネットワーク bootstrap (public subnets 2つ; 最小): `docs/eks/byo-network/manifests/bootstrap-network.yaml.tpl`
+- (任意) ネットワーク bootstrap (private subnets + NAT; Fargate/Karpenter 向け): `docs/eks/byo-network/manifests/bootstrap-network-private-nat.yaml.tpl`
 - `docs/eks/byo-network/manifests/aws-byo-network-rgd.yaml`
 - `docs/eks/byo-network/manifests/eks-control-plane-byo-rgd.yaml`
 - `docs/eks/byo-network/manifests/clusterclass-eks-byo.yaml`
@@ -19,6 +20,11 @@
 
 BYO では通常「既存 subnet IDs」が必要です。
 まだ VPC/Subnet が無い場合は、このテンプレで ACK(EC2) に作成させてから、その subnet IDs を BYO の `Cluster.spec.topology.variables` に渡してください。
+
+NOTE:
+
+- `docs/eks/byo-network/manifests/bootstrap-network.yaml.tpl` は public subnet を作るだけで、NAT は作りません。
+- `docs/eks/fargate/` の Fargate bootstrap を行う場合は private subnet + NAT が必要なため、`docs/eks/byo-network/manifests/bootstrap-network-private-nat.yaml.tpl` を使ってください。
 
 ```bash
 # values は `docs/eks/values.md` を参照
@@ -41,6 +47,44 @@ kubectl apply -f "${rendered}"
 # subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
 export SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-a" -o jsonpath='{.status.subnetID}')"
 export SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-b" -o jsonpath='{.status.subnetID}')"
+
+echo "SUBNET_ID_1=${SUBNET_ID_1}"
+echo "SUBNET_ID_2=${SUBNET_ID_2}"
+```
+
+### (Fargate/Karpenter 向け) private subnet + NAT を作る
+
+```bash
+# values は `docs/eks/values.md` を参照
+export NETWORK_NAME=demo-byo-network
+
+export PUBLIC_SUBNET_A_CIDR=10.35.2.0/24
+export PUBLIC_SUBNET_A_AZ=ap-northeast-1a
+
+export PRIVATE_SUBNET_A_CIDR=10.35.0.0/24
+export PRIVATE_SUBNET_A_AZ=ap-northeast-1a
+export PRIVATE_SUBNET_B_CIDR=10.35.1.0/24
+export PRIVATE_SUBNET_B_AZ=ap-northeast-1c
+
+rendered=/tmp/eks-byo-bootstrap-network-private-nat.yaml
+sed \
+  -e "s|__NETWORK_NAME__|${NETWORK_NAME}|g" \
+  -e "s|__NAMESPACE__|${NAMESPACE}|g" \
+  -e "s|__AWS_REGION__|${AWS_REGION}|g" \
+  -e "s|__VPC_CIDR__|${VPC_CIDR}|g" \
+  -e "s|__PUBLIC_SUBNET_A_CIDR__|${PUBLIC_SUBNET_A_CIDR}|g" \
+  -e "s|__PUBLIC_SUBNET_A_AZ__|${PUBLIC_SUBNET_A_AZ}|g" \
+  -e "s|__PRIVATE_SUBNET_A_CIDR__|${PRIVATE_SUBNET_A_CIDR}|g" \
+  -e "s|__PRIVATE_SUBNET_A_AZ__|${PRIVATE_SUBNET_A_AZ}|g" \
+  -e "s|__PRIVATE_SUBNET_B_CIDR__|${PRIVATE_SUBNET_B_CIDR}|g" \
+  -e "s|__PRIVATE_SUBNET_B_AZ__|${PRIVATE_SUBNET_B_AZ}|g" \
+  docs/eks/byo-network/manifests/bootstrap-network-private-nat.yaml.tpl > "${rendered}"
+
+kubectl apply -f "${rendered}"
+
+# private subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
+export SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-a" -o jsonpath='{.status.subnetID}')"
+export SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-b" -o jsonpath='{.status.subnetID}')"
 
 echo "SUBNET_ID_1=${SUBNET_ID_1}"
 echo "SUBNET_ID_2=${SUBNET_ID_2}"

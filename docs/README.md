@@ -30,6 +30,30 @@ This keeps the controller provider-agnostic: **no “if EKS then … else if GKE
 4. Kany8s watches **only** the kro instance `status`.
 5. When the kro instance reports ready + endpoint, Kany8s writes `Kany8sControlPlane.spec.controlPlaneEndpoint` and sets `status.initialization.controlPlaneInitialized` (Cluster controller then mirrors the endpoint into `Cluster.spec.controlPlaneEndpoint` per the CAPI contract).
 
+## Extensibility (Provider Packs / Plugins)
+
+Kany8s keeps the core controllers **provider-agnostic** and pushes provider-specific behavior to the edges.
+
+- **Provider packs (docs + RGDs)**
+  - Provider-specific realization lives in kro `ResourceGraphDefinition` (RGD) YAMLs.
+  - Convention: `docs/<provider>/` contains runnable procedures, sample manifests, and design notes.
+
+- **Plugins (optional controllers)**
+  - Some providers need extra “glue” beyond what fits naturally into the RGD status contract (e.g. short-lived auth, kubeconfig management, probes).
+  - For those cases, Kany8s supports **opt-in plugins**: separate binaries/controllers that run alongside the core controller-manager.
+  - Plugins should be:
+    - **Explicitly enabled** (annotation/label-driven), never on by default.
+    - **Scoped and non-invasive** (own only the resources they manage; avoid overwriting user-owned objects).
+
+Repository conventions (current / intended):
+
+- Docs: `docs/<provider>/plugin/`
+- Code: `internal/plugin/<provider>/` and `internal/controller/plugin/<provider>/`
+- Manifests: `config/<provider>-plugin/`
+- Image/build: `Dockerfile.<provider>-plugin` + `make *-<provider>-plugin` targets
+
+Example: AWS EKS needs a short-lived IAM token in kubeconfig; see `docs/eks/plugin/README.md` (kubeconfig rotator plugin).
+
 A Cluster API `Cluster` will look like this:
 
 ```yaml
@@ -269,6 +293,8 @@ For code generation only:
 - `docs/reference/rgd-guidelines.md`: RGD authoring guidance (kro pitfalls)
 - `docs/guides/e2e-and-acceptance-test.md`: test layers and acceptance runners
 - `docs/runbooks/`: operational runbooks
+- `docs/eks/README.md`: AWS EKS smoke test (ACK + kro) and BYO network flow
+- `docs/eks/plugin/README.md`: provider-specific plugin notes (EKS kubeconfig rotator)
 - `docs/archive/`: historical notes/drafts
 
 ## Roadmap (Sketch)

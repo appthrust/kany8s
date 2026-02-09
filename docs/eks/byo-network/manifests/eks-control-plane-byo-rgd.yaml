@@ -21,6 +21,11 @@ spec:
       vpc:
         subnetIDs: '[]string | required=true description="BYO subnet IDs (must be in at least two AZs for EKS)"'
         securityGroupIDs: '[]string | default=[] description="Optional security group IDs"'
+        endpointPrivateAccess: boolean | default=true description="Enable private endpoint access"
+        endpointPublicAccess: boolean | default=true description="Enable public endpoint access"
+
+      access:
+        authenticationMode: string | default="API_AND_CONFIG_MAP" description="EKS authentication mode (required for AccessEntry-based node join)"
 
       # Force explicit selection. (Safer default is to restrict to your public IP.)
       publicAccessCIDRs: '[]string | required=true description="Public endpoint access CIDRs"'
@@ -67,11 +72,12 @@ spec:
             # Let the cluster creator access the cluster as admin.
             # (This is still IAM-based auth; you'll typically use awscli to obtain kubeconfig.)
             bootstrapClusterCreatorAdminPermissions: true
+            authenticationMode: ${schema.spec.access.authenticationMode}
           resourcesVPCConfig:
             subnetIDs: ${schema.spec.vpc.subnetIDs}
             securityGroupIDs: ${schema.spec.vpc.securityGroupIDs}
-            endpointPublicAccess: true
-            endpointPrivateAccess: false
+            endpointPublicAccess: ${schema.spec.vpc.endpointPublicAccess}
+            endpointPrivateAccess: ${schema.spec.vpc.endpointPrivateAccess}
             publicAccessCIDRs: ${schema.spec.publicAccessCIDRs}
 
       readyWhen:

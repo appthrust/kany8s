@@ -20,9 +20,10 @@ spec:
     spec:
       resourceGraphDefinitionRef:
         name: eks-control-plane-byo.kro.run
-      # Pre-create nested objects so JSON patches for /kroSpec/vpc/* are safe.
+      # Pre-create nested objects so JSON patches for /kroSpec/{vpc,access}/* are safe.
       kroSpec:
         vpc: {}
+        access: {}
 ---
 apiVersion: cluster.x-k8s.io/v1beta2
 kind: ClusterClass
@@ -81,6 +82,25 @@ spec:
           items:
             type: string
             minLength: 1
+    - name: eks-access-mode
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: string
+          minLength: 1
+          default: API_AND_CONFIG_MAP
+    - name: eks-endpoint-private-access
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: boolean
+          default: true
+    - name: eks-endpoint-public-access
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: boolean
+          default: true
   patches:
     - name: kany8sInfraKroSpec
       definitions:
@@ -126,3 +146,15 @@ spec:
               path: /spec/template/spec/kroSpec/publicAccessCIDRs
               valueFrom:
                 variable: eks-public-access-cidrs
+            - op: add
+              path: /spec/template/spec/kroSpec/access/authenticationMode
+              valueFrom:
+                variable: eks-access-mode
+            - op: add
+              path: /spec/template/spec/kroSpec/vpc/endpointPrivateAccess
+              valueFrom:
+                variable: eks-endpoint-private-access
+            - op: add
+              path: /spec/template/spec/kroSpec/vpc/endpointPublicAccess
+              valueFrom:
+                variable: eks-endpoint-public-access

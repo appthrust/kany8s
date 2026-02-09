@@ -67,6 +67,10 @@ kubectl -n "$NAMESPACE" apply -f docs/eks/byo-network/manifests/clusterclass-eks
 ### 3.2 Topology Cluster を apply
 
 ```bash
+: "${EKS_ACCESS_MODE:=API_AND_CONFIG_MAP}"
+: "${EKS_ENDPOINT_PRIVATE_ACCESS:=true}"
+: "${EKS_ENDPOINT_PUBLIC_ACCESS:=true}"
+
 rendered=/tmp/eks-cluster-byo.yaml
 sed \
   -e "s|__CLUSTER_NAME__|${CLUSTER_NAME}|g" \
@@ -78,6 +82,9 @@ sed \
   -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
   -e "s|__SECURITY_GROUP_IDS_JSON__|${SECURITY_GROUP_IDS_JSON}|g" \
   -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
+  -e "s|__EKS_ACCESS_MODE__|${EKS_ACCESS_MODE}|g" \
+  -e "s|__EKS_ENDPOINT_PRIVATE_ACCESS__|${EKS_ENDPOINT_PRIVATE_ACCESS}|g" \
+  -e "s|__EKS_ENDPOINT_PUBLIC_ACCESS__|${EKS_ENDPOINT_PUBLIC_ACCESS}|g" \
   docs/eks/byo-network/manifests/cluster.yaml.tpl > "${rendered}"
 
 kubectl apply -f "${rendered}"

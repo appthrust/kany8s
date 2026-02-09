@@ -10,6 +10,17 @@
 - kro instance の正規化 status (`ready/endpoint/reason/message`) が `Kany8sControlPlane` に反映される
 - (任意) CAPI `Cluster` を作って、owner `Cluster` 解決/label 注入などの facade 側ロジックが動く
 
+## Plugins (任意: RemoteConnectionProbe / Available を安定させる)
+
+EKS は kubeconfig 認証が IAM token 依存で短命なため、CAPI の `RemoteConnectionProbe` が不安定になり `Cluster Available=True` まで到達しないことがあります。
+
+その場合は EKS 専用の追加コンポーネント（plugin）を併用します:
+
+- `docs/eks/plugin/README.md`
+  - `eks-kubeconfig-rotator` plugin: `<cluster>-kubeconfig` を生成し、短命 token をローテーション
+  - plugin は opt-in（例: `eks.kany8s.io/kubeconfig-rotator=enabled`）
+  - ビルド/デプロイ手順: `docs/eks/plugin/test.md`
+
 ## BYO network (既存 VPC/Subnet を使う場合)
 
 既存の VPC/Subnet を使って EKS Control Plane のみを作成する場合は、smoke 用 (`*-smoke-*`) ではなく BYO 用 manifest を使ってください。
@@ -39,11 +50,14 @@ BYO Topology Cluster の render/apply 例:
 ```bash
 export SUBNET_ID_1=subnet-aaaa1111
 export SUBNET_ID_2=subnet-bbbb2222
-export SECURITY_GROUP_IDS_JSON='[]' # 例: '["sg-xxxx","sg-yyyy"]'
+  export SECURITY_GROUP_IDS_JSON='[]' # 例: '["sg-xxxx","sg-yyyy"]' (Karpenter bootstrapper を使うなら [] のままでも可)
 
 # CAPI Topology は semver が必須 (例: v1.35.0)
 # EKS 自体は major.minor 形式 (例: 1.35)
 export EKS_VERSION=1.35
+export EKS_ACCESS_MODE=API_AND_CONFIG_MAP
+export EKS_ENDPOINT_PRIVATE_ACCESS=true
+export EKS_ENDPOINT_PUBLIC_ACCESS=true
 
 rendered=/tmp/eks-cluster-byo.yaml
 sed \
@@ -56,6 +70,9 @@ sed \
   -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
   -e "s|__SECURITY_GROUP_IDS_JSON__|${SECURITY_GROUP_IDS_JSON}|g" \
   -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
+  -e "s|__EKS_ACCESS_MODE__|${EKS_ACCESS_MODE}|g" \
+  -e "s|__EKS_ENDPOINT_PRIVATE_ACCESS__|${EKS_ENDPOINT_PRIVATE_ACCESS}|g" \
+  -e "s|__EKS_ENDPOINT_PUBLIC_ACCESS__|${EKS_ENDPOINT_PUBLIC_ACCESS}|g" \
   docs/eks/byo-network/manifests/cluster.yaml.tpl > "${rendered}"
 
 kubectl apply -f "${rendered}"

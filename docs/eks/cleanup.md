@@ -66,6 +66,17 @@ kubectl -n "$NAMESPACE" wait --for=delete --timeout=20m vpcs.ec2.services.k8s.aw
 
 # ACK (IAM)
 kubectl -n "$NAMESPACE" wait --for=delete --timeout=10m roles.iam.services.k8s.aws/"${CLUSTER_NAME}-eks-control-plane" || true
+
+# (Fargate/Karpenter bootstrap を使った場合) 追加の ACK/Flux リソース
+# - これらは CAPI Cluster を ownerRef に持つため、Cluster 削除で GC されます。
+kubectl -n "$NAMESPACE" get openidconnectproviders.iam.services.k8s.aws -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get roles.iam.services.k8s.aws -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get policies.iam.services.k8s.aws -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get accessentries.eks.services.k8s.aws -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get fargateprofiles.eks.services.k8s.aws -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get ocirepositories.source.toolkit.fluxcd.io -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get helmreleases.helm.toolkit.fluxcd.io -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
+kubectl -n "$NAMESPACE" get clusterresourcesets.addons.cluster.x-k8s.io -l cluster.x-k8s.io/cluster-name="$CLUSTER_NAME" -o name || true
 ```
 
 AWS CLI でも確認:

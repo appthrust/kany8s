@@ -37,12 +37,18 @@ BYO network で追加で必要な値:
 
 ```bash
 # 既存 subnet IDs (最低2つ)
+# Fargate bootstrap を使う場合、ここには private subnet IDs を指定してください。
 export SUBNET_ID_1=subnet-aaaa1111
 export SUBNET_ID_2=subnet-bbbb2222
 
-# 任意 SG IDs
-# - 空の場合は [] を使う
-# - 例: ["sg-xxxx","sg-yyyy"]
+# security group IDs
+# - BYO control plane のみ: 空の場合は [] を使う
+# - Fargate + Karpenter bootstrap:
+#   - 既存 SG を使うなら node 用 SG IDs を 1つ以上指定してください (例: ["sg-xxxx","sg-yyyy"])
+#   - 手作業を避けたい場合は [] のままでも OK です
+#     - `eks-karpenter-bootstrapper` が node 用 SG を ACK で自動作成し、`vpc-security-group-ids` に注入します
+#     - この動作には management cluster に ACK EC2(SecurityGroup) が導入済みであることと、
+#       bootstrapper の AWS credentials で `DescribeSubnets/DescribeVpcs` が可能であることが必要です
 export SECURITY_GROUP_IDS_JSON='[]'
 
 # BYO (Topology):
@@ -50,6 +56,13 @@ export SECURITY_GROUP_IDS_JSON='[]'
 # - EKS 自体は major.minor (例: 1.35)
 export KUBERNETES_VERSION=v1.35.0
 export EKS_VERSION=1.35
+
+# AccessEntry を使う前提の推奨値
+export EKS_ACCESS_MODE=API_AND_CONFIG_MAP
+
+# worker node の join 失敗を避けるため、private/public の併用を推奨
+export EKS_ENDPOINT_PRIVATE_ACCESS=true
+export EKS_ENDPOINT_PUBLIC_ACCESS=true
 ```
 
 補足:
@@ -135,6 +148,9 @@ BYO network では `eks.publicAccessCIDRs` が ClusterClass 変数として requ
 - `vpc-subnet-ids` <- `SUBNET_ID_1`, `SUBNET_ID_2`
 - `vpc-security-group-ids` <- `SECURITY_GROUP_IDS_JSON`
 - `eks-public-access-cidrs` <- `PUBLIC_ACCESS_CIDR`
+- `eks-access-mode` <- `EKS_ACCESS_MODE` (default: `API_AND_CONFIG_MAP`)
+- `eks-endpoint-private-access` <- `EKS_ENDPOINT_PRIVATE_ACCESS` (default: `true`)
+- `eks-endpoint-public-access` <- `EKS_ENDPOINT_PUBLIC_ACCESS` (default: `true`)
 
 namespace 注意:
 
@@ -149,6 +165,9 @@ __SUBNET_ID_1__              -> ${SUBNET_ID_1}
 __SUBNET_ID_2__              -> ${SUBNET_ID_2}
 __SECURITY_GROUP_IDS_JSON__  -> ${SECURITY_GROUP_IDS_JSON}
 __PUBLIC_ACCESS_CIDR__       -> ${PUBLIC_ACCESS_CIDR}
+__EKS_ACCESS_MODE__          -> ${EKS_ACCESS_MODE}
+__EKS_ENDPOINT_PRIVATE_ACCESS__ -> ${EKS_ENDPOINT_PRIVATE_ACCESS}
+__EKS_ENDPOINT_PUBLIC_ACCESS__  -> ${EKS_ENDPOINT_PUBLIC_ACCESS}
 ```
 
 ## 最終的に貼る値 (テンプレ)
@@ -170,5 +189,10 @@ export SUBNET_B_AZ=
 
 export SUBNET_ID_1=
 export SUBNET_ID_2=
+
+# Fargate + Karpenter bootstrap を使う場合は [] ではなく node 用 SG IDs を入れてください。
 export SECURITY_GROUP_IDS_JSON='[]'
+export EKS_ACCESS_MODE=API_AND_CONFIG_MAP
+export EKS_ENDPOINT_PRIVATE_ACCESS=true
+export EKS_ENDPOINT_PUBLIC_ACCESS=true
 ```
