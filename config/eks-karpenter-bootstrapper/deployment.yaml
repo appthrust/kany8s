@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eks-karpenter-bootstrapper
+  namespace: ack-system
+  labels:
+    app.kubernetes.io/name: eks-karpenter-bootstrapper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: eks-karpenter-bootstrapper
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: eks-karpenter-bootstrapper
+    spec:
+      serviceAccountName: eks-karpenter-bootstrapper
+      containers:
+        - name: manager
+          image: example.com/eks-karpenter-bootstrapper:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /eks-karpenter-bootstrapper
+          args:
+            - --leader-elect
+            - --metrics-bind-address=0
+            - --metrics-secure=false
+            - --health-probe-bind-address=:8081
+            - --failure-backoff=30s
+            - --steady-state-requeue=10m
+          env:
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /aws/credentials
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: aws-creds
+              mountPath: /aws
+              readOnly: true
+      volumes:
+        - name: aws-creds
+          secret:
+            secretName: aws-creds
+            optional: true

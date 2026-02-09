@@ -1,6 +1,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 EKS_PLUGIN_IMG ?= eks-kubeconfig-rotator:latest
+EKS_KARPENTER_BOOTSTRAPPER_IMG ?= eks-karpenter-bootstrapper:latest
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -14,6 +15,11 @@ endif
 # scaffolded by default. However, you might want to replace it to use other
 # tools. (i.e. podman)
 CONTAINER_TOOL ?= docker
+
+# controller-gen scans all packages under the given paths.
+# Keep refs/ out of generation to avoid pulling RBAC markers from reference code.
+CONTROLLER_GEN_MANIFESTS_PATHS ?= paths="./api/..." paths="./internal/..."
+CONTROLLER_GEN_GENERATE_PATHS ?= paths="./api/..."
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -44,11 +50,11 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook $(CONTROLLER_GEN_MANIFESTS_PATHS) output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	"$(CONTROLLER_GEN)" object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	"$(CONTROLLER_GEN)" object:headerFile="hack/boilerplate.go.txt" $(CONTROLLER_GEN_GENERATE_PATHS)
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -172,6 +178,10 @@ build: manifests generate fmt vet ## Build manager binary.
 build-eks-plugin: manifests generate fmt vet ## Build EKS kubeconfig rotator binary.
 	go build -o bin/eks-kubeconfig-rotator cmd/eks-kubeconfig-rotator/main.go
 
+.PHONY: build-eks-karpenter-bootstrapper
+build-eks-karpenter-bootstrapper: manifests generate fmt vet ## Build EKS Karpenter bootstrapper binary.
+	go build -o bin/eks-karpenter-bootstrapper cmd/eks-karpenter-bootstrapper/main.go
+
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
@@ -179,6 +189,10 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: run-eks-plugin
 run-eks-plugin: manifests generate fmt vet ## Run EKS kubeconfig rotator from your host.
 	go run ./cmd/eks-kubeconfig-rotator/main.go
+
+.PHONY: run-eks-karpenter-bootstrapper
+run-eks-karpenter-bootstrapper: manifests generate fmt vet ## Run EKS Karpenter bootstrapper from your host.
+	go run ./cmd/eks-karpenter-bootstrapper/main.go
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -191,6 +205,10 @@ docker-build: ## Build docker image with the manager.
 docker-build-eks-plugin: ## Build docker image with EKS kubeconfig rotator.
 	$(CONTAINER_TOOL) build -f Dockerfile.eks-plugin -t ${EKS_PLUGIN_IMG} .
 
+.PHONY: docker-build-eks-karpenter-bootstrapper
+docker-build-eks-karpenter-bootstrapper: ## Build docker image with EKS Karpenter bootstrapper.
+	$(CONTAINER_TOOL) build -f Dockerfile.eks-karpenter-bootstrapper -t ${EKS_KARPENTER_BOOTSTRAPPER_IMG} .
+
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
@@ -198,6 +216,10 @@ docker-push: ## Push docker image with the manager.
 .PHONY: docker-push-eks-plugin
 docker-push-eks-plugin: ## Push docker image with EKS kubeconfig rotator.
 	$(CONTAINER_TOOL) push ${EKS_PLUGIN_IMG}
+
+.PHONY: docker-push-eks-karpenter-bootstrapper
+docker-push-eks-karpenter-bootstrapper: ## Push docker image with EKS Karpenter bootstrapper.
+	$(CONTAINER_TOOL) push ${EKS_KARPENTER_BOOTSTRAPPER_IMG}
 
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
@@ -252,9 +274,18 @@ deploy-eks-plugin: kustomize ## Deploy EKS kubeconfig rotator to the K8s cluster
 	cd config/eks-plugin && "$(KUSTOMIZE)" edit set image example.com/eks-kubeconfig-rotator=${EKS_PLUGIN_IMG}
 	"$(KUSTOMIZE)" build config/eks-plugin | "$(KUBECTL)" apply -f -
 
+.PHONY: deploy-eks-karpenter-bootstrapper
+deploy-eks-karpenter-bootstrapper: kustomize ## Deploy EKS Karpenter bootstrapper to the K8s cluster specified in ~/.kube/config.
+	cd config/eks-karpenter-bootstrapper && "$(KUSTOMIZE)" edit set image example.com/eks-karpenter-bootstrapper=${EKS_KARPENTER_BOOTSTRAPPER_IMG}
+	"$(KUSTOMIZE)" build config/eks-karpenter-bootstrapper | "$(KUBECTL)" apply -f -
+
 .PHONY: undeploy-eks-plugin
 undeploy-eks-plugin: kustomize ## Undeploy EKS kubeconfig rotator from the K8s cluster specified in ~/.kube/config.
 	"$(KUSTOMIZE)" build config/eks-plugin | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: undeploy-eks-karpenter-bootstrapper
+undeploy-eks-karpenter-bootstrapper: kustomize ## Undeploy EKS Karpenter bootstrapper from the K8s cluster specified in ~/.kube/config.
+	"$(KUSTOMIZE)" build config/eks-karpenter-bootstrapper | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Dependencies
 
