@@ -20,7 +20,18 @@ import (
 func TestKroInfraAcceptanceClusterTemplateRendersAndDryRunsAgainstAPIServer(t *testing.T) {
 	root := findRepoRoot(t)
 
+	assetsDir := os.Getenv("KUBEBUILDER_ASSETS")
+	if assetsDir == "" {
+		assetsDir = filepath.Join(string(os.PathSeparator), "usr", "local", "kubebuilder", "bin")
+	}
+	for _, bin := range []string{"etcd", "kube-apiserver"} {
+		if _, err := os.Stat(filepath.Join(assetsDir, bin)); err != nil {
+			t.Skipf("envtest assets not found (%s): %v", filepath.ToSlash(filepath.Join(assetsDir, bin)), err)
+		}
+	}
+
 	testEnv := &envtest.Environment{
+		BinaryAssetsDirectory: assetsDir,
 		CRDDirectoryPaths:     []string{filepath.Join(root, "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 	}
