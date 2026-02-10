@@ -102,7 +102,7 @@ kubectl wait --for=condition=ResourceGraphAccepted --timeout=120s rgd/eks-contro
 
 - `examples/eks/manifests/cluster.yaml.tpl` を render して apply
   - このテンプレは `eks.kany8s.io/kubeconfig-rotator=enabled` / `eks.kany8s.io/karpenter=enabled` を最初から付けます
-- `vpc-security-group-ids=[]` を既定にしているため、bootstrapper が node SG を自動作成します
+- `vpc-security-group-ids=[]` を既定にしているため、bootstrapper が node SG を自動作成し、`vpc-node-security-group-ids` に注入します
 
 ```bash
 export CLUSTER_NAME="demo-eks-fargate-$(date +%Y%m%d%H%M%S)"
@@ -144,7 +144,7 @@ kubectl apply -k config/overlays/eks-karpenter-bootstrapper/irsa
 
 NOTE:
 
-- plugin image は既定で `example.com/*:latest` を参照します。
+- plugin image は `example.com/*:<tag>` を参照します（適用される tag は `kustomization.yaml` の `images:` に依存します）。
   - kind に入れる場合は、同じ tag で build + `kind load docker-image` するか、kustomize で image を差し替えてください。
   - 既存の Make targets でも可: `make docker-build-eks-plugin` / `make deploy-eks-plugin`、`make docker-build-eks-karpenter-bootstrapper` / `make deploy-eks-karpenter-bootstrapper`
 
