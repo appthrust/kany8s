@@ -134,7 +134,12 @@ kubectl apply -f "${rendered}"
 4) plugins をデプロイ
 
 ```bash
+# kind (aws-creds mount) の既定オーバーレイ
 kubectl apply -k examples/eks/management/
+
+# 実クラスタ (IRSA) で deploy する場合
+kubectl apply -k config/overlays/eks-plugin/irsa
+kubectl apply -k config/overlays/eks-karpenter-bootstrapper/irsa
 ```
 
 NOTE:
@@ -145,13 +150,20 @@ NOTE:
 
 5) 需要を作って node join を確認
 
-- workload kubeconfig を取り出して `examples/eks/manifests/karpenter-smoke.yaml` を apply
+- probe/Controller 用は `<cluster>-kubeconfig`（token 埋め込み）を利用
+- 人間の `kubectl` は `<cluster>-kubeconfig-exec`（`aws eks get-token`）を推奨
+- ここでは smoke 用に probe kubeconfig を使って `examples/eks/manifests/karpenter-smoke.yaml` を apply
 
 ```bash
-# workload kubeconfig を取り出す
+# probe/Controller 向け kubeconfig（短命 token 埋め込み）
 kube=/tmp/${CLUSTER_NAME}.kubeconfig
 kubectl -n "$NAMESPACE" get secret "${CLUSTER_NAME}-kubeconfig" -o jsonpath='{.data.value}' | base64 -d > "$kube"
 chmod 600 "$kube"
+
+# 人間向け kubeconfig（aws cli の exec 方式）
+human_kube=/tmp/${CLUSTER_NAME}.kubeconfig-exec
+kubectl -n "$NAMESPACE" get secret "${CLUSTER_NAME}-kubeconfig-exec" -o jsonpath='{.data.value}' | base64 -d > "$human_kube"
+chmod 600 "$human_kube"
 
 kubectl --kubeconfig "$kube" get pods -A -o wide
 kubectl --kubeconfig "$kube" get nodes -o wide

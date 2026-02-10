@@ -50,7 +50,9 @@ BYO Topology Cluster の render/apply 例:
 ```bash
 export SUBNET_ID_1=subnet-aaaa1111
 export SUBNET_ID_2=subnet-bbbb2222
-  export SECURITY_GROUP_IDS_JSON='[]' # 例: '["sg-xxxx","sg-yyyy"]' (Karpenter bootstrapper を使うなら [] のままでも可)
+export SECURITY_GROUP_IDS_JSON='[]' # control plane 向け
+export NODE_SECURITY_GROUP_IDS_JSON='[]' # node 向け (optional; 未指定時は SECURITY_GROUP_IDS_JSON を使用)
+export KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON='[]' # optional
 
 # CAPI Topology は semver が必須 (例: v1.35.0)
 # EKS 自体は major.minor 形式 (例: 1.35)
@@ -76,6 +78,12 @@ sed \
   docs/eks/byo-network/manifests/cluster.yaml.tpl > "${rendered}"
 
 kubectl apply -f "${rendered}"
+
+# (optional) node専用 SG IDs / node role 追加 policy を使う場合
+kubectl -n "$NAMESPACE" patch cluster "$CLUSTER_NAME" --type='json' -p='[
+  {"op":"add","path":"/spec/topology/variables/-","value":{"name":"vpc-node-security-group-ids","value":[]}},
+  {"op":"add","path":"/spec/topology/variables/-","value":{"name":"karpenter-node-role-additional-policy-arns","value":[]}}
+]'
 ```
 
 BYO 進捗確認例:

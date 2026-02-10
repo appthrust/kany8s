@@ -4,7 +4,7 @@ namespace: ack-system
 images:
 - name: example.com/eks-kubeconfig-rotator
   newName: example.com/eks-kubeconfig-rotator
-  newTag: latest
+  newTag: dev-20260210104558
 resources:
 - namespace.yaml
 - serviceaccount.yaml

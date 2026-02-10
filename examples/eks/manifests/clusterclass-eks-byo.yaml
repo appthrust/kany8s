@@ -31,11 +31,15 @@ metadata:
   name: kany8s-eks-byo
 spec:
   infrastructure:
+    naming:
+      template: "{{ .cluster.name }}"
     templateRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
       kind: Kany8sClusterTemplate
       name: kany8s-aws-byo-network
   controlPlane:
+    naming:
+      template: "{{ .cluster.name }}"
     templateRef:
       apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
       kind: Kany8sControlPlaneTemplate
@@ -65,6 +69,24 @@ spec:
             minLength: 1
     - name: vpc-security-group-ids
       required: true
+      schema:
+        openAPIV3Schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    - name: vpc-node-security-group-ids
+      required: false
+      schema:
+        openAPIV3Schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    - name: karpenter-node-role-additional-policy-arns
+      required: false
       schema:
         openAPIV3Schema:
           type: array

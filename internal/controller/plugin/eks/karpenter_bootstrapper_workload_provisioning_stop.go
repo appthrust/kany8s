@@ -135,6 +135,7 @@ func (r *EKSKarpenterBootstrapperReconciler) getWorkloadRESTConfig(ctx context.C
 	}
 	token, _, err := r.TokenGenerator.Generate(ctx, resolvedRegion, resolvedEKSName)
 	if err != nil {
+		recordTokenGenerationFailure(metricControllerBootstrapper)
 		return nil, false, fmt.Errorf("generate EKS token: %w", err)
 	}
 	generatedKC, err := coreeks.BuildTokenKubeconfig(capiClusterName, endpoint, caData, token)

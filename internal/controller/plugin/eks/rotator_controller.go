@@ -12,9 +12,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,14 +34,19 @@ type EKSKubeconfigRotatorReconciler struct {
 	TokenGenerator coreeks.TokenGenerator
 	Policy         coreeks.RequeuePolicy
 	Now            func() time.Time
+	RESTMapper     meta.RESTMapper
 }
 
 type recordEventEmitter interface {
 	Event(object runtime.Object, eventtype string, reason string, message string)
 }
 
-func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
+func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
+	defer func() {
+		if retErr != nil {
+			recordReconcileError(metricControllerRotator)
+		}
+	}()
 
 	capiCluster := &v1beta2.Cluster{}
 	if err := r.Get(ctx, req.NamespacedName, capiCluster); err != nil {
@@ -54,12 +61,29 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	capiClusterName, eksClusterName, ackClusterName := resolveClusterNames(capiCluster)
+	log := logf.FromContext(ctx).WithValues(
+		"cluster", req.String(),
+		"eksClusterName", eksClusterName,
+		"ackClusterName", ackClusterName,
+	)
+	ctx = logf.IntoContext(ctx, log)
+
+	if !r.isAPIAvailable(ackClusterGVK) {
+		msg := "ACK EKS API (eks.services.k8s.aws/v1alpha1 Cluster) is not available; cause: required CRD/controller is missing. action: install ACK EKS controller and Cluster CRD"
+		r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonPrerequisiteAPI, msg)
+		return ctrl.Result{RequeueAfter: r.policy().FailureBackoff}, nil
+	}
 
 	ackCluster, err := r.getACKCluster(ctx, capiCluster.Namespace, ackClusterName)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			msg := fmt.Sprintf("waiting for ACK EKS Cluster %s/%s", capiCluster.Namespace, ackClusterName)
 			r.emitEvent(capiCluster, corev1.EventTypeNormal, reasonACKClusterNotFound, msg)
+			return ctrl.Result{RequeueAfter: r.policy().FailureBackoff}, nil
+		}
+		if isNoMatchError(err) {
+			msg := "ACK EKS API (eks.services.k8s.aws/v1alpha1 Cluster) is not available; cause: required CRD/controller is missing. action: install ACK EKS controller and Cluster CRD"
+			r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonPrerequisiteAPI, msg)
 			return ctrl.Result{RequeueAfter: r.policy().FailureBackoff}, nil
 		}
 		return ctrl.Result{}, err
@@ -82,6 +106,8 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 		r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonRegionNotResolved, msg)
 		return ctrl.Result{RequeueAfter: r.policy().FailureBackoff}, nil
 	}
+	log = log.WithValues("region", region)
+	ctx = logf.IntoContext(ctx, log)
 	if r.TokenGenerator == nil {
 		return ctrl.Result{}, fmt.Errorf("token generator is not configured")
 	}
@@ -90,6 +116,7 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	if err != nil {
 		msg := fmt.Sprintf("failed to generate EKS token: %v", err)
 		r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonTokenGenerateError, msg)
+		recordTokenGenerationFailure(metricControllerRotator)
 		return ctrl.Result{RequeueAfter: r.policy().FailureBackoff}, nil
 	}
 
@@ -125,7 +152,12 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	if !probeResult.Managed {
 		msg := fmt.Sprintf("secret %s/%s exists and is not managed by %s", capiCluster.Namespace, probeName, coreeks.ManagedByAnnotationValue)
 		r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonSecretOwnership, msg)
+		recordOwnershipConflict(metricControllerRotator, "Secret")
 		return ctrl.Result{RequeueAfter: r.policy().MaxRefresh}, nil
+	}
+	if probeResult.TakenOver {
+		msg := fmt.Sprintf("took over unmanaged secret %s/%s because %q is enabled", capiCluster.Namespace, probeName, coreeks.AllowUnmanagedTakeoverAnnotationKey)
+		r.emitEvent(capiCluster, corev1.EventTypeNormal, reasonSecretTakeover, msg)
 	}
 
 	execName := probeName + "-exec"
@@ -146,6 +178,11 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	if !execResult.Managed {
 		msg := fmt.Sprintf("secret %s/%s exists and is not managed by %s", capiCluster.Namespace, execName, coreeks.ManagedByAnnotationValue)
 		r.emitEvent(capiCluster, corev1.EventTypeWarning, reasonSecretOwnership, msg)
+		recordOwnershipConflict(metricControllerRotator, "Secret")
+	}
+	if execResult.TakenOver {
+		msg := fmt.Sprintf("took over unmanaged secret %s/%s because %q is enabled", capiCluster.Namespace, execName, coreeks.AllowUnmanagedTakeoverAnnotationKey)
+		r.emitEvent(capiCluster, corev1.EventTypeNormal, reasonSecretTakeover, msg)
 	}
 
 	if probeResult.Changed || execResult.Changed {
@@ -153,13 +190,15 @@ func (r *EKSKubeconfigRotatorReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	requeueAfter := coreeks.ComputeNextRequeue(r.now(), expiration, r.policy())
-	log.V(1).Info("reconciled kubeconfig secrets", "cluster", req.String(), "requeueAfter", requeueAfter)
+	log.V(1).Info("reconciled kubeconfig secrets", "phase", "steady-state", "requeueAfter", requeueAfter)
+	recordSuccessfulSync(metricControllerRotator, r.now())
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
 type upsertSecretResult struct {
-	Managed bool
-	Changed bool
+	Managed   bool
+	Changed   bool
+	TakenOver bool
 }
 
 func (r *EKSKubeconfigRotatorReconciler) upsertManagedSecret(
@@ -191,7 +230,22 @@ func (r *EKSKubeconfigRotatorReconciler) upsertManagedSecret(
 	}
 
 	if !isManagedByRotator(existing.GetAnnotations()) {
-		result.Managed = false
+		if !coreeks.IsUnmanagedTakeoverEnabled(ownerCluster.GetAnnotations()) {
+			result.Managed = false
+			return result, nil
+		}
+		before := existing.DeepCopy()
+		mutateManagedSecret(existing, ownerCluster, kubeconfigBytes, extraAnnotations)
+		if err := controllerutil.SetOwnerReference(ownerCluster, existing, r.Scheme); err != nil {
+			return result, err
+		}
+		if !equality.Semantic.DeepEqual(before, existing) {
+			if err := r.Update(ctx, existing); err != nil {
+				return result, err
+			}
+			result.Changed = true
+		}
+		result.TakenOver = true
 		return result, nil
 	}
 
@@ -342,11 +396,23 @@ func (r *EKSKubeconfigRotatorReconciler) getACKCluster(ctx context.Context, name
 func (r *EKSKubeconfigRotatorReconciler) mapACKClusterToCAPIClusters(ctx context.Context, obj client.Object) []reconcile.Request {
 	namespace := obj.GetNamespace()
 	ackName := obj.GetName()
+	if strings.TrimSpace(ackName) == "" {
+		return nil
+	}
 
 	clusters := &v1beta2.ClusterList{}
-	if err := r.List(ctx, clusters, client.InNamespace(namespace)); err != nil {
-		logf.FromContext(ctx).Error(err, "list CAPI clusters for ACK mapping", "namespace", namespace, "ackCluster", ackName)
-		return nil
+	listOpts := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingFields{ackClusterNameIndexKey: ackName},
+	}
+	if err := r.List(ctx, clusters, listOpts...); err != nil {
+		log := logf.FromContext(ctx).WithValues("namespace", namespace, "ackClusterName", ackName)
+		log.V(1).Info("ACK cluster index lookup failed; falling back to namespace list", "error", err.Error())
+		clusters = &v1beta2.ClusterList{}
+		if err := r.List(ctx, clusters, client.InNamespace(namespace)); err != nil {
+			log.Error(err, "list CAPI clusters for ACK mapping")
+			return nil
+		}
 	}
 
 	requests := []reconcile.Request{}
@@ -384,19 +450,36 @@ func (r *EKSKubeconfigRotatorReconciler) SetupWithManager(mgr ctrl.Manager) erro
 	if r.Policy == (coreeks.RequeuePolicy{}) {
 		r.Policy = coreeks.DefaultRequeuePolicy()
 	}
+	if r.RESTMapper == nil {
+		r.RESTMapper = mgr.GetRESTMapper()
+	}
+	if err := ensureACKClusterNameIndex(context.Background(), mgr); err != nil {
+		return err
+	}
 
 	ackCluster := &unstructured.Unstructured{}
 	ackCluster.SetGroupVersionKind(ackClusterGVK)
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1beta2.Cluster{}).
-		Watches(ackCluster, handler.EnqueueRequestsFromMapFunc(r.mapACKClusterToCAPIClusters)).
-		Named("eks-kubeconfig-rotator").
-		Complete(r)
+	builder := ctrl.NewControllerManagedBy(mgr).
+		For(&v1beta2.Cluster{})
+	if r.isAPIAvailable(ackClusterGVK) {
+		builder = builder.Watches(ackCluster, handler.EnqueueRequestsFromMapFunc(r.mapACKClusterToCAPIClusters))
+	} else {
+		logf.Log.WithName("setup").Info(
+			"skip ACK watch; API is not available",
+			"controller", "eks-kubeconfig-rotator",
+			"gvk", ackClusterGVK.String(),
+		)
+	}
+
+	return builder.Named("eks-kubeconfig-rotator").Complete(r)
 }
 
 func (r *EKSKubeconfigRotatorReconciler) emitEvent(cluster *v1beta2.Cluster, eventType, reason, message string) {
 	if r == nil || r.Recorder == nil || cluster == nil {
+		return
+	}
+	if !controllerEventState.shouldEmit("eks-kubeconfig-rotator", cluster.Namespace, cluster.Name, eventType, reason, message) {
 		return
 	}
 	r.Recorder.Event(cluster, eventType, reason, message)
@@ -411,4 +494,12 @@ func (r *EKSKubeconfigRotatorReconciler) now() time.Time {
 		return time.Now()
 	}
 	return r.Now().UTC()
+}
+
+func (r *EKSKubeconfigRotatorReconciler) isAPIAvailable(gvk schema.GroupVersionKind) bool {
+	if r == nil || r.RESTMapper == nil {
+		return true
+	}
+	_, err := r.RESTMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	return err == nil
 }

@@ -183,7 +183,9 @@ MVP では probe 用 Secret とは別に、以下を生成します。
 
 - 本プラグインが作成した Secret には `eks.kany8s.io/managed-by=eks-kubeconfig-rotator` を付与する
 - `<cluster>-kubeconfig` が既に存在し、かつ上記 annotation が無い場合は **上書きしない**
-  - 利用者が take over したい場合は Secret を削除する（次 reconcile で作られる）
+  - 利用者が take over したい場合:
+    - 方式A: Secret を削除する（次 reconcile で作られる）
+    - 方式B: `Cluster` へ `eks.kany8s.io/allow-unmanaged-takeover=enabled` を付与し、明示的に in-place takeover を許可する
 - OwnerReference を `Cluster` に付与し、`Cluster` 削除で Secret も GC されるようにする
 
 ## ローテーション設計

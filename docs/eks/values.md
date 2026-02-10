@@ -42,14 +42,20 @@ export SUBNET_ID_1=subnet-aaaa1111
 export SUBNET_ID_2=subnet-bbbb2222
 
 # security group IDs
-# - BYO control plane のみ: 空の場合は [] を使う
-# - Fargate + Karpenter bootstrap:
-#   - 既存 SG を使うなら node 用 SG IDs を 1つ以上指定してください (例: ["sg-xxxx","sg-yyyy"])
-#   - 手作業を避けたい場合は [] のままでも OK です
-#     - `eks-karpenter-bootstrapper` が node 用 SG を ACK で自動作成し、`vpc-security-group-ids` に注入します
+# - `vpc-security-group-ids` (control plane向け) は従来どおり required です。
+# - Fargate + Karpenter bootstrap では、node向けに `vpc-node-security-group-ids` を優先します。
+#   - 未指定時は `vpc-security-group-ids` を後方互換として利用します。
+#   - 手作業を避けたい場合は `[]` のままでも OK です。
+#     - `eks-karpenter-bootstrapper` が node 用 SG を ACK で自動作成し、`vpc-node-security-group-ids` に注入します。
+#     - control plane 側が空なら `vpc-security-group-ids` にも同じ SG を補完します。
 #     - この動作には management cluster に ACK EC2(SecurityGroup) が導入済みであることと、
-#       bootstrapper の AWS credentials で `DescribeSubnets/DescribeVpcs` が可能であることが必要です
+#       bootstrapper の AWS credentials で `DescribeSubnets/DescribeRouteTables/DescribeVpcs` が可能であることが必要です。
 export SECURITY_GROUP_IDS_JSON='[]'
+export NODE_SECURITY_GROUP_IDS_JSON='[]'
+
+# (任意) Karpenter node role へ追加する managed policy ARNs
+# 例: ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+export KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON='[]'
 
 # BYO (Topology):
 # - Cluster.spec.topology.version は semver が必須 (例: v1.35.0)
@@ -147,6 +153,8 @@ BYO network では `eks.publicAccessCIDRs` が ClusterClass 変数として requ
 - `eks-version` <- `EKS_VERSION`
 - `vpc-subnet-ids` <- `SUBNET_ID_1`, `SUBNET_ID_2`
 - `vpc-security-group-ids` <- `SECURITY_GROUP_IDS_JSON`
+- `vpc-node-security-group-ids` <- `NODE_SECURITY_GROUP_IDS_JSON` (optional; node向け)
+- `karpenter-node-role-additional-policy-arns` <- `KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON` (optional)
 - `eks-public-access-cidrs` <- `PUBLIC_ACCESS_CIDR`
 - `eks-access-mode` <- `EKS_ACCESS_MODE` (default: `API_AND_CONFIG_MAP`)
 - `eks-endpoint-private-access` <- `EKS_ENDPOINT_PRIVATE_ACCESS` (default: `true`)
@@ -192,6 +200,8 @@ export SUBNET_ID_2=
 
 # Fargate + Karpenter bootstrap を使う場合は [] ではなく node 用 SG IDs を入れてください。
 export SECURITY_GROUP_IDS_JSON='[]'
+export NODE_SECURITY_GROUP_IDS_JSON='[]'
+export KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON='[]'
 export EKS_ACCESS_MODE=API_AND_CONFIG_MAP
 export EKS_ENDPOINT_PRIVATE_ACCESS=true
 export EKS_ENDPOINT_PUBLIC_ACCESS=true

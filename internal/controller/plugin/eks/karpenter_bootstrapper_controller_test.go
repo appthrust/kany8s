@@ -3,11 +3,16 @@ package eks
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"errors"
 	"io"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	coreeks "github.com/reoring/kany8s/internal/plugin/eks"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -353,7 +358,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster).Build()
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
 
-	if ok, err := r.ensureOIDCProvider(context.Background(), cluster, "demo-oidc-provider", "ap-northeast-1", "https://oidc.eks.ap-northeast-1.amazonaws.com/id/EXAMPLE"); err != nil {
+	if ok, err := r.ensureOIDCProvider(context.Background(), cluster, "demo-oidc-provider", "ap-northeast-1", "https://oidc.eks.ap-northeast-1.amazonaws.com/id/EXAMPLE", []string{"thumbprint1"}); err != nil {
 		t.Fatalf("ensureOIDCProvider() error = %v", err)
 	} else if !ok {
 		t.Fatalf("ensureOIDCProvider() managed = false, want true")
@@ -369,6 +374,11 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	} else if len(got) != 1 || got[0] != "sts.amazonaws.com" {
 		t.Fatalf("oidc spec.clientIDs = %#v, want [\"sts.amazonaws.com\"]", got)
 	}
+	if got, _, err := unstructured.NestedStringSlice(oidc.Object, "spec", "thumbprints"); err != nil {
+		t.Fatalf("oidc spec.thumbprints: %v", err)
+	} else if len(got) != 1 || got[0] != "thumbprint1" {
+		t.Fatalf("oidc spec.thumbprints = %#v, want [\"thumbprint1\"]", got)
+	}
 
 	if ok, err := r.ensureIAMPolicy(context.Background(), cluster, "demo-karpenter-controller-policy", "ap-northeast-1", `{"Version":"2012-10-17","Statement":[]}`, "eks-demo-karpenter-controller"); err != nil {
 		t.Fatalf("ensureIAMPolicy() error = %v", err)
@@ -380,6 +390,13 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("policy spec.name: %v", err)
 	} else if want := "eks-demo-karpenter-controller"; got != want {
 		t.Fatalf("policy spec.name = %q, want %q", got, want)
+	}
+	if tags, found, err := unstructured.NestedSlice(policy.Object, "spec", "tags"); err != nil {
+		t.Fatalf("policy spec.tags: %v", err)
+	} else if !found || len(tags) == 0 {
+		t.Fatalf("policy spec.tags missing")
+	} else if got, want := findTagValue(t, tags, "kany8s.io/managed-by"), karpenterManagedByValue; got != want {
+		t.Fatalf("policy spec.tags managed-by = %q, want %q", got, want)
 	}
 
 	if ok, err := r.ensureIAMRoleForIRSA(context.Background(), cluster, "demo-karpenter-controller", "ap-northeast-1", "eks-demo-karpenter-controller", "assume-irsa", []string{"demo-karpenter-controller-policy"}); err != nil {
@@ -480,6 +497,13 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	} else if want := "demo-ack"; got != want {
 		t.Fatalf("accessEntry spec.clusterRef.from.name = %q, want %q", got, want)
 	}
+	if tags, found, err := unstructured.NestedMap(accessEntry.Object, "spec", "tags"); err != nil {
+		t.Fatalf("accessEntry spec.tags: %v", err)
+	} else if !found {
+		t.Fatalf("accessEntry spec.tags missing")
+	} else if got, want := tags["kany8s.io/managed-by"], karpenterManagedByValue; got != want {
+		t.Fatalf("accessEntry spec.tags managed-by = %v, want %q", got, want)
+	}
 
 	selectors := []map[string]any{{"namespace": "karpenter"}}
 	if ok, err := r.ensureFargateProfile(context.Background(), cluster, "demo-fargate-karpenter", "ap-northeast-1", "demo-ack", "karpenter", "demo-fargate-pod-execution", []string{"subnet-a", "subnet-b"}, selectors); err != nil {
@@ -503,6 +527,108 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	} else if want := "demo-fargate-pod-execution"; got != want {
 		t.Fatalf("fargateProfile spec.podExecutionRoleRef.from.name = %q, want %q", got, want)
 	}
+	if tags, found, err := unstructured.NestedMap(fargateProfile.Object, "spec", "tags"); err != nil {
+		t.Fatalf("fargateProfile spec.tags: %v", err)
+	} else if !found {
+		t.Fatalf("fargateProfile spec.tags missing")
+	} else if got, want := tags["kany8s.io/cluster-name"], "demo"; got != want {
+		t.Fatalf("fargateProfile spec.tags cluster-name = %v, want %q", got, want)
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExplicitlyAllowed(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			UID:       "cluster-uid",
+			Annotations: map[string]string{
+				coreeks.AllowUnmanagedTakeoverAnnotationKey: coreeks.AllowUnmanagedTakeoverAnnotationValue,
+			},
+		},
+	}
+
+	existing := &unstructured.Unstructured{}
+	existing.SetGroupVersionKind(ackIAMRoleGVK)
+	existing.SetNamespace("default")
+	existing.SetName("demo-karpenter-node")
+	mustSetNestedField(existing, "legacy-role", "spec", "name")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, existing).Build()
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+
+	ok, err := r.ensureIAMRoleForEC2(
+		context.Background(),
+		cluster,
+		"demo-karpenter-node",
+		"ap-northeast-1",
+		"eks-demo-node",
+		[]string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"},
+	)
+	if err != nil {
+		t.Fatalf("ensureIAMRoleForEC2() error = %v", err)
+	}
+	if !ok {
+		t.Fatalf("ensureIAMRoleForEC2() managed = false, want true")
+	}
+
+	got := getUnstructured(t, c, ackIAMRoleGVK, "demo-karpenter-node")
+	if gotAnn := got.GetAnnotations()[coreeks.ManagedByAnnotationKey]; gotAnn != karpenterManagedByValue {
+		t.Fatalf("managed annotation = %q, want %q", gotAnn, karpenterManagedByValue)
+	}
+	if gotName, _, err := unstructured.NestedString(got.Object, "spec", "name"); err != nil {
+		t.Fatalf("role spec.name: %v", err)
+	} else if want := "eks-demo-node"; gotName != want {
+		t.Fatalf("role spec.name = %q, want %q", gotName, want)
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_EnsureIAMPolicy_InvalidExistingShapeReturnsError(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			UID:       "cluster-uid",
+		},
+	}
+
+	existing := &unstructured.Unstructured{}
+	existing.SetGroupVersionKind(ackIAMPolicyGVK)
+	existing.SetNamespace("default")
+	existing.SetName("demo-karpenter-controller-policy")
+	setManagedBy(existing)
+	existing.Object["spec"] = "invalid-type"
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, existing).Build()
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+
+	ok, err := r.ensureIAMPolicy(
+		context.Background(),
+		cluster,
+		"demo-karpenter-controller-policy",
+		"ap-northeast-1",
+		`{"Version":"2012-10-17","Statement":[]}`,
+		"eks-demo-karpenter-controller",
+	)
+	if err == nil {
+		t.Fatalf("ensureIAMPolicy() error = nil, want non-nil")
+	}
+	if ok {
+		t.Fatalf("ensureIAMPolicy() managed = true, want false on mutation error")
+	}
+	if !strings.Contains(err.Error(), "mutate object fields") {
+		t.Fatalf("ensureIAMPolicy() error = %v, want mutation error", err)
+	}
 }
 
 func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSpecs(t *testing.T) {
@@ -522,7 +648,8 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster).Build()
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
 
-	ok, err := r.ensureFluxKarpenter(context.Background(), cluster, "demo", "eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo-karpenter-controller")
+	values := defaultKarpenterHelmValues("eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo-karpenter-controller")
+	ok, err := r.ensureFluxKarpenter(context.Background(), cluster, "demo", defaultKarpenterChartVersion, values)
 	if err != nil {
 		t.Fatalf("ensureFluxKarpenter() error = %v", err)
 	}
@@ -595,6 +722,365 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 	}
 }
 
+func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterChartTag(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		reconciler *EKSKarpenterBootstrapperReconciler
+		cluster    *clusterv1.Cluster
+		want       string
+	}{
+		{
+			name:       "uses cluster annotation override",
+			reconciler: &EKSKarpenterBootstrapperReconciler{KarpenterChartTag: "1.0.9"},
+			cluster: &clusterv1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						karpenterChartVersionAnnotation: "1.1.0",
+					},
+				},
+			},
+			want: "1.1.0",
+		},
+		{
+			name:       "uses reconciler override",
+			reconciler: &EKSKarpenterBootstrapperReconciler{KarpenterChartTag: "1.2.0"},
+			cluster:    &clusterv1.Cluster{},
+			want:       "1.2.0",
+		},
+		{
+			name:       "falls back to default",
+			reconciler: &EKSKarpenterBootstrapperReconciler{},
+			cluster:    &clusterv1.Cluster{},
+			want:       defaultKarpenterChartVersion,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.reconciler.resolveKarpenterChartTag(tt.cluster); got != tt.want {
+				t.Fatalf("resolveKarpenterChartTag() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_OverrideAndProtectCriticalKeys(t *testing.T) {
+	t.Parallel()
+
+	r := &EKSKarpenterBootstrapperReconciler{}
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				karpenterInterruptionQueueAnnotation: "demo-interruption-queue",
+				karpenterHelmValuesAnnotation: `{
+  "webhook": {"enabled": true},
+  "settings": {"clusterName": "bad", "clusterEndpoint": "https://bad"},
+  "serviceAccount": {"annotations": {"extra": "yes", "eks.amazonaws.com/role-arn": "bad"}},
+  "resources": {"requests": {"cpu": "250m"}}
+}`,
+			},
+		},
+	}
+
+	values, err := r.resolveKarpenterHelmValues(cluster, "eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo")
+	if err != nil {
+		t.Fatalf("resolveKarpenterHelmValues() error = %v", err)
+	}
+	if got, _, err := unstructured.NestedString(values, "settings", "clusterName"); err != nil {
+		t.Fatalf("settings.clusterName: %v", err)
+	} else if want := "eks-demo"; got != want {
+		t.Fatalf("settings.clusterName = %q, want %q", got, want)
+	}
+	if got, _, err := unstructured.NestedString(values, "settings", "clusterEndpoint"); err != nil {
+		t.Fatalf("settings.clusterEndpoint: %v", err)
+	} else if want := "https://demo.example"; got != want {
+		t.Fatalf("settings.clusterEndpoint = %q, want %q", got, want)
+	}
+	if got, _, err := unstructured.NestedString(values, "serviceAccount", "annotations", "eks.amazonaws.com/role-arn"); err != nil {
+		t.Fatalf("serviceAccount.annotations role-arn: %v", err)
+	} else if want := "arn:aws:iam::123456789012:role/demo"; got != want {
+		t.Fatalf("role-arn = %q, want %q", got, want)
+	}
+	if got, _, err := unstructured.NestedString(values, "serviceAccount", "annotations", "extra"); err != nil {
+		t.Fatalf("serviceAccount.annotations.extra: %v", err)
+	} else if want := "yes"; got != want {
+		t.Fatalf("serviceAccount.annotations.extra = %q, want %q", got, want)
+	}
+	if got, _, err := unstructured.NestedBool(values, "webhook", "enabled"); err != nil {
+		t.Fatalf("webhook.enabled: %v", err)
+	} else if !got {
+		t.Fatalf("webhook.enabled = false, want true")
+	}
+	if got, _, err := unstructured.NestedString(values, "settings", "interruptionQueue"); err != nil {
+		t.Fatalf("settings.interruptionQueue: %v", err)
+	} else if want := "demo-interruption-queue"; got != want {
+		t.Fatalf("settings.interruptionQueue = %q, want %q", got, want)
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_InvalidJSON(t *testing.T) {
+	t.Parallel()
+
+	r := &EKSKarpenterBootstrapperReconciler{}
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				karpenterHelmValuesAnnotation: "{",
+			},
+		},
+	}
+
+	if _, err := r.resolveKarpenterHelmValues(cluster, "eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo"); err == nil {
+		t.Fatalf("resolveKarpenterHelmValues() error = nil, want non-nil")
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_ResolveOIDCThumbprints_AnnotationGate(t *testing.T) {
+	t.Parallel()
+
+	called := 0
+	r := &EKSKarpenterBootstrapperReconciler{
+		ResolveOIDCThumbprints: func(context.Context, string) ([]string, error) {
+			called++
+			return []string{"abc123"}, nil
+		},
+	}
+
+	clusterDisabled := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{},
+		},
+	}
+	got, err := r.resolveOIDCThumbprints(context.Background(), clusterDisabled, "https://issuer.example")
+	if err != nil {
+		t.Fatalf("resolveOIDCThumbprints(disabled) error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("resolveOIDCThumbprints(disabled) = %#v, want nil/empty", got)
+	}
+	if called != 0 {
+		t.Fatalf("resolver called %d times, want 0", called)
+	}
+
+	clusterEnabled := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				oidcThumbprintAutoAnnotation: "enabled",
+			},
+		},
+	}
+	got, err = r.resolveOIDCThumbprints(context.Background(), clusterEnabled, "https://issuer.example")
+	if err != nil {
+		t.Fatalf("resolveOIDCThumbprints(enabled) error = %v", err)
+	}
+	if called != 1 {
+		t.Fatalf("resolver called %d times, want 1", called)
+	}
+	if len(got) != 1 || got[0] != "abc123" {
+		t.Fatalf("resolveOIDCThumbprints(enabled) = %#v, want [abc123]", got)
+	}
+}
+
+func TestDefaultResolveOIDCThumbprints_UnverifiedChainReturnsSentinel(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewTLSServer(nil)
+	t.Cleanup(server.Close)
+
+	if _, err := defaultResolveOIDCThumbprints(context.Background(), server.URL); !errors.Is(err, errOIDCThumbprintUnverified) {
+		t.Fatalf("defaultResolveOIDCThumbprints() error = %v, want sentinel %v", err, errOIDCThumbprintUnverified)
+	}
+}
+
+func TestSelectTopIntermediateCACert_RootIncluded(t *testing.T) {
+	t.Parallel()
+
+	leaf := &x509.Certificate{
+		Raw:     []byte("leaf"),
+		IsCA:    false,
+		Subject: pkix.Name{CommonName: "leaf"},
+		Issuer:  pkix.Name{CommonName: "intermediate"},
+	}
+	intermediate := &x509.Certificate{
+		Raw:     []byte("intermediate"),
+		IsCA:    true,
+		Subject: pkix.Name{CommonName: "intermediate"},
+		Issuer:  pkix.Name{CommonName: "root"},
+	}
+	root := &x509.Certificate{
+		Raw:     []byte("root"),
+		IsCA:    true,
+		Subject: pkix.Name{CommonName: "root"},
+		Issuer:  pkix.Name{CommonName: "root"},
+	}
+
+	got, err := selectTopIntermediateCACert([]*x509.Certificate{leaf, intermediate, root})
+	if err != nil {
+		t.Fatalf("selectTopIntermediateCACert() error = %v", err)
+	}
+	if got != intermediate {
+		t.Fatalf("selectTopIntermediateCACert() = %#v, want intermediate cert", got)
+	}
+}
+
+func TestSelectTopIntermediateCACert_RootNotIncluded(t *testing.T) {
+	t.Parallel()
+
+	leaf := &x509.Certificate{
+		Raw:     []byte("leaf"),
+		IsCA:    false,
+		Subject: pkix.Name{CommonName: "leaf"},
+		Issuer:  pkix.Name{CommonName: "intermediate"},
+	}
+	intermediate := &x509.Certificate{
+		Raw:     []byte("intermediate"),
+		IsCA:    true,
+		Subject: pkix.Name{CommonName: "intermediate"},
+		Issuer:  pkix.Name{CommonName: "root"},
+	}
+
+	got, err := selectTopIntermediateCACert([]*x509.Certificate{leaf, intermediate})
+	if err != nil {
+		t.Fatalf("selectTopIntermediateCACert() error = %v", err)
+	}
+	if got != intermediate {
+		t.Fatalf("selectTopIntermediateCACert() = %#v, want intermediate cert", got)
+	}
+}
+
+func TestSelectTopIntermediateCACert_NoIntermediateReturnsSentinel(t *testing.T) {
+	t.Parallel()
+
+	leaf := &x509.Certificate{
+		Raw:     []byte("leaf"),
+		IsCA:    false,
+		Subject: pkix.Name{CommonName: "leaf"},
+		Issuer:  pkix.Name{CommonName: "root"},
+	}
+	root := &x509.Certificate{
+		Raw:     []byte("root"),
+		IsCA:    true,
+		Subject: pkix.Name{CommonName: "root"},
+		Issuer:  pkix.Name{CommonName: "root"},
+	}
+
+	if _, err := selectTopIntermediateCACert([]*x509.Certificate{leaf, root}); !errors.Is(err, errOIDCThumbprintUnverified) {
+		t.Fatalf("selectTopIntermediateCACert() error = %v, want sentinel %v", err, errOIDCThumbprintUnverified)
+	}
+}
+
+func TestSelectLongestVerifiedChain_ReturnsLongest(t *testing.T) {
+	t.Parallel()
+
+	short := []*x509.Certificate{{Raw: []byte("a")}}
+	long := []*x509.Certificate{{Raw: []byte("a")}, {Raw: []byte("b")}, {Raw: []byte("c")}}
+
+	got := selectLongestVerifiedChain([][]*x509.Certificate{short, long})
+	if len(got) != len(long) {
+		t.Fatalf("selectLongestVerifiedChain() len = %d, want %d", len(got), len(long))
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_ResolveNodePoolTemplateYAML_UsesConfigMap(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			Annotations: map[string]string{
+				karpenterNodePoolTemplateConfigMapAnnotation:    "demo-template",
+				karpenterNodePoolTemplateConfigMapKeyAnnotation: "custom.yaml",
+			},
+		},
+	}
+	templateCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo-template", Namespace: "default"},
+		Data:       map[string]string{"custom.yaml": "kind: NodePool\nmetadata:\n  name: custom\n"},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, templateCM).Build()
+
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+	got, err := r.resolveNodePoolTemplateYAML(context.Background(), cluster, "eks-demo", "demo-profile", []string{"subnet-a", "subnet-b"}, []string{"sg-a"})
+	if err != nil {
+		t.Fatalf("resolveNodePoolTemplateYAML() error = %v", err)
+	}
+	if want := "kind: NodePool\nmetadata:\n  name: custom\n"; got != want {
+		t.Fatalf("resolveNodePoolTemplateYAML() = %q, want %q", got, want)
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_SuspendFluxKarpenterOnDelete(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			UID:       "cluster-uid",
+		},
+	}
+
+	oci := &unstructured.Unstructured{}
+	oci.SetGroupVersionKind(fluxOCIRepositoryGVK)
+	oci.SetNamespace("default")
+	oci.SetName("demo-karpenter")
+	setManagedBy(oci)
+	setClusterLabel(oci, "demo")
+	mustSetNestedField(oci, "10m", "spec", "interval")
+
+	hr := &unstructured.Unstructured{}
+	hr.SetGroupVersionKind(fluxHelmReleaseGVK)
+	hr.SetNamespace("default")
+	hr.SetName("demo-karpenter")
+	setManagedBy(hr)
+	setClusterLabel(hr, "demo")
+	mustSetNestedField(hr, "5m", "spec", "interval")
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, oci, hr).Build()
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+
+	changed, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, "demo")
+	if err != nil {
+		t.Fatalf("suspendFluxKarpenterOnDelete() error = %v", err)
+	}
+	if !changed {
+		t.Fatalf("suspendFluxKarpenterOnDelete() changed = false, want true")
+	}
+
+	gotOCI := getUnstructured(t, c, fluxOCIRepositoryGVK, "demo-karpenter")
+	if suspended, found, err := unstructured.NestedBool(gotOCI.Object, "spec", "suspend"); err != nil {
+		t.Fatalf("OCIRepository spec.suspend: %v", err)
+	} else if !found || !suspended {
+		t.Fatalf("OCIRepository spec.suspend = %v (found=%v), want true", suspended, found)
+	}
+
+	gotHR := getUnstructured(t, c, fluxHelmReleaseGVK, "demo-karpenter")
+	if suspended, found, err := unstructured.NestedBool(gotHR.Object, "spec", "suspend"); err != nil {
+		t.Fatalf("HelmRelease spec.suspend: %v", err)
+	} else if !found || !suspended {
+		t.Fatalf("HelmRelease spec.suspend = %v (found=%v), want true", suspended, found)
+	}
+
+	changedAgain, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, "demo")
+	if err != nil {
+		t.Fatalf("second suspendFluxKarpenterOnDelete() error = %v", err)
+	}
+	if changedAgain {
+		t.Fatalf("second suspendFluxKarpenterOnDelete() changed = true, want false")
+	}
+}
+
 func getUnstructured(t *testing.T, c client.Client, gvk schema.GroupVersionKind, name string) *unstructured.Unstructured {
 	t.Helper()
 	namespace := "default"
@@ -604,4 +1090,19 @@ func getUnstructured(t *testing.T, c client.Client, gvk schema.GroupVersionKind,
 		t.Fatalf("get %s %s/%s: %v", gvk.String(), namespace, name, err)
 	}
 	return obj
+}
+
+func findTagValue(t *testing.T, tags []any, key string) string {
+	t.Helper()
+	for _, item := range tags {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if gotKey, _ := m["key"].(string); gotKey == key {
+			v, _ := m["value"].(string)
+			return v
+		}
+	}
+	return ""
 }

@@ -13,6 +13,7 @@
 - `EC2NodeClass`/`NodePool` の適用は、現状のセットアップにある **ClusterResourceSet**（`addons.cluster.x-k8s.io/v1beta2`）で remote apply する。
 - kubeconfig は `eks-kubeconfig-rotator` が必須（CAPI remote apply / RemoteConnectionProbe を安定化する）。
 - Cleanup で IAM Role deletion が InstanceProfile 依存で詰まるのを避けるため、node 用 `InstanceProfile` を ACK で明示管理し、`EC2NodeClass.spec.instanceProfile` を使う（Karpenter に instance profile を自動生成させない）。
+- Cleanup で node SecurityGroup deletion が orphan ENI（`amazon-vpc-cni` 起因）で `DependencyViolation` になり得るため、bootstrapper の delete finalizer で orphan ENI を削除して収束させる（`docs/eks/fargate/issues/cleanup.md`）。
 
 ## Direction (no command ops)
 
@@ -139,20 +140,27 @@ Karpenter controller は IRSA を使う。
 - input:
   - `url`: `ACK EKS Cluster.status.identity.oidc.issuer`
   - `clientIDList`: `["sts.amazonaws.com"]`
-  - `thumbprints`: issuer の SHA-1 thumbprint（任意）
+  - `thumbprints`: issuer の SHA-1 thumbprint（任意、AWS IAM 要件に合わせて top intermediate CA を使う）
     - (MVP) 省略し、AWS(IAM) 側に取得させる
     - (Optional) 明示設定する（Terraform の `tls_certificate` 相当の算出）
+    - 自動算出時は `VerifiedChains` を使い、root を thumbprint 対象にせず top intermediate CA を選ぶ
+    - 証明書チェーンの検証不能時、または top intermediate を特定できない場合は `thumbprints` 設定を skip して Warning Event を出す
 
 thumbprint を明示する場合の算出例（任意）:
 
 ```bash
-# issuer host の TLS 証明書から SHA1 thumbprint を得る（例）
-issuer_host="oidc.eks.ap-northeast-1.amazonaws.com"
-issuer_path="/id/XXXXXXXX"
+# issuer URL (OIDC discovery/JWKS の host) を指定
+issuer_url="https://oidc.eks.ap-northeast-1.amazonaws.com/id/XXXXXXXX"
+issuer_host="$(echo "${issuer_url}" | sed -E 's#^https?://([^/]+)/.*#\1#')"
 
-echo | openssl s_client -servername "${issuer_host}" -connect "${issuer_host}:443" 2>/dev/null \
-  | openssl x509 -fingerprint -sha1 -noout \
-  | sed -e 's/^SHA1 Fingerprint=//' -e 's/://g'
+# showcerts は通常 leaf -> ... -> root の順
+# IAM 用 thumbprint は root ではなく top intermediate CA（一般に末尾の1つ手前）を使う
+openssl s_client -showcerts -servername "${issuer_host}" -connect "${issuer_host}:443" </dev/null 2>/dev/null \
+  | awk '/BEGIN CERTIFICATE/{i++} {print >("/tmp/oidc-cert-" i ".pem")}'
+
+openssl x509 -in "$(ls /tmp/oidc-cert-*.pem | sort | tail -n2 | head -n1)" -fingerprint -sha1 -noout \
+  | sed -e 's/^SHA1 Fingerprint=//' -e 's/://g' \
+  | tr 'A-F' 'a-f'
 ```
 
 ### 2) IAM roles
@@ -234,8 +242,9 @@ Karpenter が起動する EC2 node には security group が必要。
 
 推奨方針（MVP / no command ops）:
 
-- `vpc-security-group-ids` は “node 用 SG IDs” として扱う。
-- `eks.kany8s.io/karpenter=enabled` かつ `vpc-security-group-ids` が空の場合、bootstrapper が node 用 SG を **CustomResource として**作成し、SG ID を `Cluster.spec.topology.variables["vpc-security-group-ids"]` へ注入して収束させる（手作業の `aws ec2 create-security-group` を排除）。
+- node 用 SG IDs は `vpc-node-security-group-ids` を優先して使う。
+- `vpc-node-security-group-ids` が未指定の場合は、後方互換として `vpc-security-group-ids` を使う。
+- `eks.kany8s.io/karpenter=enabled` かつ node 用 SG IDs が空の場合、bootstrapper が node 用 SG を **CustomResource として**作成し、SG ID を `Cluster.spec.topology.variables["vpc-node-security-group-ids"]` へ注入して収束させる（手作業の `aws ec2 create-security-group` を排除）。
 - 注入された SG IDs は次に使われる。
   - ACK EKS Cluster の `resourcesVPCConfig.securityGroupIDs`（control plane ENI に attach）
   - Karpenter の `EC2NodeClass.securityGroupSelectorTerms`（node に attach）
@@ -288,6 +297,12 @@ serviceAccount:
 webhook:
   enabled: false
 ```
+
+interruption handling の現スコープ:
+
+- bootstrapper は `settings.interruptionQueue` の注入のみを行う。
+- SQS queue / EventBridge rule の作成や配線は対象外（事前作成が必要）。
+- controller role への SQS 関連権限付与も対象外（必要なら別途 IAM 側で付与する）。
 
 Option C の補足（Flux）:
 
@@ -497,6 +512,9 @@ kubectl --kubeconfig /tmp/<cluster>.kubeconfig get nodes -o wide
 - BYO network（VPC/Subnet）は残るのが正しい挙動。
 - 追加で作った IAM/OIDC/FargateProfile はクラスタ固有リソースとして削除対象。
 - node 用 InstanceProfile もクラスタ固有リソースとして削除対象（ACK 管理下に置く）。
+- node 用 SecurityGroup の削除が `DependencyViolation` で詰まる場合は orphan ENI が原因になり得る。
+  - 恒久対応: bootstrapper の delete finalizer で `amazon-vpc-cni` 起因の orphan ENI を削除して収束させる
+  - 参照: `docs/eks/fargate/issues/cleanup.md`
 
 ## References
 

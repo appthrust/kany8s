@@ -234,6 +234,87 @@ func TestEKSKubeconfigRotatorReconciler_DoesNotOverwriteUnmanagedProbeSecret(t *
 	}
 }
 
+func TestEKSKubeconfigRotatorReconciler_TakesOverUnmanagedSecretsWhenExplicitlyAllowed(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	now := time.Date(2026, 2, 7, 12, 0, 0, 0, time.UTC)
+	expiration := now.Add(14 * time.Minute)
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+			Annotations: map[string]string{
+				coreeks.EnableAnnotationKey:                 coreeks.EnableAnnotationValue,
+				coreeks.AllowUnmanagedTakeoverAnnotationKey: coreeks.AllowUnmanagedTakeoverAnnotationValue,
+			},
+		},
+	}
+	caData := base64.StdEncoding.EncodeToString([]byte("ca-cert"))
+	ack := ackClusterObj("default", "demo", "https://demo.example", caData, "ap-northeast-1")
+	probeName, _ := kubeconfig.SecretName("demo")
+	execName := probeName + "-exec"
+	unmanagedProbe := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: probeName, Namespace: "default"},
+		Type:       kubeconfig.SecretType,
+		Data:       map[string][]byte{kubeconfig.DataKey: []byte("unmanaged-probe")},
+	}
+	unmanagedExec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: execName, Namespace: "default"},
+		Type:       kubeconfig.SecretType,
+		Data:       map[string][]byte{kubeconfig.DataKey: []byte("unmanaged-exec")},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, ack, unmanagedProbe, unmanagedExec).Build()
+	r := &EKSKubeconfigRotatorReconciler{
+		Client: c,
+		Scheme: scheme,
+		TokenGenerator: fakeTokenGenerator{
+			token:      "k8s-aws-v1.takeover",
+			expiration: expiration,
+		},
+		Policy: coreeks.RequeuePolicy{
+			RefreshBefore:  5 * time.Minute,
+			MaxRefresh:     10 * time.Minute,
+			FailureBackoff: 30 * time.Second,
+		},
+		Now: func() time.Time { return now },
+	}
+
+	res, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: client.ObjectKey{Name: "demo", Namespace: "default"}})
+	if err != nil {
+		t.Fatalf("Reconcile() error = %v", err)
+	}
+	if got, want := res.RequeueAfter, 9*time.Minute; got != want {
+		t.Fatalf("RequeueAfter = %s, want %s", got, want)
+	}
+
+	gotProbe := &corev1.Secret{}
+	if err := c.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: probeName}, gotProbe); err != nil {
+		t.Fatalf("get probe secret: %v", err)
+	}
+	if got, want := gotProbe.Annotations[coreeks.ManagedByAnnotationKey], coreeks.ManagedByAnnotationValue; got != want {
+		t.Fatalf("probe managed annotation = %q, want %q", got, want)
+	}
+	if got := string(gotProbe.Data[kubeconfig.DataKey]); got == "unmanaged-probe" {
+		t.Fatalf("probe secret data was not taken over")
+	}
+
+	gotExec := &corev1.Secret{}
+	if err := c.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: execName}, gotExec); err != nil {
+		t.Fatalf("get exec secret: %v", err)
+	}
+	if got, want := gotExec.Annotations[coreeks.ManagedByAnnotationKey], coreeks.ManagedByAnnotationValue; got != want {
+		t.Fatalf("exec managed annotation = %q, want %q", got, want)
+	}
+	if got := string(gotExec.Data[kubeconfig.DataKey]); got == "unmanaged-exec" {
+		t.Fatalf("exec secret data was not taken over")
+	}
+}
+
 func TestResolveClusterNames_UsesKany8sControlPlaneRefByDefault(t *testing.T) {
 	t.Parallel()
 

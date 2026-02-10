@@ -43,6 +43,7 @@ func main() {
 	var watchNamespace string
 	var failureBackoff string
 	var steadyStateRequeue string
+	var karpenterChartVersion string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -52,6 +53,7 @@ func main() {
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "Namespace to watch. Empty means all namespaces.")
 	flag.StringVar(&failureBackoff, "failure-backoff", "30s", "Requeue interval when prerequisites are not ready.")
 	flag.StringVar(&steadyStateRequeue, "steady-state-requeue", "10m", "Requeue interval after successful reconciliation.")
+	flag.StringVar(&karpenterChartVersion, "karpenter-chart-version", "", "Override Flux OCIRepository spec.ref.tag for Karpenter chart. Empty means controller default.")
 
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
@@ -116,6 +118,7 @@ func main() {
 		FailureBackoff:     failureBackoffDuration,
 		SteadyStateRequeue: steadyStateRequeueDuration,
 		Now:                time.Now,
+		KarpenterChartTag:  karpenterChartVersion,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EKSKarpenterBootstrapper")
 		os.Exit(1)

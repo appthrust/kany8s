@@ -1,4 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../../config/eks-karpenter-bootstrapper
+  - ../../../../config/overlays/eks-karpenter-bootstrapper/kind
+patches:
+  - target:
+      kind: Namespace
+      name: ack-system
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: ack-system
+      $patch: delete
