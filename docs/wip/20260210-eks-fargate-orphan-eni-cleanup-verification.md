@@ -173,3 +173,46 @@ aws ec2 describe-network-interfaces --region ap-northeast-1 --filters Name=tag:N
 
 - orphan ENI は bootstrapper の finalizer で自動削除できた
 - node SecurityGroup の `DependencyViolation` は発生したが、追加の break-glass 無しで最終的に削除できた（AWS 側の整合性待ちの可能性が高い）
+
+## Re-run (2026-02-10)
+
+同様の手順を再度実施して、orphan ENI cleanup の再現性を確認した。
+
+### 9) Create another test Cluster
+
+- CAPI Cluster:
+  - `default/demo-eks-eni-cleanup-20260210120357`
+- node SG:
+  - SecurityGroup CR: `default/demo-eks-eni-cleanup-20260210120357-karpenter-node-sg`
+  - SG ID: `sg-0cc23a9f6eee557ac`
+
+### 10) Create dummy orphan ENI and delete Cluster
+
+- dummy ENI:
+  - `eni-09eb1eefd9343aaab`
+  - `Attachment: null`, `Status: available`
+  - tag `eks:eni:owner=amazon-vpc-cni`
+
+delete:
+
+```bash
+kubectl -n default delete cluster.cluster.x-k8s.io demo-eks-eni-cleanup-20260210120357
+```
+
+bootstrapper logs:
+
+- `OrphanENICleanup`: `deleted 1 orphan ENIs ... waiting for ENI disappearance`
+
+AWS:
+
+```bash
+aws ec2 describe-network-interfaces --region ap-northeast-1 --network-interface-ids eni-09eb1eefd9343aaab
+# -> InvalidNetworkInterfaceID.NotFound
+```
+
+### 11) Observe deletions reaching completion
+
+- node SG は一時 `DependencyViolation` になったが最終的に削除された
+  - `aws ec2 describe-security-groups --region ap-northeast-1 --group-ids sg-0cc23a9f6eee557ac` -> `InvalidGroup.NotFound`
+- ACK EKS controller の `DeleteCluster` は FargateProfile が `DELETING` の間 `ResourceInUseException` になったが、解消後にクラスタ削除が進んだ
+  - `aws eks describe-cluster --region ap-northeast-1 --name demo-eks-eni-cleanup-20260210120357` -> `ResourceNotFoundException`
