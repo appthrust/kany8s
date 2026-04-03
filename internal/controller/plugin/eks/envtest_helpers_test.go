@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -23,6 +24,7 @@ import (
 
 type envtestHarness struct {
 	testEnv *envtest.Environment
+	cfg     *rest.Config
 	client  client.Client
 	scheme  *runtime.Scheme
 }
@@ -70,6 +72,7 @@ func startEKSEnvtestHarness(t *testing.T, crds ...*apiextensionsv1.CustomResourc
 
 	return &envtestHarness{
 		testEnv: testEnv,
+		cfg:     cfg,
 		client:  k8sClient,
 		scheme:  scheme,
 	}

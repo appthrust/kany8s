@@ -8,9 +8,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +33,7 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_DerivedResourcesAndReadyGate
 		stubNamespacedCRD("iam.services.k8s.aws", "v1alpha1", "Role", "roles"),
 		stubNamespacedCRD("iam.services.k8s.aws", "v1alpha1", "InstanceProfile", "instanceprofiles"),
 		stubNamespacedCRD("iam.services.k8s.aws", "v1alpha1", "OpenIDConnectProvider", "openidconnectproviders"),
-		stubNamespacedCRD("source.toolkit.fluxcd.io", "v1", "OCIRepository", "ocirepositories"),
+		stubNamespacedCRD("source.toolkit.fluxcd.io", "v1beta2", "OCIRepository", "ocirepositories"),
 		stubNamespacedCRD("helm.toolkit.fluxcd.io", "v2", "HelmRelease", "helmreleases"),
 		stubNamespacedCRD("addons.cluster.x-k8s.io", "v1beta2", "ClusterResourceSet", "clusterresourcesets"),
 	)
@@ -154,6 +158,54 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_DerivedResourcesAndReadyGate
 	}
 	if got, want := second.RequeueAfter, 3*time.Minute; got != want {
 		t.Fatalf("second RequeueAfter = %s, want %s", got, want)
+	}
+}
+
+func TestEKSKarpenterBootstrapperReconciler_Envtest_IsAPIAvailableDetectsCRDsAddedAfterStartup(t *testing.T) {
+	t.Parallel()
+
+	h := startEKSEnvtestHarness(
+		t,
+		stubCAPIClusterCRD(),
+	)
+
+	httpClient, err := rest.HTTPClientFor(h.cfg)
+	if err != nil {
+		t.Fatalf("rest HTTPClientFor: %v", err)
+	}
+	discoveryClient, err := discovery.NewDiscoveryClientForConfigAndClient(h.cfg, httpClient)
+	if err != nil {
+		t.Fatalf("new discovery client: %v", err)
+	}
+
+	r := &EKSKarpenterBootstrapperReconciler{
+		DiscoveryClient: discoveryClient,
+	}
+
+	if r.isAPIAvailable(fluxOCIRepositoryGVK) {
+		t.Fatalf("OCIRepository API unexpectedly available before CRD install")
+	}
+	if r.isAPIAvailable(fluxHelmReleaseGVK) {
+		t.Fatalf("HelmRelease API unexpectedly available before CRD install")
+	}
+
+	crdClient, err := apiextensionsclientset.NewForConfig(h.cfg)
+	if err != nil {
+		t.Fatalf("new apiextensions client: %v", err)
+	}
+	installStubCRDs(
+		t,
+		crdClient,
+		stubNamespacedCRD("source.toolkit.fluxcd.io", "v1beta2", "OCIRepository", "ocirepositories"),
+		stubNamespacedCRD("helm.toolkit.fluxcd.io", "v2", "HelmRelease", "helmreleases"),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 10*time.Second, true, func(context.Context) (bool, error) {
+		return r.areAPIsAvailable(fluxOCIRepositoryGVK, fluxHelmReleaseGVK), nil
+	}); err != nil {
+		t.Fatalf("Flux APIs were not detected after CRD install: %v", err)
 	}
 }
 

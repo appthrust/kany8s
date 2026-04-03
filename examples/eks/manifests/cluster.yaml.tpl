@@ -24,6 +24,9 @@ spec:
           - "__SUBNET_ID_2__"
       - name: vpc-security-group-ids
         # Standard: let eks-karpenter-bootstrapper create/inject the node SG.
+        # NOTE: When empty, the bootstrapper may also patch this control-plane SG list,
+        # which can trigger an EKS VpcConfigUpdate. If you delete immediately after, you
+        # may hit "Cannot delete because cluster currently has an update in progress".
         value: []
       - name: eks-public-access-cidrs
         value:

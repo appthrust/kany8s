@@ -61,7 +61,7 @@ var (
 	ackOIDCProviderGVK       = schema.GroupVersionKind{Group: "iam.services.k8s.aws", Version: "v1alpha1", Kind: "OpenIDConnectProvider"}
 	ackSecurityGroupGVK      = schema.GroupVersionKind{Group: "ec2.services.k8s.aws", Version: "v1alpha1", Kind: "SecurityGroup"}
 
-	fluxOCIRepositoryGVK = schema.GroupVersionKind{Group: "source.toolkit.fluxcd.io", Version: "v1", Kind: "OCIRepository"}
+	fluxOCIRepositoryGVK = schema.GroupVersionKind{Group: "source.toolkit.fluxcd.io", Version: "v1beta2", Kind: "OCIRepository"}
 	fluxHelmReleaseGVK   = schema.GroupVersionKind{Group: "helm.toolkit.fluxcd.io", Version: "v2", Kind: "HelmRelease"}
 
 	clusterResourceSetGVK = schema.GroupVersionKind{Group: "addons.cluster.x-k8s.io", Version: "v1beta2", Kind: "ClusterResourceSet"}
@@ -318,7 +318,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	// Default reconcile cadence, overridden when prerequisites are not ready.
 	requeueAfter := r.steadyStateRequeue()
 	if !fluxAPIsAvailable {
-		msg := "Flux APIs (source.toolkit.fluxcd.io/v1 OCIRepository, helm.toolkit.fluxcd.io/v2 HelmRelease) are not available; cause: required CRD/controller is missing. action: install Flux source-controller + helm-controller"
+		msg := "Flux APIs (source.toolkit.fluxcd.io/v1beta2 OCIRepository, helm.toolkit.fluxcd.io/v2 HelmRelease) are not available; cause: required CRD/controller is missing. action: install Flux source-controller + helm-controller"
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonFluxNotInstalled, msg)
 		requeueAfter = r.failureBackoff()
 	}

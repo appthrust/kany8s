@@ -103,6 +103,7 @@ kubectl wait --for=condition=ResourceGraphAccepted --timeout=120s rgd/eks-contro
 - `examples/eks/manifests/cluster.yaml.tpl` を render して apply
   - このテンプレは `eks.kany8s.io/kubeconfig-rotator=enabled` / `eks.kany8s.io/karpenter=enabled` を最初から付けます
 - `vpc-security-group-ids=[]` を既定にしているため、bootstrapper が node SG を自動作成し、`vpc-node-security-group-ids` に注入します
+  - さらに `vpc-security-group-ids` も空の場合、同じ SG を `vpc-security-group-ids` にも注入します（EKS 側の `VpcConfigUpdate` を誘発し得るため、直後の削除で "update in progress" に当たることがあります）
 
 ```bash
 export CLUSTER_NAME="demo-eks-fargate-$(date +%Y%m%d%H%M%S)"

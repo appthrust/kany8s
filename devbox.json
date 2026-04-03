@@ -5,11 +5,19 @@
     "git",
     "k9s",
     "zig",
-    "awscli2@latest"
+    "awscli2@latest",
+    "kubectl@latest",
+    "kubernetes-helm@latest",
+    "kind@latest",
+    "clusterctl@latest",
+    "go@1.25.5",
+    "kubebuilder@latest",
+    "gettext@latest",
+    "yq@latest"
   ],
   "shell": {
     "init_hook": [
-      "echo 'devbox env: roboppoi (TS/Bun) ready'"
+      "echo 'devbox env: kany8s ready'"
     ]
   }
 }
