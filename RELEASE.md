@@ -75,6 +75,17 @@ Without this secret, release-please will push the release tag using
 will not be built until you either re-run `release.yml` manually via
 `workflow_dispatch` or rotate the tag with a privileged token.
 
+### Allow Actions to open pull requests
+
+Under `Settings → Actions → General → Workflow permissions`, enable
+**"Allow GitHub Actions to create and approve pull requests"**. Without
+this, release-please logs:
+
+> GitHub Actions is not permitted to create or approve pull requests.
+
+and the release PR is never opened. This toggle is required once per
+repository.
+
 ### Branch protection
 
 Require the following status checks on `main`:

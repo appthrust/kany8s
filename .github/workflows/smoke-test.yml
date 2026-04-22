@@ -43,7 +43,12 @@ jobs:
         run: make docker-build IMG="${IMG}"
 
       - name: Generate clusterctl provider bundle
-        run: make clusterctl-setup IMG="${IMG}"
+        # CLUSTERCTL_PROVIDER_VERSION picks the directory layout under out/
+        # AND the URL version clusterctl extracts. hack/capi/metadata.yaml
+        # declares `releaseSeries: [{major: 0, minor: 1}]`, so the bundle
+        # version must fall inside the 0.1 line or clusterctl will refuse
+        # with "invalid provider metadata".
+        run: make clusterctl-setup IMG="${IMG}" CLUSTERCTL_PROVIDER_VERSION=v0.1.99
 
       - name: Create kind cluster
         uses: helm/kind-action@v1
