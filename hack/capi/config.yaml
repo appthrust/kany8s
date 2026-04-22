@@ -1,12 +1,11 @@
 # Local clusterctl config used by smoke tests and developers who need to run
 # `clusterctl init` against manifests built with `make clusterctl-setup`.
-# The placeholder `%pwd%` is substituted with the working directory by
-# Makefile's clusterctl-setup target and the result is written to
-# capi-local-config.yaml at the repository root.
+# The placeholders `%pwd%` and `%version%` are substituted by the Makefile
+# target; the result is written to capi-local-config.yaml at the repo root.
 providers:
   - name: "kany8s"
-    url: "%pwd%/out/infrastructure-kany8s/v0.0.0/infrastructure-components.yaml"
+    url: "%pwd%/out/infrastructure-kany8s/%version%/infrastructure-components.yaml"
     type: "InfrastructureProvider"
   - name: "kany8s"
-    url: "%pwd%/out/control-plane-kany8s/v0.0.0/control-plane-components.yaml"
+    url: "%pwd%/out/control-plane-kany8s/%version%/control-plane-components.yaml"
     type: "ControlPlaneProvider"

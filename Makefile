@@ -101,8 +101,12 @@ clusterctl-setup: clusterapi-manifests kustomize ## Render the clusterctl provid
 	cp hack/capi/metadata.yaml out/control-plane-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)/metadata.yaml
 	# Render a local clusterctl config that points at the generated files so
 	# smoke tests can run `clusterctl init --config capi-local-config.yaml`
-	# without publishing a GitHub Release first.
-	sed -e 's#%pwd%#'`pwd`'#g' ./hack/capi/config.yaml > capi-local-config.yaml
+	# without publishing a GitHub Release first. Substitute both the working
+	# directory and the provider version so CLUSTERCTL_PROVIDER_VERSION
+	# overrides flow through end-to-end.
+	sed -e 's#%pwd%#'`pwd`'#g' \
+	    -e 's#%version%#$(CLUSTERCTL_PROVIDER_VERSION)#g' \
+	    ./hack/capi/config.yaml > capi-local-config.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
