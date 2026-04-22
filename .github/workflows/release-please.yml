@@ -1,0 +1,26 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+# release-please needs to open/update the release PR and (once merged) create
+# the git tag that in turn fires release.yml.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Prefer a GitHub App / PAT so the tag push triggers downstream
+          # workflows (GitHub does not fire workflows for tags pushed by the
+          # default GITHUB_TOKEN). Fallback to GITHUB_TOKEN for initial setup
+          # or forks; see RELEASE.md for the full setup sequence.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

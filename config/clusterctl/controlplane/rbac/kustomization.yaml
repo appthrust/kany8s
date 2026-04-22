@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../../rbac/service_account.yaml
+- ../../../rbac/leader_election_role.yaml
+- ../../../rbac/leader_election_role_binding.yaml
+- ../../../rbac/metrics_auth_role.yaml
+- ../../../rbac/metrics_auth_role_binding.yaml
+- ../../../rbac/metrics_reader_role.yaml
+- ../../../rbac/controlplane-role.yaml
+- role_binding.yaml

@@ -1,0 +1,209 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (required when running manually; must exist as a git tag unless dry_run is true).'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run: skip image push and GitHub Release creation. Useful for validating the pipeline end-to-end.'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  # Keep concurrent releases separate; we do NOT cancel an in-flight release
+  # because canceling halfway through leaves partial image manifests pushed
+  # to GHCR that are hard to reconcile. Key off the resolved tag so that a
+  # dry-run workflow_dispatch does not block a real tag push.
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  # OIDC token is reserved for future image signing (cosign keyless).
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  NAMESPACE: ${{ github.repository_owner }}/kany8s
+  # Let Go fall back to the toolchain directive in go.mod on both amd64 and
+  # arm64 runners without pinning a specific minor version here.
+  GOTOOLCHAIN: auto
+
+jobs:
+  resolve:
+    name: Resolve release parameters
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      is_prerelease: ${{ steps.tag.outputs.is_prerelease }}
+      push: ${{ steps.tag.outputs.push }}
+    steps:
+      - id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+            dry_run="${{ inputs.dry_run }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+            dry_run="false"
+          fi
+          if [[ -z "${tag}" ]]; then
+            echo "::error::tag is empty; refusing to run" >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          # Semantic version pre-releases contain a hyphen (e.g. v0.1.0-rc1).
+          if [[ "${tag}" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${dry_run}" == "true" ]]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-images:
+    name: Build ${{ matrix.component }} (${{ matrix.arch }})
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - manager
+          - eks-kubeconfig-rotator
+          - eks-karpenter-bootstrapper
+        arch: [amd64, arm64]
+        include:
+          - component: manager
+            dockerfile: Dockerfile
+          - component: eks-kubeconfig-rotator
+            dockerfile: Dockerfile.eks-plugin
+          - component: eks-karpenter-bootstrapper
+            dockerfile: Dockerfile.eks-karpenter-bootstrapper
+    # Native runners avoid slow QEMU emulation across ARM/AMD cross-builds.
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: ${{ needs.resolve.outputs.push == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.arch }}
+          push: ${{ needs.resolve.outputs.push == 'true' }}
+          tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.component }}:${{ needs.resolve.outputs.tag }}-${{ matrix.arch }}
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
+
+  create-manifest:
+    name: Publish ${{ matrix.component }} multi-arch manifest
+    needs: [resolve, build-images]
+    if: ${{ needs.resolve.outputs.push == 'true' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - manager
+          - eks-kubeconfig-rotator
+          - eks-karpenter-bootstrapper
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch manifest list
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
+          BASE="${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.component }}"
+          docker buildx imagetools create \
+            --tag "${BASE}:${TAG}" \
+            "${BASE}:${TAG}-amd64" \
+            "${BASE}:${TAG}-arm64"
+
+  release:
+    name: Draft GitHub Release
+    needs: [resolve, create-manifest]
+    # Dry-run skips the release because the images never land on GHCR.
+    if: ${{ needs.resolve.outputs.push == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Generate clusterctl provider bundle
+        env:
+          IMG: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/manager:${{ needs.resolve.outputs.tag }}
+        run: |
+          make clusterctl-setup IMG="${IMG}"
+
+      - name: Render clusterctl-config.yaml for this release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
+          # Regenerate the file from scratch so the published sample always
+          # points at the artefacts we are about to upload. Doing this as a
+          # heredoc rather than sed-editing the checked-in template avoids
+          # brittle regex assumptions about future URL shapes.
+          cat > clusterctl-config.yaml <<EOF
+          # Sample clusterctl config for kany8s ${TAG}.
+          # Copy to ~/.cluster-api/clusterctl.yaml or pass via --config before
+          # running \`clusterctl init --infrastructure kany8s --control-plane kany8s\`.
+          providers:
+            - name: "kany8s"
+              url: "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/infrastructure-components.yaml"
+              type: "InfrastructureProvider"
+            - name: "kany8s"
+              url: "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/control-plane-components.yaml"
+              type: "ControlPlaneProvider"
+          EOF
+
+      - name: Create (or update) GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: ${{ needs.resolve.outputs.tag }}
+          draft: true
+          prerelease: ${{ needs.resolve.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            out/infrastructure-kany8s/v0.0.0/metadata.yaml
+            out/infrastructure-kany8s/v0.0.0/infrastructure-components.yaml
+            out/control-plane-kany8s/v0.0.0/control-plane-components.yaml
+            templates/cluster-template.yaml
+            clusterctl-config.yaml

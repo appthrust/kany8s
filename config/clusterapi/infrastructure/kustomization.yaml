@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- bases/infrastructure.cluster.x-k8s.io_kany8sclusters.yaml
+- bases/infrastructure.cluster.x-k8s.io_kany8sclustertemplates.yaml
+
+commonLabels:
+  cluster.x-k8s.io/provider: infrastructure-kany8s
+  cluster.x-k8s.io/v1beta1: v1beta1
+  cluster.x-k8s.io/v1beta2: v1beta2
