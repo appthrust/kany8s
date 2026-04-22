@@ -31,7 +31,9 @@ spec:
             - --steady-state-requeue=10m
           env:
             - name: AWS_SHARED_CREDENTIALS_FILE
-              value: /aws/credentials
+              value: /var/run/secrets/aws/credentials
+            - name: AWS_PROFILE
+              value: default
           livenessProbe:
             httpGet:
               path: /healthz
@@ -46,10 +48,9 @@ spec:
             periodSeconds: 10
           volumeMounts:
             - name: aws-creds
-              mountPath: /aws
+              mountPath: /var/run/secrets/aws
               readOnly: true
       volumes:
         - name: aws-creds
           secret:
             secretName: aws-creds
-            optional: true

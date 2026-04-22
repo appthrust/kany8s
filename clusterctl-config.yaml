@@ -1,0 +1,15 @@
+# Sample clusterctl config that points at a published kany8s release.
+# Copy this file to ~/.cluster-api/clusterctl.yaml (or pass it via
+# --config) before running `clusterctl init --infrastructure kany8s
+# --control-plane kany8s`.
+#
+# Pin to the concrete release you want — clusterctl does not treat "latest"
+# the same as a tagged release, and using a floating reference may silently
+# pick up a pre-release.
+providers:
+  - name: "kany8s"
+    url: "https://github.com/appthrust/kany8s/releases/download/v0.1.0/infrastructure-components.yaml"
+    type: "InfrastructureProvider"
+  - name: "kany8s"
+    url: "https://github.com/appthrust/kany8s/releases/download/v0.1.0/control-plane-components.yaml"
+    type: "ControlPlaneProvider"

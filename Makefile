@@ -3,6 +3,15 @@ IMG ?= controller:latest
 EKS_PLUGIN_IMG ?= eks-kubeconfig-rotator:latest
 EKS_KARPENTER_BOOTSTRAPPER_IMG ?= eks-karpenter-bootstrapper:latest
 
+# clusterctl provider name. Drives the directory names under out/ and the
+# provider labels on the packaged kustomize resources.
+CLUSTERCTL_NAME ?= kany8s
+# Version used inside the generated metadata.yaml / layout. The release
+# workflow keeps this at v0.0.0 because clusterctl only reads the actual
+# release tag from the GitHub Release download URL, not from the embedded
+# placeholder.
+CLUSTERCTL_PROVIDER_VERSION ?= v0.0.0
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -51,6 +60,52 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook $(CONTROLLER_GEN_MANIFESTS_PATHS) output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+
+.PHONY: clusterapi-manifests
+clusterapi-manifests: controller-gen ## Generate group-scoped CRDs and RBAC roles for the clusterctl provider bundle.
+	mkdir -p config/clusterapi/infrastructure/bases
+	mkdir -p config/clusterapi/controlplane/bases
+	mkdir -p config/rbac
+	# group-scoped RBAC (controlplane spans internal/controller + internal/controller/controlplane)
+	"$(CONTROLLER_GEN)" rbac:roleName=manager-role-infrastructure \
+	    paths="./internal/controller/infrastructure/..." \
+	    output:stdout > config/rbac/infrastructure-role.yaml
+	"$(CONTROLLER_GEN)" rbac:roleName=manager-role-controlplane \
+	    paths="./internal/controller" \
+	    paths="./internal/controller/controlplane/..." \
+	    output:stdout > config/rbac/controlplane-role.yaml
+	# group-scoped CRDs
+	"$(CONTROLLER_GEN)" crd:generateEmbeddedObjectMeta=true webhook \
+	    paths="./api/infrastructure/..." \
+	    output:crd:artifacts:config=config/clusterapi/infrastructure/bases
+	"$(CONTROLLER_GEN)" crd:generateEmbeddedObjectMeta=true webhook \
+	    paths="./api/v1alpha1/..." \
+	    output:crd:artifacts:config=config/clusterapi/controlplane/bases
+
+.PHONY: clusterctl-setup
+clusterctl-setup: clusterapi-manifests kustomize ## Render the clusterctl provider bundle (infrastructure + control-plane components + metadata) into out/.
+	mkdir -p out/infrastructure-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)
+	mkdir -p out/control-plane-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)
+	# Swap the placeholder "controller" image in config/manager/kustomization.yaml
+	# for the requested image. git restore below pins the working tree back.
+	cd config/manager && "$(KUSTOMIZE)" edit set image controller=$(IMG)
+	"$(KUSTOMIZE)" build --load-restrictor LoadRestrictionsNone \
+	    config/clusterctl/infrastructure \
+	    > out/infrastructure-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)/infrastructure-components.yaml
+	"$(KUSTOMIZE)" build --load-restrictor LoadRestrictionsNone \
+	    config/clusterctl/controlplane \
+	    > out/control-plane-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)/control-plane-components.yaml
+	git restore config/manager/kustomization.yaml
+	cp hack/capi/metadata.yaml out/infrastructure-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)/metadata.yaml
+	cp hack/capi/metadata.yaml out/control-plane-$(CLUSTERCTL_NAME)/$(CLUSTERCTL_PROVIDER_VERSION)/metadata.yaml
+	# Render a local clusterctl config that points at the generated files so
+	# smoke tests can run `clusterctl init --config capi-local-config.yaml`
+	# without publishing a GitHub Release first. Substitute both the working
+	# directory and the provider version so CLUSTERCTL_PROVIDER_VERSION
+	# overrides flow through end-to-end.
+	sed -e 's#%pwd%#'`pwd`'#g' \
+	    -e 's#%version%#$(CLUSTERCTL_PROVIDER_VERSION)#g' \
+	    ./hack/capi/config.yaml > capi-local-config.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -286,6 +341,37 @@ undeploy-eks-plugin: kustomize ## Undeploy EKS kubeconfig rotator from the K8s c
 .PHONY: undeploy-eks-karpenter-bootstrapper
 undeploy-eks-karpenter-bootstrapper: kustomize ## Undeploy EKS Karpenter bootstrapper from the K8s cluster specified in ~/.kube/config.
 	"$(KUSTOMIZE)" build config/eks-karpenter-bootstrapper | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Helm Charts
+
+# Destination for `helm package` output. Cleaned by `make clean-helm`.
+HELM_DIST ?= dist/charts
+# Local OCI registry used by helm-push-local. Matches the default Zot port
+# from /srv/platform/CLAUDE.md "Assets Architecture". Override with e.g.
+# HELM_LOCAL_REGISTRY=oci://localhost:5099/charts for a non-standard port.
+HELM_LOCAL_REGISTRY ?= oci://localhost:5001/charts
+
+.PHONY: helm-lint
+helm-lint: ## Lint every chart under charts/; fails non-zero on any error.
+	@set -e; for chart in charts/*/; do \
+		echo ">>> helm lint $$chart"; \
+		helm lint "$$chart"; \
+	done
+
+.PHONY: helm-package
+helm-package: ## Package every chart under charts/ into $(HELM_DIST).
+	@mkdir -p "$(HELM_DIST)"
+	@set -e; for chart in charts/*/; do \
+		echo ">>> helm package $$chart"; \
+		helm package "$$chart" --destination "$(HELM_DIST)"; \
+	done
+
+.PHONY: helm-push-local
+helm-push-local: helm-package ## Push packaged charts to the local Zot registry at $(HELM_LOCAL_REGISTRY).
+	@set -e; for pkg in $(HELM_DIST)/*.tgz; do \
+		echo ">>> helm push $$pkg $(HELM_LOCAL_REGISTRY)"; \
+		helm push "$$pkg" "$(HELM_LOCAL_REGISTRY)"; \
+	done
 
 ##@ Dependencies
 

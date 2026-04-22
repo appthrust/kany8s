@@ -54,6 +54,46 @@ Repository conventions (current / intended):
 
 Example: AWS EKS needs a short-lived IAM token in kubeconfig; see `docs/eks/plugin/README.md` (kubeconfig rotator plugin).
 
+### Installing EKS plugins via Helm
+
+`clusterctl init --infrastructure kany8s --control-plane kany8s` (and
+cluster-api-operator's `InfrastructureProvider` / `ControlPlaneProvider`
+resources) install only the provider managers. The EKS-specific plugins live
+outside the CAPI provider contract and ship as standalone Helm charts:
+
+| Chart | OCI reference | What it does |
+|---|---|---|
+| `eks-kubeconfig-rotator` | `oci://ghcr.io/appthrust/charts/eks-kubeconfig-rotator` | Rotates short-lived EKS tokens in the CAPI kubeconfig Secret. |
+| `eks-karpenter-bootstrapper` | `oci://ghcr.io/appthrust/charts/eks-karpenter-bootstrapper` | Provisions IAM Role / OIDC provider / SecurityGroup / Fargate profile and installs Karpenter via Flux. |
+
+```bash
+# replace <tag> with a released version, e.g. v0.1.1
+helm install rotator oci://ghcr.io/appthrust/charts/eks-kubeconfig-rotator \
+  --version <tag> \
+  --namespace kany8s-eks-system --create-namespace \
+  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::123456789012:role/eks-rotator"
+
+helm install bootstrapper oci://ghcr.io/appthrust/charts/eks-karpenter-bootstrapper \
+  --version <tag> \
+  --namespace kany8s-eks-system \
+  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::123456789012:role/eks-karpenter-bootstrapper"
+```
+
+Both charts follow the ACK controller credential convention: set
+`aws.credentials.secretName=<secret>` to mount a shared-credentials-file
+Secret (same format ACK consumes), or leave it empty to let the AWS SDK
+default chain resolve credentials from the ServiceAccount (IRSA / EKS Pod
+Identity) or EC2 instance metadata. The image reference is a Bitnami-style
+`image.{registry,repository,tag,digest}` split with a `global.imageRegistry`
+override for mirrored / air-gapped environments. See the per-chart READMEs
+at `charts/eks-kubeconfig-rotator/README.md` and
+`charts/eks-karpenter-bootstrapper/README.md` for full value reference and
+override recipes.
+
+The `config/eks-plugin/` and `config/eks-karpenter-bootstrapper/` kustomize
+overlays remain for local development and ACK co-location; the Helm charts
+are the recommended install path for new deployments.
+
 A Cluster API `Cluster` will look like this:
 
 ```yaml

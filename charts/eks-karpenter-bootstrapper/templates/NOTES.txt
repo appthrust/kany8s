@@ -1,0 +1,37 @@
+eks-karpenter-bootstrapper has been installed.
+
+{{- if .Values.aws.credentials.secretName }}
+
+AWS credentials: shared credentials file mounted from Secret "{{ .Values.aws.credentials.secretName }}"
+                 in namespace "{{ .Values.namespace }}" (key "{{ .Values.aws.credentials.secretKey }}",
+                 profile "{{ .Values.aws.credentials.profile }}"). Path inside the Pod:
+                 {{ include "eks-karpenter-bootstrapper.aws.credentials.filePath" . }}
+
+  Create the Secret with:
+
+    kubectl -n {{ .Values.namespace }} create secret generic {{ .Values.aws.credentials.secretName }} \
+      --from-file={{ .Values.aws.credentials.secretKey }}=$HOME/.aws/credentials
+{{- else }}
+
+AWS credentials: SDK default credential chain. Configure exactly one of:
+  - IRSA: add an OIDC-backed role ARN under
+      serviceAccount.annotations."eks.amazonaws.com/role-arn"
+    and ensure the cluster has an OIDC identity provider.
+  - EKS Pod Identity: create a PodIdentityAssociation pointing at
+      ServiceAccount {{ include "eks-karpenter-bootstrapper.serviceAccountName" . }}
+      in namespace {{ .Values.namespace }}.
+  - EC2 instance profile (self-managed nodes): attach an IAM role to the node.
+
+  The bootstrapper needs broad IAM / EC2 / EKS permissions to provision the
+  per-workload IAM role, OIDC provider, SecurityGroup, and Fargate profile.
+{{- end }}
+
+The bootstrapper will:
+  - provision the EKS cluster's OIDC provider (iam.services.k8s.aws/OpenIDConnectProvider)
+  - create the Karpenter controller IAM Role/Policy (iam.services.k8s.aws/Role, Policy)
+  - create the node instance profile
+  - create the cluster security group for Karpenter-managed nodes
+  - install Karpenter via Flux HelmRelease{{- if .Values.args.karpenterChartVersion }} at version {{ .Values.args.karpenterChartVersion }}{{- end }}
+
+Tail the manager logs:
+  kubectl -n {{ .Values.namespace }} logs -l app.kubernetes.io/name=eks-karpenter-bootstrapper -f

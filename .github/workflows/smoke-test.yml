@@ -1,0 +1,96 @@
+name: smoke-test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Run one smoke test at a time per ref; queuing is cheaper than parallelising
+# kind clusters on the shared runners.
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clusterctl-init:
+    name: clusterctl init in kind
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOTOOLCHAIN: auto
+      KIND_CLUSTER: kany8s-smoke
+      IMG: ghcr.io/appthrust/kany8s/manager:smoke
+      CLUSTERCTL_VERSION: v1.12.2
+      CERT_MANAGER_VERSION: v1.16.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install clusterctl
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/clusterctl \
+            "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
+          chmod +x /tmp/clusterctl
+          sudo mv /tmp/clusterctl /usr/local/bin/clusterctl
+          clusterctl version
+
+      - name: Build manager image
+        run: make docker-build IMG="${IMG}"
+
+      - name: Generate clusterctl provider bundle
+        # CLUSTERCTL_PROVIDER_VERSION picks the directory layout under out/
+        # AND the URL version clusterctl extracts. hack/capi/metadata.yaml
+        # declares `releaseSeries: [{major: 0, minor: 1}]`, so the bundle
+        # version must fall inside the 0.1 line or clusterctl will refuse
+        # with "invalid provider metadata".
+        run: make clusterctl-setup IMG="${IMG}" CLUSTERCTL_PROVIDER_VERSION=v0.1.99
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ${{ env.KIND_CLUSTER }}
+          wait: 120s
+
+      - name: Load manager image into kind
+        run: kind load docker-image "${IMG}" --name "${KIND_CLUSTER}"
+
+      - name: Install cert-manager
+        run: |
+          set -euo pipefail
+          kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+          kubectl wait --for=condition=Available --timeout=180s -n cert-manager deployment --all
+
+      - name: clusterctl init
+        run: |
+          set -euo pipefail
+          clusterctl init \
+            --config capi-local-config.yaml \
+            --infrastructure kany8s \
+            --control-plane kany8s \
+            --wait-providers
+
+      - name: Wait for kany8s manager Deployments
+        run: |
+          set -euo pipefail
+          kubectl wait --for=condition=Available --timeout=300s \
+            -n infrastructure-kany8s-system \
+            deployment/infrastructure-kany8s-controller-manager
+          kubectl wait --for=condition=Available --timeout=300s \
+            -n control-plane-kany8s-system \
+            deployment/control-plane-kany8s-controller-manager
+
+      - name: Dump diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -A || true
+          kubectl describe pods -n infrastructure-kany8s-system || true
+          kubectl describe pods -n control-plane-kany8s-system || true
+          kubectl logs -n infrastructure-kany8s-system \
+            deployment/infrastructure-kany8s-controller-manager --tail=200 || true
+          kubectl logs -n control-plane-kany8s-system \
+            deployment/control-plane-kany8s-controller-manager --tail=200 || true

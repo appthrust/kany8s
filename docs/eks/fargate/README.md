@@ -64,12 +64,14 @@
 
 ## Credentials strategy
 
+ACK controller と同じ shared credentials file 方式に揃えています (`aws.credentials.secretName` が非空なら Secret を mount し、空なら SDK default chain)。
+
 - kind 管理クラスタ
-  - `ack-system/aws-creds` Secret を `/aws/credentials` に mount する overlay を使います。
+  - `ack-system/aws-creds` Secret を `/var/run/secrets/aws/credentials` に mount する overlay を使います（ACK 本家と同じ path）。
   - 固定前提:
     - namespace: `ack-system`
     - secret name: `aws-creds`
-    - env: `AWS_SHARED_CREDENTIALS_FILE=/aws/credentials`
+    - env: `AWS_SHARED_CREDENTIALS_FILE=/var/run/secrets/aws/credentials`, `AWS_PROFILE=default`
 - 実クラスタ
   - IRSA overlay を使い、`aws-creds` mount を無効化します。
   - ServiceAccount annotation (`eks.amazonaws.com/role-arn`) は環境に合わせて付与してください。

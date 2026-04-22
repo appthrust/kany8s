@@ -1,0 +1,95 @@
+# Default values for eks-karpenter-bootstrapper.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# When true the chart manifests a Namespace object. Set false if the namespace
+# is owned by another tool (e.g. Flux Kustomization or an umbrella chart).
+createNamespace: true
+namespace: kany8s-eks-system
+
+# Image reference is composed from registry / repository / tag|digest so each
+# axis can be overridden independently (private mirrors, air-gap, digest
+# pinning). See templates/_helpers.tpl:kany8s-eks.image for the resolution
+# order. Tag falls back to Chart.appVersion when unset.
+image:
+  registry: ghcr.io
+  repository: appthrust/kany8s/eks-karpenter-bootstrapper
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+replicas: 1
+
+podAnnotations: {}
+podLabels: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Manager CLI flags. Each field maps to an identically-named flag in
+# cmd/eks-karpenter-bootstrapper/main.go.
+args:
+  leaderElect: true
+  metricsBindAddress: "0"
+  metricsSecure: false
+  healthProbeBindAddress: ":8081"
+  enableHTTP2: false
+  watchNamespace: ""
+  failureBackoff: "30s"
+  steadyStateRequeue: "10m"
+  # Overrides Flux OCIRepository spec.ref.tag for the upstream Karpenter chart.
+  # Empty means fall back to the controller default compiled into the binary.
+  karpenterChartVersion: ""
+
+aws:
+  # If specified, use the AWS region for AWS API calls
+  region: ""
+  credentials:
+    # If specified, Secret with shared credentials file to use.
+    secretName: ""
+    # Secret stringData key that contains the credentials
+    secretKey: "credentials"
+    # Profile used for AWS credentials
+    profile: "default"
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+livenessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 20
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10

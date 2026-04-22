@@ -1,0 +1,27 @@
+eks-kubeconfig-rotator has been installed.
+
+{{- if .Values.aws.credentials.secretName }}
+
+AWS credentials: shared credentials file mounted from Secret "{{ .Values.aws.credentials.secretName }}"
+                 in namespace "{{ .Values.namespace }}" (key "{{ .Values.aws.credentials.secretKey }}",
+                 profile "{{ .Values.aws.credentials.profile }}"). Path inside the Pod:
+                 {{ include "eks-kubeconfig-rotator.aws.credentials.filePath" . }}
+
+  Create the Secret with:
+
+    kubectl -n {{ .Values.namespace }} create secret generic {{ .Values.aws.credentials.secretName }} \
+      --from-file={{ .Values.aws.credentials.secretKey }}=$HOME/.aws/credentials
+{{- else }}
+
+AWS credentials: SDK default credential chain. Configure exactly one of:
+  - IRSA: add an OIDC-backed role ARN under
+      serviceAccount.annotations."eks.amazonaws.com/role-arn"
+    and ensure the cluster has an OIDC identity provider.
+  - EKS Pod Identity: create a PodIdentityAssociation pointing at
+      ServiceAccount {{ include "eks-kubeconfig-rotator.serviceAccountName" . }}
+      in namespace {{ .Values.namespace }}.
+  - EC2 instance profile (self-managed nodes): attach an IAM role to the node.
+{{- end }}
+
+Tail the manager logs:
+  kubectl -n {{ .Values.namespace }} logs -l app.kubernetes.io/name=eks-kubeconfig-rotator -f

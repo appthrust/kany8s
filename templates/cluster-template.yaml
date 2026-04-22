@@ -1,0 +1,53 @@
+# clusterctl cluster-template for kany8s (kro-based).
+#
+# Render with:
+#   clusterctl generate cluster ${CLUSTER_NAME} \
+#     --kubernetes-version ${KUBERNETES_VERSION} \
+#     --infrastructure kany8s \
+#     --control-plane kany8s \
+#     --target-namespace ${NAMESPACE}
+#
+# Required environment variables:
+#   CLUSTER_NAME                  - Cluster name (e.g. demo)
+#   NAMESPACE                     - Target namespace for the Cluster resources
+#   KUBERNETES_VERSION            - Kubernetes version, e.g. "1.34"
+#   KANY8S_INFRA_RGD_NAME         - kro ResourceGraphDefinition name that provisions the infra backend
+#   KANY8S_CONTROL_PLANE_RGD_NAME - kro ResourceGraphDefinition name that provisions the control plane
+#
+# For a kubeadm-backed control plane (self-managed Docker / bare VMs) swap
+# Kany8sControlPlane with Kany8sKubeadmControlPlane; see examples/self-managed-docker/.
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: Kany8sCluster
+    name: ${CLUSTER_NAME}
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: Kany8sControlPlane
+    name: ${CLUSTER_NAME}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+kind: Kany8sCluster
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  resourceGraphDefinitionRef:
+    name: ${KANY8S_INFRA_RGD_NAME}
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
+kind: Kany8sControlPlane
+metadata:
+  name: ${CLUSTER_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  version: ${KUBERNETES_VERSION}
+  resourceGraphDefinitionRef:
+    name: ${KANY8S_CONTROL_PLANE_RGD_NAME}
+  kroSpec:
+    name: ${CLUSTER_NAME}

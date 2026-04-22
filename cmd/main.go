@@ -19,7 +19,9 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -52,6 +54,47 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const (
+	controllerGroupInfrastructure = "infrastructure"
+	controllerGroupControlPlane   = "control-plane"
+)
+
+// stringSliceFlag is a flag.Value implementation that appends each repeated
+// --<name>=<value> occurrence to the underlying slice.
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string {
+	if s == nil {
+		return ""
+	}
+	return strings.Join(*s, ",")
+}
+
+func (s *stringSliceFlag) Set(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("enable-controller value must not be empty")
+	}
+	*s = append(*s, value)
+	return nil
+}
+
+// enabledControllerSet returns a set of controller groups that should be
+// registered. An empty input means "enable everything" (dev / legacy default).
+func enabledControllerSet(values []string) (map[string]bool, error) {
+	set := map[string]bool{}
+	for _, v := range values {
+		switch v {
+		case controllerGroupInfrastructure, controllerGroupControlPlane:
+			set[v] = true
+		default:
+			return nil, fmt.Errorf("unknown controller group %q (supported: %s, %s)",
+				v, controllerGroupInfrastructure, controllerGroupControlPlane)
+		}
+	}
+	return set, nil
+}
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
@@ -71,6 +114,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var enabledControllers stringSliceFlag
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -89,11 +133,25 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.Var(&enabledControllers, "enable-controller",
+		"Restrict which controller group to enable: "+
+			controllerGroupInfrastructure+", "+controllerGroupControlPlane+
+			". Repeat the flag to enable multiple groups. "+
+			"If omitted all groups are enabled (legacy single-binary mode).")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	enabledSet, err := enabledControllerSet(enabledControllers)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(2)
+	}
+	runAll := len(enabledSet) == 0
+	runInfrastructure := runAll || enabledSet[controllerGroupInfrastructure]
+	runControlPlane := runAll || enabledSet[controllerGroupControlPlane]
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -164,13 +222,24 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	// Give each controller group its own leader election lease so that the
+	// infrastructure and control-plane Deployments (which share a namespace in
+	// clusterctl installs) do not fight over a single lease.
+	leaderElectionID := "4d5f86eb.cluster.x-k8s.io"
+	switch {
+	case !runAll && runInfrastructure && !runControlPlane:
+		leaderElectionID = "infrastructure." + leaderElectionID
+	case !runAll && runControlPlane && !runInfrastructure:
+		leaderElectionID = "control-plane." + leaderElectionID
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "4d5f86eb.cluster.x-k8s.io",
+		LeaderElectionID:       leaderElectionID,
 		Client: client.Options{
 			Cache: &client.CacheOptions{
 				DisableFor: []client.Object{&corev1.Secret{}},
@@ -193,36 +262,44 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.Kany8sControlPlaneReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"), //nolint:staticcheck
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Kany8sControlPlane")
-		os.Exit(1)
+	if runControlPlane {
+		if err := (&controller.Kany8sControlPlaneReconciler{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("kany8scontrolplane"), //nolint:staticcheck
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Kany8sControlPlane")
+			os.Exit(1)
+		}
+		if err := (&controlplanecontroller.Kany8sKubeadmControlPlaneReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Kany8sKubeadmControlPlane")
+			os.Exit(1)
+		}
+		if err := (&controlplanev1alpha1.Kany8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlane")
+			os.Exit(1)
+		}
+		if err := (&controlplanev1alpha1.Kany8sControlPlaneTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlaneTemplate")
+			os.Exit(1)
+		}
 	}
-	if err := (&infrastructurecontroller.Kany8sClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Kany8sCluster")
-		os.Exit(1)
+	if runInfrastructure {
+		if err := (&infrastructurecontroller.Kany8sClusterReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Kany8sCluster")
+			os.Exit(1)
+		}
 	}
-	if err := (&controlplanecontroller.Kany8sKubeadmControlPlaneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Kany8sKubeadmControlPlane")
-		os.Exit(1)
-	}
-	if err := (&controlplanev1alpha1.Kany8sControlPlane{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlane")
-		os.Exit(1)
-	}
-	if err := (&controlplanev1alpha1.Kany8sControlPlaneTemplate{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Kany8sControlPlaneTemplate")
-		os.Exit(1)
-	}
+	setupLog.Info("controller groups enabled",
+		controllerGroupInfrastructure, runInfrastructure,
+		controllerGroupControlPlane, runControlPlane,
+	)
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

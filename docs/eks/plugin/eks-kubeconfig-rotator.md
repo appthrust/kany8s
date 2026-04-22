@@ -242,7 +242,7 @@ BYO サンプルでは ACK の `Cluster.spec.accessConfig.bootstrapClusterCreato
 plugin が ACK と同じ AWS 資格情報（同一 principal）で token を生成すれば疎通しやすくなります。
 
 実装済みの `config/eks-plugin/` manifest は `ack-system` namespace に配置し、
-`ack-system/aws-creds` を mount する前提（kind 手順の ACK と同じ Secret）にしています。
+`ack-system/aws-creds` を `/var/run/secrets/aws/credentials` に mount する前提（ACK controller と同じ Secret/path 規約）にしています。
 
 ## 期待される効果
 

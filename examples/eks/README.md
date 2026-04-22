@@ -135,7 +135,7 @@ kubectl apply -f "${rendered}"
 4) plugins をデプロイ
 
 ```bash
-# kind (aws-creds mount) の既定オーバーレイ
+# kind (ack-system/aws-creds を /var/run/secrets/aws に mount) の既定オーバーレイ
 kubectl apply -k examples/eks/management/
 
 # 実クラスタ (IRSA) で deploy する場合

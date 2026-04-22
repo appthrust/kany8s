@@ -1,0 +1,22 @@
+apiVersion: v2
+name: eks-karpenter-bootstrapper
+description: Kany8s EKS Karpenter bootstrapper — provisions IAM Role, OIDC provider, SecurityGroup, Fargate profile, and installs Karpenter via Flux on CAPI-managed EKS clusters.
+type: application
+# version and appVersion are rewritten by .github/workflows/release-helm.yml at
+# tag push time so they always match the git tag.
+version: 0.0.0
+appVersion: "0.0.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/appthrust/kany8s
+sources:
+  - https://github.com/appthrust/kany8s
+maintainers:
+  - name: appthrust
+    url: https://github.com/appthrust
+keywords:
+  - kubernetes
+  - cluster-api
+  - eks
+  - aws
+  - karpenter
+  - kany8s

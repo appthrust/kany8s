@@ -88,7 +88,7 @@ func (c *eventStateCache) enforceSizeLocked() {
 		return
 	}
 	excess := len(c.last) - c.maxEntries
-	for i := 0; i < excess; i++ {
+	for range excess {
 		oldestKey := ""
 		oldestAt := time.Time{}
 		for key, value := range c.last {

@@ -134,10 +134,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		if !controllerutil.ContainsFinalizer(cluster, r.cleanupFinalizer()) {
 			return ctrl.Result{}, nil
 		}
-		result, done, err := r.reconcileDeletingCluster(ctx, cluster, capiClusterName, eksClusterName, ackClusterName)
-		if err != nil {
-			return result, err
-		}
+		result, done := r.reconcileDeletingCluster(ctx, cluster, capiClusterName, eksClusterName, ackClusterName)
 		if !done {
 			return result, nil
 		}
@@ -373,9 +370,6 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 				return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
 			}
 			nodeSecurityGroupIDs = []string{id}
-			if len(controlPlaneSecurityGroupIDs) == 0 {
-				controlPlaneSecurityGroupIDs = []string{id}
-			}
 		}
 	}
 
@@ -618,9 +612,9 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 	ctx context.Context,
 	cluster *clusterv1.Cluster,
 	capiClusterName, eksClusterName, ackClusterName string,
-) (ctrl.Result, bool, error) {
+) (ctrl.Result, bool) {
 	if r == nil || cluster == nil {
-		return ctrl.Result{}, true, nil
+		return ctrl.Result{}, true
 	}
 
 	log := logf.FromContext(ctx).WithValues("phase", "delete")
@@ -629,7 +623,7 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 	// Suspend Flux resources first so Helm does not race and recreate Karpenter while deleting.
 	if suspended, err := r.suspendFluxKarpenterOnDelete(ctx, cluster, capiClusterName); err != nil {
 		log.Error(err, "failed to suspend Flux resources")
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false, nil
+		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false
 	} else if suspended {
 		r.emitEvent(cluster, corev1.EventTypeNormal, reasonFluxSuspended, "suspended Flux OCIRepository/HelmRelease for cluster deletion")
 	}
@@ -662,11 +656,11 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 
 	if strings.TrimSpace(region) == "" {
 		log.Info("skip Karpenter EC2 node cleanup (region not resolved)")
-		return ctrl.Result{}, true, nil
+		return ctrl.Result{}, true
 	}
 	if strings.TrimSpace(eksClusterName) == "" {
 		log.Info("skip Karpenter EC2 node cleanup (EKS cluster name not resolved)")
-		return ctrl.Result{}, true, nil
+		return ctrl.Result{}, true
 	}
 
 	log = log.WithValues("region", region)
@@ -678,11 +672,11 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 		lastToTerminate int
 		lastShutting    int
 	)
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := range 3 {
 		done, toTerminate, shuttingDown, err := cleanupKarpenterEC2Instances(ctx, region, eksClusterName)
 		if err != nil {
 			log.Error(err, "failed to cleanup Karpenter EC2 instances")
-			return ctrl.Result{RequeueAfter: r.failureBackoff()}, false, nil
+			return ctrl.Result{RequeueAfter: r.failureBackoff()}, false
 		}
 		lastDone, lastToTerminate, lastShutting = done, toTerminate, shuttingDown
 		if done || toTerminate == 0 {
@@ -699,7 +693,7 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 			"toTerminate", lastToTerminate,
 			"shuttingDown", lastShutting,
 		)
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false, nil
+		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false
 	}
 	log.V(1).Info("Karpenter EC2 instances termination complete", "phase", "delete-ec2")
 
@@ -712,7 +706,7 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonOrphanENICleanup, msg)
 		log.Error(err, "failed to cleanup orphan CNI ENIs", "deletedENIs", eniDeleted, "remainingENIs", eniRemaining)
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false, nil
+		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false
 	}
 	if !eniDone {
 		log.V(1).Info("orphan CNI ENI cleanup in progress", "deletedENIs", eniDeleted, "remainingENIs", eniRemaining)
@@ -723,14 +717,14 @@ func (r *EKSKarpenterBootstrapperReconciler) reconcileDeletingCluster(
 			msg := fmt.Sprintf("orphan ENIs still present (count=%d); waiting for ENI cleanup", eniRemaining)
 			r.emitEvent(cluster, corev1.EventTypeNormal, reasonOrphanENICleanup, msg)
 		}
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false, nil
+		return ctrl.Result{RequeueAfter: r.failureBackoff()}, false
 	}
 	if eniDeleted > 0 {
 		msg := fmt.Sprintf("deleted %d orphan ENIs for node SecurityGroup", eniDeleted)
 		r.emitEvent(cluster, corev1.EventTypeNormal, reasonOrphanENICleanup, msg)
 	}
 	log.V(1).Info("orphan CNI ENI cleanup complete", "deletedENIs", eniDeleted)
-	return ctrl.Result{}, true, nil
+	return ctrl.Result{}, true
 }
 
 func (r *EKSKarpenterBootstrapperReconciler) suspendFluxKarpenterOnDelete(ctx context.Context, owner *clusterv1.Cluster, capiClusterName string) (bool, error) {
@@ -1505,6 +1499,12 @@ type fargateSubnetValidationResult struct {
 	SubnetsWithoutNATDefaultRoute []string
 }
 
+// validateFargateSubnets orchestrates a series of AWS SDK calls to inspect
+// each candidate subnet; the branching reflects the number of distinct
+// failure modes reported to Fargate operators, so cyclomatic complexity is
+// acceptable here.
+//
+//nolint:gocyclo // sequential AWS probe with per-check error surfacing
 func validateFargateSubnets(ctx context.Context, region string, subnetIDs []string) (fargateSubnetValidationResult, error) {
 	ids := normalizeDistinctStrings(subnetIDs)
 	if len(ids) < 2 {
@@ -2286,7 +2286,7 @@ func defaultResolveOIDCThumbprints(ctx context.Context, issuerURL string) ([]str
 	if err != nil {
 		return nil, fmt.Errorf("tls dial issuer: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	select {
 	case <-ctx.Done():
