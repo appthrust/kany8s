@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "nameOverride":     { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "createNamespace":  { "type": "boolean" },
+    "namespace":        { "type": "string", "minLength": 1 },
+    "replicas":         { "type": "integer", "minimum": 0 },
+    "image": {
+      "type": "object",
+      "properties": {
+        "registry":   { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "minLength": 1 },
+        "tag":        { "type": "string" },
+        "digest":     { "type": "string", "pattern": "^$|^sha256:[a-f0-9]{64}$" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      },
+      "required": ["registry", "repository"],
+      "additionalProperties": false
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "global": {
+      "type": "object",
+      "properties": {
+        "imageRegistry":    { "type": "string" },
+        "imagePullSecrets": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "aws": {
+      "type": "object",
+      "properties": {
+        "mode":   { "enum": ["staticSecret", "irsa", "podIdentity"] },
+        "region": { "type": "string" },
+        "staticSecret": {
+          "type": "object",
+          "properties": {
+            "secretName":  { "type": "string", "minLength": 1 },
+            "mountPath":   { "type": "string", "minLength": 1 },
+            "envFilePath": { "type": "string", "minLength": 1 },
+            "optional":    { "type": "boolean" }
+          }
+        },
+        "irsa": {
+          "type": "object",
+          "properties": {
+            "roleArn": { "type": "string" }
+          }
+        },
+        "podIdentity": { "type": "object" }
+      },
+      "required": ["mode"]
+    },
+    "args": {
+      "type": "object",
+      "properties": {
+        "leaderElect":            { "type": "boolean" },
+        "metricsBindAddress":     { "type": "string" },
+        "metricsSecure":          { "type": "boolean" },
+        "healthProbeBindAddress": { "type": "string" },
+        "enableHTTP2":            { "type": "boolean" },
+        "watchNamespace":         { "type": "string" },
+        "failureBackoff":         { "type": "string" },
+        "steadyStateRequeue":     { "type": "string" },
+        "karpenterChartVersion":  { "type": "string" }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "properties": {
+        "create": { "type": "boolean" }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create":      { "type": "boolean" },
+        "name":        { "type": "string" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "podAnnotations": { "type": "object" },
+    "podLabels":      { "type": "object" },
+    "resources":      { "type": "object" },
+    "nodeSelector":   { "type": "object" },
+    "tolerations":    { "type": "array" },
+    "affinity":       { "type": "object" },
+    "priorityClassName":  { "type": "string" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext":    { "type": "object" },
+    "livenessProbe":      { "type": "object" },
+    "readinessProbe":     { "type": "object" }
+  }
+}

@@ -1,0 +1,103 @@
+# Default values for eks-kubeconfig-rotator.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# When true the chart manifests a Namespace object. Set false if the namespace
+# is owned by another tool (e.g. Flux Kustomization or an umbrella chart).
+createNamespace: true
+namespace: kany8s-eks-system
+
+# Image reference is composed from registry / repository / tag|digest so each
+# axis can be overridden independently (private mirrors, air-gap, digest
+# pinning). See templates/_helpers.tpl:kany8s-eks.image for the resolution
+# order. Tag falls back to Chart.appVersion when unset.
+image:
+  registry: ghcr.io
+  repository: appthrust/kany8s/eks-kubeconfig-rotator
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Mirror of the Bitnami convention. global.imageRegistry wins over
+# image.registry when non-empty, and global.imagePullSecrets is concatenated
+# with the chart-local imagePullSecrets.
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+replicas: 1
+
+podAnnotations: {}
+podLabels: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Manager CLI flags. Each field maps to an identically-named flag in
+# cmd/eks-kubeconfig-rotator/main.go.
+args:
+  leaderElect: true
+  metricsBindAddress: "0"
+  metricsSecure: false
+  healthProbeBindAddress: ":8081"
+  enableHTTP2: false
+  watchNamespace: ""
+  refreshBefore: "5m"
+  maxRefreshInterval: "10m"
+  failureBackoff: "30s"
+
+# AWS credential wiring. Exactly one mode applies per release.
+#   staticSecret → mount a Secret with an AWS credentials file (dev / kind)
+#   irsa         → IAM Roles for Service Accounts (EKS + OIDC)
+#   podIdentity  → EKS Pod Identity Agent (EKS 2023+)
+aws:
+  mode: staticSecret
+  region: ""
+  staticSecret:
+    secretName: aws-creds
+    mountPath: /aws
+    envFilePath: /aws/credentials
+    optional: true
+  irsa:
+    roleArn: ""
+  podIdentity: {}
+
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Probe configuration mirrors the hard-coded values used by the kustomize
+# overlay under config/eks-plugin/.
+livenessProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 20
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10

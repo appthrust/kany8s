@@ -1,0 +1,40 @@
+eks-karpenter-bootstrapper has been installed.
+
+AWS credential mode: {{ .Values.aws.mode }}
+{{- if eq .Values.aws.mode "staticSecret" }}
+
+  The manager expects Secret "{{ .Values.aws.staticSecret.secretName }}" in
+  namespace "{{ .Values.namespace }}" with an AWS credentials file at
+  "{{ .Values.aws.staticSecret.envFilePath }}". Create one with:
+
+    kubectl -n {{ .Values.namespace }} create secret generic {{ .Values.aws.staticSecret.secretName }} \
+      --from-file=credentials=$HOME/.aws/credentials
+{{- else if eq .Values.aws.mode "irsa" }}
+
+  The ServiceAccount {{ include "eks-karpenter-bootstrapper.serviceAccountName" . }} has been annotated with
+    eks.amazonaws.com/role-arn={{ .Values.aws.irsa.roleArn }}
+
+  Ensure the cluster has an OIDC identity provider configured and the IAM
+  Role trust policy allows this ServiceAccount to assume it. Note: the
+  bootstrapper needs broad IAM / EC2 / EKS permissions to provision the
+  per-workload IAM role, OIDC provider, SecurityGroup and Fargate profile.
+{{- else if eq .Values.aws.mode "podIdentity" }}
+
+  Pod Identity agent must be installed in the cluster. Associate the
+  ServiceAccount {{ include "eks-karpenter-bootstrapper.serviceAccountName" . }}
+  (namespace {{ .Values.namespace }}) with an IAM Role via:
+    aws eks create-pod-identity-association --cluster-name <cluster> \
+      --namespace {{ .Values.namespace }} \
+      --service-account {{ include "eks-karpenter-bootstrapper.serviceAccountName" . }} \
+      --role-arn <role-arn>
+{{- end }}
+
+The bootstrapper will:
+  - provision the EKS cluster's OIDC provider (iam.services.k8s.aws/OpenIDConnectProvider)
+  - create the Karpenter controller IAM Role/Policy (iam.services.k8s.aws/Role, Policy)
+  - create the node instance profile
+  - create the cluster security group for Karpenter-managed nodes
+  - install Karpenter via Flux HelmRelease{{- if .Values.args.karpenterChartVersion }} at version {{ .Values.args.karpenterChartVersion }}{{- end }}
+
+Tail the manager logs:
+  kubectl -n {{ .Values.namespace }} logs -l app.kubernetes.io/name=eks-karpenter-bootstrapper -f

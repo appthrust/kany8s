@@ -1,0 +1,23 @@
+apiVersion: v2
+name: eks-kubeconfig-rotator
+description: Kany8s EKS kubeconfig rotator — keeps the CAPI kubeconfig Secret fresh by rotating short-lived EKS tokens before they expire.
+type: application
+# version and appVersion are rewritten by .github/workflows/release-helm.yml at
+# tag push time so they always match the git tag (e.g. v0.1.2 → version 0.1.2,
+# appVersion v0.1.2). The 0.0.0 placeholder ensures local `helm lint` works
+# without needing to bump the file for every commit.
+version: 0.0.0
+appVersion: "0.0.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/appthrust/kany8s
+sources:
+  - https://github.com/appthrust/kany8s
+maintainers:
+  - name: appthrust
+    url: https://github.com/appthrust
+keywords:
+  - kubernetes
+  - cluster-api
+  - eks
+  - aws
+  - kany8s

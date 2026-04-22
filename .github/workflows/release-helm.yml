@@ -1,0 +1,212 @@
+name: Release Helm Charts
+
+# Helm charts under charts/ are published to GHCR as OCI artifacts at
+# oci://ghcr.io/appthrust/charts/<chart>. The workflow runs alongside
+# release.yml (both fire on tag push) but stages its `helm push` behind a
+# manifest-existence probe so the published chart never references an image
+# digest that has not yet been finalised by release.yml's create-manifest job.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (must exist as a git tag unless dry_run is true).'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run: package charts but skip the OCI push.'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-helm-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  OCI_REPO: oci://ghcr.io/${{ github.repository_owner }}/charts
+
+jobs:
+  resolve:
+    name: Resolve release parameters
+    runs-on: ubuntu-24.04
+    outputs:
+      tag:     ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      push:    ${{ steps.tag.outputs.push }}
+    steps:
+      - id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+            dry_run="${{ inputs.dry_run }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+            dry_run="false"
+          fi
+          if [[ -z "${tag}" ]]; then
+            echo "::error::tag is empty; refusing to run" >&2
+            exit 1
+          fi
+          # Helm chart versions must be SemVer without a leading 'v'.
+          version="${tag#v}"
+          echo "tag=${tag}"         >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if [[ "${dry_run}" == "true" ]]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  wait-for-images:
+    name: Wait for controller images (${{ matrix.component }})
+    needs: resolve
+    if: ${{ needs.resolve.outputs.push == 'true' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: true
+      matrix:
+        # Each chart references an image from release.yml; block chart push
+        # until the corresponding multi-arch manifest is reachable.
+        component:
+          - eks-kubeconfig-rotator
+          - eks-karpenter-bootstrapper
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Poll ghcr.io/${{ github.repository_owner }}/kany8s/${{ matrix.component }}:${{ needs.resolve.outputs.tag }}
+        shell: bash
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/kany8s/${{ matrix.component }}:${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Budget: 20 x 30s = 10 minutes. release.yml typically finishes
+          # create-manifest well within 5 minutes on ubuntu-24.04 runners.
+          for i in $(seq 1 20); do
+            if docker buildx imagetools inspect "${IMAGE}" >/dev/null 2>&1; then
+              echo "Image manifest is ready: ${IMAGE}"
+              exit 0
+            fi
+            echo "Attempt $i/20: image manifest not ready yet; sleeping 30s…"
+            sleep 30
+          done
+          echo "::error::Timed out waiting for ${IMAGE} to become available" >&2
+          exit 1
+
+  push-charts:
+    name: Push ${{ matrix.chart }}
+    needs: [resolve, wait-for-images]
+    # wait-for-images is skipped on dry-run; guard the dependency so dry-run
+    # still runs the packaging step.
+    if: ${{ always() && needs.resolve.result == 'success' && (needs.wait-for-images.result == 'success' || needs.resolve.outputs.push == 'false') }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        chart:
+          - eks-kubeconfig-rotator
+          - eks-karpenter-bootstrapper
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.1
+
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.3
+
+      - name: Rewrite Chart.yaml version / appVersion
+        shell: bash
+        env:
+          CHART_DIR: charts/${{ matrix.chart }}
+          VERSION:   ${{ needs.resolve.outputs.version }}
+          TAG:       ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Each release pins the chart version and appVersion to the git tag
+          # so downstream consumers can `helm pull --version <tag>` directly.
+          yq -i '.version = strenv(VERSION) | .appVersion = strenv(TAG)' "${CHART_DIR}/Chart.yaml"
+          echo "--- rewritten Chart.yaml ---"
+          cat "${CHART_DIR}/Chart.yaml"
+
+      - name: Helm lint
+        env:
+          CHART_DIR: charts/${{ matrix.chart }}
+        run: helm lint "${CHART_DIR}"
+
+      - name: Log in to GHCR
+        if: ${{ needs.resolve.outputs.push == 'true' }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Skip if chart version already published
+        id: check
+        if: ${{ needs.resolve.outputs.push == 'true' }}
+        shell: bash
+        env:
+          CHART_NAME: ${{ matrix.chart }}
+          VERSION:    ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          if helm pull "${OCI_REPO}/${CHART_NAME}" --version "${VERSION}" --destination "$(mktemp -d)" >/dev/null 2>&1; then
+            echo "already_pushed=true" >> "$GITHUB_OUTPUT"
+            echo "chart ${CHART_NAME}-${VERSION} already exists; will skip push."
+          else
+            echo "already_pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Helm package
+        env:
+          CHART_DIR: charts/${{ matrix.chart }}
+        run: |
+          mkdir -p dist/charts
+          helm package "${CHART_DIR}" --destination dist/charts
+
+      - name: Helm push
+        if: ${{ needs.resolve.outputs.push == 'true' && steps.check.outputs.already_pushed == 'false' }}
+        env:
+          CHART_NAME: ${{ matrix.chart }}
+          VERSION:    ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          helm push "dist/charts/${CHART_NAME}-${VERSION}.tgz" "${OCI_REPO}"
+
+      - name: Summary
+        shell: bash
+        env:
+          CHART_NAME:     ${{ matrix.chart }}
+          VERSION:        ${{ needs.resolve.outputs.version }}
+          PUSH:           ${{ needs.resolve.outputs.push }}
+          ALREADY_PUSHED: ${{ steps.check.outputs.already_pushed }}
+        run: |
+          {
+            echo "## ${CHART_NAME}"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| version | ${VERSION} |"
+            echo "| oci ref | ${OCI_REPO}/${CHART_NAME}:${VERSION} |"
+            if [[ "${PUSH}" == "false" ]]; then
+              echo "| result  | dry-run (packaged only) |"
+            elif [[ "${ALREADY_PUSHED}" == "true" ]]; then
+              echo "| result  | skipped (already published) |"
+            else
+              echo "| result  | pushed |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

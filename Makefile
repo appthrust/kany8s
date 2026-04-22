@@ -343,6 +343,37 @@ undeploy-eks-plugin: kustomize ## Undeploy EKS kubeconfig rotator from the K8s c
 undeploy-eks-karpenter-bootstrapper: kustomize ## Undeploy EKS Karpenter bootstrapper from the K8s cluster specified in ~/.kube/config.
 	"$(KUSTOMIZE)" build config/eks-karpenter-bootstrapper | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
 
+##@ Helm Charts
+
+# Destination for `helm package` output. Cleaned by `make clean-helm`.
+HELM_DIST ?= dist/charts
+# Local OCI registry used by helm-push-local. Matches the default Zot port
+# from /srv/platform/CLAUDE.md "Assets Architecture". Override with e.g.
+# HELM_LOCAL_REGISTRY=oci://localhost:5099/charts for a non-standard port.
+HELM_LOCAL_REGISTRY ?= oci://localhost:5001/charts
+
+.PHONY: helm-lint
+helm-lint: ## Lint every chart under charts/; fails non-zero on any error.
+	@set -e; for chart in charts/*/; do \
+		echo ">>> helm lint $$chart"; \
+		helm lint "$$chart"; \
+	done
+
+.PHONY: helm-package
+helm-package: ## Package every chart under charts/ into $(HELM_DIST).
+	@mkdir -p "$(HELM_DIST)"
+	@set -e; for chart in charts/*/; do \
+		echo ">>> helm package $$chart"; \
+		helm package "$$chart" --destination "$(HELM_DIST)"; \
+	done
+
+.PHONY: helm-push-local
+helm-push-local: helm-package ## Push packaged charts to the local Zot registry at $(HELM_LOCAL_REGISTRY).
+	@set -e; for pkg in $(HELM_DIST)/*.tgz; do \
+		echo ">>> helm push $$pkg $(HELM_LOCAL_REGISTRY)"; \
+		helm push "$$pkg" "$(HELM_LOCAL_REGISTRY)"; \
+	done
+
 ##@ Dependencies
 
 ## Location to install dependencies to
