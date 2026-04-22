@@ -26,13 +26,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const (
+	// Shared test fixtures kept here so goconst stays happy.
+	testClusterName     = "demo"
+	testEKSNodeRoleName = "eks-demo-node"
+)
+
 func TestEKSKarpenterBootstrapperReconciler_EnsureClusterNameLabel_SetsLabelIfMissing(t *testing.T) {
 	t.Parallel()
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 
-	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"}}
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: "default"}}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster).Build()
 
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
@@ -52,7 +58,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureClusterNameLabel_SetsLabelIfMi
 	if updated.Labels == nil {
 		t.Fatalf("updated cluster has no labels")
 	}
-	if got, want := updated.Labels[capiClusterNameLabelKey], "demo"; got != want {
+	if got, want := updated.Labels[capiClusterNameLabelKey], testClusterName; got != want {
 		t.Fatalf("label %q = %q, want %q", capiClusterNameLabelKey, got, want)
 	}
 }
@@ -67,7 +73,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureTopologyStringSliceVariable_Pa
 	sgVar.Value.Raw = []byte("[]")
 
 	cluster := &clusterv1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: "default"},
 		Spec: clusterv1.ClusterSpec{
 			Topology: clusterv1.Topology{
 				ClassRef:  clusterv1.ClusterClassRef{Name: "kany8s-eks-byo"},
@@ -193,12 +199,12 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureDefaultNodePoolResources_Creat
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 			Labels: map[string]string{
 				karpenterEnableLabelKey: karpenterEnableLabelValue,
-				capiClusterNameLabelKey: "demo",
+				capiClusterNameLabelKey: testClusterName,
 			},
 		},
 	}
@@ -223,7 +229,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureDefaultNodePoolResources_Creat
 	if err := r.ensureDefaultNodePoolResources(
 		context.Background(),
 		cluster,
-		"demo",
+		testClusterName,
 		"eks-demo",
 		"eks-demo-node-profile",
 		[]string{"subnet-a", "subnet-b"},
@@ -245,7 +251,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureDefaultNodePoolResources_Creat
 	if !found {
 		t.Fatalf("missing clusterSelector.matchLabels")
 	}
-	if got, want := matchLabels[capiClusterNameLabelKey], "demo"; got != want {
+	if got, want := matchLabels[capiClusterNameLabelKey], testClusterName; got != want {
 		t.Fatalf("matchLabels[%q] = %v, want %q", capiClusterNameLabelKey, got, want)
 	}
 	if got, want := matchLabels[karpenterEnableLabelKey], karpenterEnableLabelValue; got != want {
@@ -349,7 +355,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 		},
@@ -421,7 +427,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("irsa role spec.policyRefs len = %d, want 1", len(refs))
 	}
 
-	if ok, err := r.ensureIAMRoleForEC2(context.Background(), cluster, "demo-karpenter-node", "ap-northeast-1", "eks-demo-node", []string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"}); err != nil {
+	if ok, err := r.ensureIAMRoleForEC2(context.Background(), cluster, "demo-karpenter-node", "ap-northeast-1", testEKSNodeRoleName, []string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"}); err != nil {
 		t.Fatalf("ensureIAMRoleForEC2() error = %v", err)
 	} else if !ok {
 		t.Fatalf("ensureIAMRoleForEC2() managed = false, want true")
@@ -429,7 +435,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	ec2Role := getUnstructured(t, c, ackIAMRoleGVK, "demo-karpenter-node")
 	if got, _, err := unstructured.NestedString(ec2Role.Object, "spec", "name"); err != nil {
 		t.Fatalf("ec2 role spec.name: %v", err)
-	} else if want := "eks-demo-node"; got != want {
+	} else if want := testEKSNodeRoleName; got != want {
 		t.Fatalf("ec2 role spec.name = %q, want %q", got, want)
 	}
 	if got, _, err := unstructured.NestedStringSlice(ec2Role.Object, "spec", "policies"); err != nil {
@@ -437,7 +443,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	} else if len(got) != 1 || got[0] != "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy" {
 		t.Fatalf("ec2 role spec.policies = %#v", got)
 	}
-	if ok, err := r.ensureIAMInstanceProfile(context.Background(), cluster, "demo-karpenter-node-instance-profile", "ap-northeast-1", "eks-demo-node", "demo-karpenter-node"); err != nil {
+	if ok, err := r.ensureIAMInstanceProfile(context.Background(), cluster, "demo-karpenter-node-instance-profile", "ap-northeast-1", testEKSNodeRoleName, "demo-karpenter-node"); err != nil {
 		t.Fatalf("ensureIAMInstanceProfile() error = %v", err)
 	} else if !ok {
 		t.Fatalf("ensureIAMInstanceProfile() managed = false, want true")
@@ -445,7 +451,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 	instanceProfile := getUnstructured(t, c, ackIAMInstanceProfileGVK, "demo-karpenter-node-instance-profile")
 	if got, _, err := unstructured.NestedString(instanceProfile.Object, "spec", "name"); err != nil {
 		t.Fatalf("instanceProfile spec.name: %v", err)
-	} else if want := "eks-demo-node"; got != want {
+	} else if want := testEKSNodeRoleName; got != want {
 		t.Fatalf("instanceProfile spec.name = %q, want %q", got, want)
 	}
 	if got, _, err := unstructured.NestedString(instanceProfile.Object, "spec", "roleRef", "from", "name"); err != nil {
@@ -531,7 +537,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("fargateProfile spec.tags: %v", err)
 	} else if !found {
 		t.Fatalf("fargateProfile spec.tags missing")
-	} else if got, want := tags["kany8s.io/cluster-name"], "demo"; got != want {
+	} else if got, want := tags["kany8s.io/cluster-name"], testClusterName; got != want {
 		t.Fatalf("fargateProfile spec.tags cluster-name = %v, want %q", got, want)
 	}
 }
@@ -544,7 +550,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExpl
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 			Annotations: map[string]string{
@@ -567,7 +573,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExpl
 		cluster,
 		"demo-karpenter-node",
 		"ap-northeast-1",
-		"eks-demo-node",
+		testEKSNodeRoleName,
 		[]string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"},
 	)
 	if err != nil {
@@ -583,7 +589,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExpl
 	}
 	if gotName, _, err := unstructured.NestedString(got.Object, "spec", "name"); err != nil {
 		t.Fatalf("role spec.name: %v", err)
-	} else if want := "eks-demo-node"; gotName != want {
+	} else if want := testEKSNodeRoleName; gotName != want {
 		t.Fatalf("role spec.name = %q, want %q", gotName, want)
 	}
 }
@@ -596,7 +602,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMPolicy_InvalidExistingShape
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 		},
@@ -639,7 +645,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 		},
@@ -649,7 +655,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
 
 	values := defaultKarpenterHelmValues("eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo-karpenter-controller")
-	ok, err := r.ensureFluxKarpenter(context.Background(), cluster, "demo", defaultKarpenterChartVersion, values)
+	ok, err := r.ensureFluxKarpenter(context.Background(), cluster, testClusterName, defaultKarpenterChartVersion, values)
 	if err != nil {
 		t.Fatalf("ensureFluxKarpenter() error = %v", err)
 	}
@@ -993,7 +999,7 @@ func TestEKSKarpenterBootstrapperReconciler_ResolveNodePoolTemplateYAML_UsesConf
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			Annotations: map[string]string{
 				karpenterNodePoolTemplateConfigMapAnnotation:    "demo-template",
@@ -1025,7 +1031,7 @@ func TestEKSKarpenterBootstrapperReconciler_SuspendFluxKarpenterOnDelete(t *test
 
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
+			Name:      testClusterName,
 			Namespace: "default",
 			UID:       "cluster-uid",
 		},
@@ -1036,7 +1042,7 @@ func TestEKSKarpenterBootstrapperReconciler_SuspendFluxKarpenterOnDelete(t *test
 	oci.SetNamespace("default")
 	oci.SetName("demo-karpenter")
 	setManagedBy(oci)
-	setClusterLabel(oci, "demo")
+	setClusterLabel(oci, testClusterName)
 	mustSetNestedField(oci, "10m", "spec", "interval")
 
 	hr := &unstructured.Unstructured{}
@@ -1044,13 +1050,13 @@ func TestEKSKarpenterBootstrapperReconciler_SuspendFluxKarpenterOnDelete(t *test
 	hr.SetNamespace("default")
 	hr.SetName("demo-karpenter")
 	setManagedBy(hr)
-	setClusterLabel(hr, "demo")
+	setClusterLabel(hr, testClusterName)
 	mustSetNestedField(hr, "5m", "spec", "interval")
 
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, oci, hr).Build()
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
 
-	changed, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, "demo")
+	changed, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, testClusterName)
 	if err != nil {
 		t.Fatalf("suspendFluxKarpenterOnDelete() error = %v", err)
 	}
@@ -1072,7 +1078,7 @@ func TestEKSKarpenterBootstrapperReconciler_SuspendFluxKarpenterOnDelete(t *test
 		t.Fatalf("HelmRelease spec.suspend = %v (found=%v), want true", suspended, found)
 	}
 
-	changedAgain, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, "demo")
+	changedAgain, err := r.suspendFluxKarpenterOnDelete(context.Background(), cluster, testClusterName)
 	if err != nil {
 		t.Fatalf("second suspendFluxKarpenterOnDelete() error = %v", err)
 	}

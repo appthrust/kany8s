@@ -14,7 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
+	memorycache "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -177,9 +179,14 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_IsAPIAvailableDetectsCRDsAdd
 	if err != nil {
 		t.Fatalf("new discovery client: %v", err)
 	}
+	// The reconciler consults a RESTMapper; wrap discovery with a deferred
+	// mapper whose cache we can invalidate after late CRD installs so the
+	// test mirrors how controller-runtime behaves in-cluster.
+	cachedDiscovery := memorycache.NewMemCacheClient(discoveryClient)
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscovery)
 
 	r := &EKSKarpenterBootstrapperReconciler{
-		DiscoveryClient: discoveryClient,
+		RESTMapper: mapper,
 	}
 
 	if r.isAPIAvailable(fluxOCIRepositoryGVK) {
@@ -203,6 +210,9 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_IsAPIAvailableDetectsCRDsAdd
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	if err := wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 10*time.Second, true, func(context.Context) (bool, error) {
+		// Drop the discovery cache so newly-installed CRDs are re-fetched.
+		cachedDiscovery.Invalidate()
+		mapper.Reset()
 		return r.areAPIsAvailable(fluxOCIRepositoryGVK, fluxHelmReleaseGVK), nil
 	}); err != nil {
 		t.Fatalf("Flux APIs were not detected after CRD install: %v", err)
