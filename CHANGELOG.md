@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/appthrust/kany8s/compare/v0.1.1...v0.2.0) (2026-04-22)
+
+
+### Features
+
+* package EKS plugin controllers as OCI Helm charts ([2c66e7b](https://github.com/appthrust/kany8s/commit/2c66e7b1e8cc22144858a1be6f3c77bbf81da65a))
+
 ## [0.1.1](https://github.com/appthrust/kany8s/compare/v0.1.0...v0.1.1) (2026-04-22)
 
 
