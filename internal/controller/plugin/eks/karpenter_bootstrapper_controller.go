@@ -172,7 +172,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	nodeSubnetIDs = normalizeDistinctStrings(nodeSubnetIDs)
 	if !ok || len(nodeSubnetIDs) == 0 {
 		msg := fmt.Sprintf(
-			"missing/invalid topology variable %q; cause: karpenter Fargate + NodePool require at least one private subnet ID with NAT egress (>=2 across >=2 AZs recommended for HA). action: set Cluster.spec.topology.variables[%q] to private subnet IDs",
+			"missing/invalid topology variable %q; cause: karpenter Fargate + NodePool require at least one private subnet ID. action: set Cluster.spec.topology.variables[%q] to private subnet IDs (NAT egress or VPC endpoints recommended for image pulls; >=2 across >=2 AZs recommended for HA)",
 			topologyNodeSubnetIDsVariableName,
 			topologyNodeSubnetIDsVariableName,
 		)
@@ -294,7 +294,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	subnetValidation, err := r.validateFargateSubnets(ctx, region, nodeSubnetIDs)
 	if err != nil {
 		msg := fmt.Sprintf(
-			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets with NAT egress in one VPC. action: pass private subnet IDs with NAT egress in Cluster.spec.topology.variables[%q]",
+			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: pass private subnet IDs in Cluster.spec.topology.variables[%q]; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
 			topologyNodeSubnetIDsVariableName,
 			err,
 			topologyNodeSubnetIDsVariableName,
@@ -500,7 +500,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	corednsFargateObjName := fmt.Sprintf("%s-fargate-coredns", capiClusterName)
 	if ok, err := r.ensureFargateProfile(ctx, cluster, karpenterFargateObjName, region, ackClusterName, "karpenter", fargateRoleName, nodeSubnetIDs, []map[string]any{{"namespace": "karpenter"}}); err != nil {
 		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS requires two private subnet IDs with NAT egress across AZs. action: verify %q are private with NAT egress (or VPC endpoints: ecr.api,ecr.dkr,s3,sts,logs)",
+			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
 			cluster.Namespace,
 			karpenterFargateObjName,
 			err,
@@ -519,7 +519,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		"labels":    map[string]any{"k8s-app": "kube-dns"},
 	}}); err != nil {
 		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS requires two private subnet IDs with NAT egress across AZs. action: verify %q are private with NAT egress (or VPC endpoints: ecr.api,ecr.dkr,s3,sts,logs)",
+			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
 			cluster.Namespace,
 			corednsFargateObjName,
 			err,
@@ -1514,10 +1514,16 @@ type fargateSubnetValidationResult struct {
 // acceptable here.
 //
 // This validator runs against node subnets only (vpc-node-subnet-ids), since
-// EKS FargateProfile and the default EC2NodeClass are the consumers that
-// require private subnets with NAT egress. Control plane subnet IDs are
-// consumed directly by EKS resourcesVPCConfig.subnetIDs and are not validated
-// here (they have no NAT egress requirement).
+// EKS FargateProfile and the default EC2NodeClass are the consumers of these
+// subnets. Hard failures returned as error: empty input, AWS API errors,
+// unknown subnet IDs, multiple VPCs, and public subnets. NAT default route
+// is checked but surfaced as a warning via SubnetsWithoutNATDefaultRoute
+// (image pulls may fail without it but it is not a hard AWS requirement;
+// VPC endpoints can substitute). AZ diversity is reported via
+// DistinctAZCount; the caller emits a non-blocking warning when
+// DistinctAZCount < 2 (HA recommendation, not enforced). Control plane
+// subnet IDs are consumed directly by EKS resourcesVPCConfig.subnetIDs and
+// are not validated here.
 //
 //nolint:gocyclo // sequential AWS probe with per-check error surfacing
 func validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []string) (fargateSubnetValidationResult, error) {
