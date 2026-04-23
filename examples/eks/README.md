@@ -75,18 +75,24 @@ sed \
 kubectl apply -f "${rendered}"
 
 # private subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
-export SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-a" -o jsonpath='{.status.subnetID}')"
-export SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-b" -o jsonpath='{.status.subnetID}')"
+# 同じ 2 つの private+NAT subnet を control plane と node の双方に使う構成例 (shared-subnet)
+export CONTROL_PLANE_SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-a" -o jsonpath='{.status.subnetID}')"
+export CONTROL_PLANE_SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-b" -o jsonpath='{.status.subnetID}')"
+export NODE_SUBNET_ID_1="${CONTROL_PLANE_SUBNET_ID_1}"
+export NODE_SUBNET_ID_2="${CONTROL_PLANE_SUBNET_ID_2}"
 
-echo "SUBNET_ID_1=${SUBNET_ID_1}"
-echo "SUBNET_ID_2=${SUBNET_ID_2}"
+echo "CONTROL_PLANE_SUBNET_ID_1=${CONTROL_PLANE_SUBNET_ID_1}"
+echo "CONTROL_PLANE_SUBNET_ID_2=${CONTROL_PLANE_SUBNET_ID_2}"
 ```
 
-既に subnet IDs が分かっている場合は、このステップを skip して次を設定してください:
+既に subnet IDs が分かっている場合は、このステップを skip して次を設定してください
+(`vpc-control-plane-subnet-ids` は任意 class、`vpc-node-subnet-ids` は private+NAT 必須):
 
 ```bash
-export SUBNET_ID_1=subnet-...
-export SUBNET_ID_2=subnet-...
+export CONTROL_PLANE_SUBNET_ID_1=subnet-...
+export CONTROL_PLANE_SUBNET_ID_2=subnet-...
+export NODE_SUBNET_ID_1=subnet-...
+export NODE_SUBNET_ID_2=subnet-...
 ```
 
 2) RGD/ClusterClass を apply
@@ -124,8 +130,10 @@ sed \
   -e "s|__KUBERNETES_VERSION__|${KUBERNETES_VERSION}|g" \
   -e "s|__AWS_REGION__|${AWS_REGION}|g" \
   -e "s|__EKS_VERSION__|${EKS_VERSION}|g" \
-  -e "s|__SUBNET_ID_1__|${SUBNET_ID_1}|g" \
-  -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_1__|${CONTROL_PLANE_SUBNET_ID_1}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_2__|${CONTROL_PLANE_SUBNET_ID_2}|g" \
+  -e "s|__NODE_SUBNET_ID_1__|${NODE_SUBNET_ID_1}|g" \
+  -e "s|__NODE_SUBNET_ID_2__|${NODE_SUBNET_ID_2}|g" \
   -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
   examples/eks/manifests/cluster.yaml.tpl > "${rendered}"
 

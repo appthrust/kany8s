@@ -36,10 +36,13 @@ export PUBLIC_ACCESS_CIDR="$(curl -fsSL https://checkip.amazonaws.com | tr -d '\
 BYO network で追加で必要な値:
 
 ```bash
-# 既存 subnet IDs (最低2つ)
-# Fargate bootstrap を使う場合、ここには private subnet IDs を指定してください。
-export SUBNET_ID_1=subnet-aaaa1111
-export SUBNET_ID_2=subnet-bbbb2222
+# 既存 subnet IDs (control plane + node、それぞれ最低2つで >=2 AZ)
+# - CONTROL_PLANE_SUBNET_ID_*: EKS 控制 plane ENI 用。NAT egress は不要 (class は endpoint access mode に依存)。
+# - NODE_SUBNET_ID_*: karpenter Fargate + 既定 EC2NodeClass 用。private + NAT egress 必須。
+export CONTROL_PLANE_SUBNET_ID_1=subnet-aaaa1111
+export CONTROL_PLANE_SUBNET_ID_2=subnet-bbbb2222
+export NODE_SUBNET_ID_1=subnet-cccc3333
+export NODE_SUBNET_ID_2=subnet-dddd4444
 
 # security group IDs
 # - `vpc-security-group-ids` (control plane向け) は従来どおり required です。
@@ -151,7 +154,10 @@ BYO network では `eks.publicAccessCIDRs` が ClusterClass 変数として requ
 
 - `region` <- `AWS_REGION`
 - `eks-version` <- `EKS_VERSION`
-- `vpc-subnet-ids` <- `SUBNET_ID_1`, `SUBNET_ID_2`
+- `vpc-control-plane-subnet-ids` <- `CONTROL_PLANE_SUBNET_ID_1`, `CONTROL_PLANE_SUBNET_ID_2`
+  - control plane ENI placement only (no NAT egress required; class depends on `eks-endpoint-*-access` mode)
+- `vpc-node-subnet-ids` <- `NODE_SUBNET_ID_1`, `NODE_SUBNET_ID_2`
+  - karpenter Fargate profile + default EC2NodeClass `subnetSelectorTerms`; must be private with NAT default route across `>=2` AZs
 - `vpc-security-group-ids` <- `SECURITY_GROUP_IDS_JSON`
 - `vpc-node-security-group-ids` <- `NODE_SECURITY_GROUP_IDS_JSON` (optional; node向け)
 - `karpenter-node-role-additional-policy-arns` <- `KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON` (optional)
@@ -168,10 +174,12 @@ namespace 注意:
 `docs/eks/byo-network/manifests/cluster.yaml.tpl` の render で置換する値:
 
 ```bash
-__AWS_REGION__               -> ${AWS_REGION}
-__SUBNET_ID_1__              -> ${SUBNET_ID_1}
-__SUBNET_ID_2__              -> ${SUBNET_ID_2}
-__SECURITY_GROUP_IDS_JSON__  -> ${SECURITY_GROUP_IDS_JSON}
+__AWS_REGION__                    -> ${AWS_REGION}
+__CONTROL_PLANE_SUBNET_ID_1__     -> ${CONTROL_PLANE_SUBNET_ID_1}
+__CONTROL_PLANE_SUBNET_ID_2__     -> ${CONTROL_PLANE_SUBNET_ID_2}
+__NODE_SUBNET_ID_1__              -> ${NODE_SUBNET_ID_1}
+__NODE_SUBNET_ID_2__              -> ${NODE_SUBNET_ID_2}
+__SECURITY_GROUP_IDS_JSON__       -> ${SECURITY_GROUP_IDS_JSON}
 __PUBLIC_ACCESS_CIDR__       -> ${PUBLIC_ACCESS_CIDR}
 __EKS_ACCESS_MODE__          -> ${EKS_ACCESS_MODE}
 __EKS_ENDPOINT_PRIVATE_ACCESS__ -> ${EKS_ENDPOINT_PRIVATE_ACCESS}
@@ -195,8 +203,10 @@ export SUBNET_A_AZ=
 export SUBNET_B_CIDR=
 export SUBNET_B_AZ=
 
-export SUBNET_ID_1=
-export SUBNET_ID_2=
+export CONTROL_PLANE_SUBNET_ID_1=
+export CONTROL_PLANE_SUBNET_ID_2=
+export NODE_SUBNET_ID_1=
+export NODE_SUBNET_ID_2=
 
 # Fargate + Karpenter bootstrap を使う場合は [] ではなく node 用 SG IDs を入れてください。
 export SECURITY_GROUP_IDS_JSON='[]'

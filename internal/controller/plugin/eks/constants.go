@@ -25,7 +25,8 @@ const (
 	karpenterNodePoolTemplateConfigMapKeyAnnotation = "eks.kany8s.io/karpenter-nodepool-template-key"
 	oidcThumbprintAutoAnnotation                    = "eks.kany8s.io/oidc-thumbprint-auto"
 
-	topologySubnetIDsVariableName                    = "vpc-subnet-ids"
+	topologyControlPlaneSubnetIDsVariableName        = "vpc-control-plane-subnet-ids"
+	topologyNodeSubnetIDsVariableName                = "vpc-node-subnet-ids"
 	topologyControlPlaneSecurityGroupIDsVariableName = "vpc-security-group-ids"
 	topologyNodeSecurityGroupIDsVariableName         = "vpc-node-security-group-ids"
 	topologyNodeRoleAdditionalPolicyARNsVariableName = "karpenter-node-role-additional-policy-arns"

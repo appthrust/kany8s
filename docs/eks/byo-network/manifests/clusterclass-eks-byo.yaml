@@ -57,7 +57,7 @@ spec:
         openAPIV3Schema:
           type: string
           minLength: 1
-    - name: vpc-subnet-ids
+    - name: vpc-control-plane-subnet-ids
       required: true
       schema:
         openAPIV3Schema:
@@ -67,6 +67,28 @@ spec:
           items:
             type: string
             minLength: 1
+          description: |
+            Subnet IDs that back the EKS control plane ENIs
+            (Cluster.resourcesVPCConfig.subnetIDs). Must span >=2 AZs.
+            NAT egress is NOT required here (control plane ENIs do not
+            originate outbound traffic). Class choice depends on endpoint
+            access mode: private when endpointPrivateAccess=true, public
+            or private when using public-only endpoint.
+    - name: vpc-node-subnet-ids
+      required: true
+      schema:
+        openAPIV3Schema:
+          type: array
+          minItems: 2
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+          description: |
+            Subnet IDs that back the karpenter Fargate profile and the
+            default EC2NodeClass subnetSelectorTerms. Must span >=2 AZs
+            AND be private with a NAT default route (AWS FargateProfile
+            rejects public subnets; image pulls require egress).
     - name: vpc-security-group-ids
       required: true
       schema:
@@ -135,7 +157,10 @@ spec:
             - op: add
               path: /spec/template/spec/kroSpec/vpc/subnetIDs
               valueFrom:
-                variable: vpc-subnet-ids
+                # Decorative readiness gate (size>=2 only); fed from the
+                # node subnet list because that is the side with real
+                # external requirements (Fargate + NodePool).
+                variable: vpc-node-subnet-ids
             - op: add
               path: /spec/template/spec/kroSpec/vpc/securityGroupIDs
               valueFrom:
@@ -159,7 +184,9 @@ spec:
             - op: add
               path: /spec/template/spec/kroSpec/vpc/subnetIDs
               valueFrom:
-                variable: vpc-subnet-ids
+                # Backs the EKS resourcesVPCConfig.subnetIDs (control
+                # plane ENI placement).
+                variable: vpc-control-plane-subnet-ids
             - op: add
               path: /spec/template/spec/kroSpec/vpc/securityGroupIDs
               valueFrom:

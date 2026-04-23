@@ -48,8 +48,10 @@ kubectl -n "$NAMESPACE" apply -f docs/eks/byo-network/manifests/clusterclass-eks
 BYO Topology Cluster の render/apply 例:
 
 ```bash
-export SUBNET_ID_1=subnet-aaaa1111
-export SUBNET_ID_2=subnet-bbbb2222
+export CONTROL_PLANE_SUBNET_ID_1=subnet-aaaa1111
+export CONTROL_PLANE_SUBNET_ID_2=subnet-bbbb2222
+export NODE_SUBNET_ID_1=subnet-cccc3333
+export NODE_SUBNET_ID_2=subnet-dddd4444
 export SECURITY_GROUP_IDS_JSON='[]' # control plane 向け
 export NODE_SECURITY_GROUP_IDS_JSON='[]' # node 向け (optional; 未指定時は SECURITY_GROUP_IDS_JSON を使用)
 export KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON='[]' # optional
@@ -68,8 +70,10 @@ sed \
   -e "s|__KUBERNETES_VERSION__|${KUBERNETES_VERSION}|g" \
   -e "s|__AWS_REGION__|${AWS_REGION}|g" \
   -e "s|__EKS_VERSION__|${EKS_VERSION}|g" \
-  -e "s|__SUBNET_ID_1__|${SUBNET_ID_1}|g" \
-  -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_1__|${CONTROL_PLANE_SUBNET_ID_1}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_2__|${CONTROL_PLANE_SUBNET_ID_2}|g" \
+  -e "s|__NODE_SUBNET_ID_1__|${NODE_SUBNET_ID_1}|g" \
+  -e "s|__NODE_SUBNET_ID_2__|${NODE_SUBNET_ID_2}|g" \
   -e "s|__SECURITY_GROUP_IDS_JSON__|${SECURITY_GROUP_IDS_JSON}|g" \
   -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
   -e "s|__EKS_ACCESS_MODE__|${EKS_ACCESS_MODE}|g" \

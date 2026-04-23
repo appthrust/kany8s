@@ -43,7 +43,8 @@
   - `examples/eks/manifests/cluster.yaml.tpl`
 - variables:
   - `vpc-security-group-ids: []` (bootstrapper が node SG を ACK で作成し、Topology variable に inject する想定)
-  - `vpc-subnet-ids: [subnet-0abf861a64491f95b, subnet-053e7b45c7957a303]`
+  - `vpc-control-plane-subnet-ids: [subnet-0abf861a64491f95b, subnet-053e7b45c7957a303]`
+  - `vpc-node-subnet-ids: [subnet-0abf861a64491f95b, subnet-053e7b45c7957a303]`
   - `eks-public-access-cidrs: [<my-ip>/32]`
 
 ACK EKS Cluster:

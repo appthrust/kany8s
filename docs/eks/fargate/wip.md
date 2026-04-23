@@ -303,7 +303,8 @@ Update:
 
 `docs/eks/byo-network/manifests/cluster.yaml.tpl` を render して apply:
 
-- `vpc-subnet-ids` は上で作った private subnet IDs を指定
+- `vpc-control-plane-subnet-ids` には EKS control plane ENI 用の subnet IDs を指定 (NAT 不要)
+- `vpc-node-subnet-ids` には上で作った private + NAT egress な subnet IDs を指定 (Fargate + NodePool 用)
 - `vpc-security-group-ids` は **空（[]）**で apply（node SG 自動作成 + Topology 注入の動作確認）
 
 opt-in:

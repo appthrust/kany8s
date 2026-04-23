@@ -18,10 +18,21 @@ spec:
         value: "__AWS_REGION__"
       - name: eks-version
         value: "__EKS_VERSION__"
-      - name: vpc-subnet-ids
+      # Subnets are split by purpose:
+      #   - vpc-control-plane-subnet-ids: feeds EKS resourcesVPCConfig.subnetIDs.
+      #     >=2 across >=2 AZs. NAT egress NOT required (control plane ENIs do
+      #     not originate outbound traffic). Class depends on endpoint mode.
+      #   - vpc-node-subnet-ids: feeds karpenter Fargate profile + default
+      #     EC2NodeClass subnetSelectorTerms. >=2 across >=2 AZs. Must be
+      #     private with NAT default route (Fargate rejects public subnets).
+      - name: vpc-control-plane-subnet-ids
         value:
-          - "__SUBNET_ID_1__"
-          - "__SUBNET_ID_2__"
+          - "__CONTROL_PLANE_SUBNET_ID_1__"
+          - "__CONTROL_PLANE_SUBNET_ID_2__"
+      - name: vpc-node-subnet-ids
+        value:
+          - "__NODE_SUBNET_ID_1__"
+          - "__NODE_SUBNET_ID_2__"
       - name: vpc-security-group-ids
         # Standard: let eks-karpenter-bootstrapper create/inject the node SG.
         # NOTE: When empty, the bootstrapper may also patch this control-plane SG list,
