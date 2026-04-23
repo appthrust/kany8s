@@ -45,11 +45,14 @@ sed \
 kubectl apply -f "${rendered}"
 
 # subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
-export SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-a" -o jsonpath='{.status.subnetID}')"
-export SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-b" -o jsonpath='{.status.subnetID}')"
+# NOTE: この public-only bootstrap は `vpc-control-plane-subnet-ids` のみ満たせます。
+# `vpc-node-subnet-ids` は private + NAT default route が必須なので、
+# Karpenter / Fargate を使う場合は下の private+NAT bootstrap を使ってください。
+export CONTROL_PLANE_SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-a" -o jsonpath='{.status.subnetID}')"
+export CONTROL_PLANE_SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-b" -o jsonpath='{.status.subnetID}')"
 
-echo "SUBNET_ID_1=${SUBNET_ID_1}"
-echo "SUBNET_ID_2=${SUBNET_ID_2}"
+echo "CONTROL_PLANE_SUBNET_ID_1=${CONTROL_PLANE_SUBNET_ID_1}"
+echo "CONTROL_PLANE_SUBNET_ID_2=${CONTROL_PLANE_SUBNET_ID_2}"
 ```
 
 ### (Fargate/Karpenter 向け) private subnet + NAT を作る
@@ -83,11 +86,17 @@ sed \
 kubectl apply -f "${rendered}"
 
 # private subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
-export SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-a" -o jsonpath='{.status.subnetID}')"
-export SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-b" -o jsonpath='{.status.subnetID}')"
+# 同じ 2 つの private+NAT subnet を control plane と node の双方に使う構成例です
+# (shared-subnet トポロジ、schema 上は disjoint である必要なし)。
+export CONTROL_PLANE_SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-a" -o jsonpath='{.status.subnetID}')"
+export CONTROL_PLANE_SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-private-b" -o jsonpath='{.status.subnetID}')"
+export NODE_SUBNET_ID_1="${CONTROL_PLANE_SUBNET_ID_1}"
+export NODE_SUBNET_ID_2="${CONTROL_PLANE_SUBNET_ID_2}"
 
-echo "SUBNET_ID_1=${SUBNET_ID_1}"
-echo "SUBNET_ID_2=${SUBNET_ID_2}"
+echo "CONTROL_PLANE_SUBNET_ID_1=${CONTROL_PLANE_SUBNET_ID_1}"
+echo "CONTROL_PLANE_SUBNET_ID_2=${CONTROL_PLANE_SUBNET_ID_2}"
+echo "NODE_SUBNET_ID_1=${NODE_SUBNET_ID_1}"
+echo "NODE_SUBNET_ID_2=${NODE_SUBNET_ID_2}"
 ```
 
 ## 最短 apply（セットアップ完了後）

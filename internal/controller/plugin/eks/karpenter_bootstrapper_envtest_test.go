@@ -60,7 +60,8 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_DerivedResourcesAndReadyGate
 				},
 				Version: "v1.35.0",
 				Variables: []clusterv1.ClusterVariable{
-					clusterVariableJSON(t, topologySubnetIDsVariableName, []string{"subnet-a", "subnet-b"}),
+					clusterVariableJSON(t, topologyControlPlaneSubnetIDsVariableName, []string{"subnet-cp-a", "subnet-cp-b"}),
+					clusterVariableJSON(t, topologyNodeSubnetIDsVariableName, []string{"subnet-a", "subnet-b"}),
 					clusterVariableJSON(t, topologyControlPlaneSecurityGroupIDsVariableName, []string{"sg-control"}),
 					clusterVariableJSON(t, topologyNodeSecurityGroupIDsVariableName, []string{"sg-node"}),
 				},

@@ -13,10 +13,22 @@ spec:
         value: "__AWS_REGION__"
       - name: eks-version
         value: "__EKS_VERSION__"
-      - name: vpc-subnet-ids
+      # Subnets are split by purpose:
+      #   - vpc-control-plane-subnet-ids: feeds EKS resourcesVPCConfig.subnetIDs.
+      #     >=2 across >=2 AZs. NAT egress NOT required (control plane ENIs do
+      #     not originate outbound traffic). Class depends on endpoint mode.
+      #   - vpc-node-subnet-ids: feeds karpenter Fargate profile + default
+      #     EC2NodeClass subnetSelectorTerms. Must be private with NAT
+      #     default route (Fargate rejects public subnets). >=1 subnet
+      #     required; >=2 across >=2 AZs recommended for HA.
+      - name: vpc-control-plane-subnet-ids
         value:
-          - "__SUBNET_ID_1__"
-          - "__SUBNET_ID_2__"
+          - "__CONTROL_PLANE_SUBNET_ID_1__"
+          - "__CONTROL_PLANE_SUBNET_ID_2__"
+      - name: vpc-node-subnet-ids
+        value:
+          - "__NODE_SUBNET_ID_1__"
+          - "__NODE_SUBNET_ID_2__"
       - name: vpc-security-group-ids
         # JSON array string replacement (e.g. [] or ["sg-aaa","sg-bbb"]).
         value: __SECURITY_GROUP_IDS_JSON__

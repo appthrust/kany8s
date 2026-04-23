@@ -78,8 +78,10 @@ sed \
   -e "s|__KUBERNETES_VERSION__|${KUBERNETES_VERSION}|g" \
   -e "s|__AWS_REGION__|${AWS_REGION}|g" \
   -e "s|__EKS_VERSION__|${EKS_VERSION}|g" \
-  -e "s|__SUBNET_ID_1__|${SUBNET_ID_1}|g" \
-  -e "s|__SUBNET_ID_2__|${SUBNET_ID_2}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_1__|${CONTROL_PLANE_SUBNET_ID_1}|g" \
+  -e "s|__CONTROL_PLANE_SUBNET_ID_2__|${CONTROL_PLANE_SUBNET_ID_2}|g" \
+  -e "s|__NODE_SUBNET_ID_1__|${NODE_SUBNET_ID_1}|g" \
+  -e "s|__NODE_SUBNET_ID_2__|${NODE_SUBNET_ID_2}|g" \
   -e "s|__SECURITY_GROUP_IDS_JSON__|${SECURITY_GROUP_IDS_JSON}|g" \
   -e "s|__PUBLIC_ACCESS_CIDR__|${PUBLIC_ACCESS_CIDR}|g" \
   -e "s|__EKS_ACCESS_MODE__|${EKS_ACCESS_MODE}|g" \

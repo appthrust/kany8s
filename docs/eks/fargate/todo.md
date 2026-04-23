@@ -229,7 +229,7 @@
   - [x] `selectors: [{namespace: karpenter}]`
 - [x] `FargateProfile/coredns`
   - [x] `selectors: [{namespace: kube-system, labels: {k8s-app: kube-dns}}]`
-- [x] `subnets` は `vpc-subnet-ids` をそのまま使う
+- [x] `subnets` は `vpc-node-subnet-ids` をそのまま使う(Fargate は private subnet が必須のため、control plane subnet とは分離)
 - [x] `podExecutionRoleRef` を付与
 
 ### 3.11 Flux: OCIRepository + HelmRelease（remote Karpenter install）

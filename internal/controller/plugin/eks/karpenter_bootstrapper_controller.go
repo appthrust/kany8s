@@ -157,7 +157,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	if !cluster.Spec.Topology.IsDefined() {
 		msg := fmt.Sprintf(
 			"Cluster.spec.topology is required; cause: BYO bootstrap needs topology variables (%q, %q or %q). action: set Cluster.spec.topology.variables before enabling karpenter bootstrap",
-			topologySubnetIDsVariableName,
+			topologyNodeSubnetIDsVariableName,
 			topologyNodeSecurityGroupIDsVariableName,
 			topologyControlPlaneSecurityGroupIDsVariableName,
 		)
@@ -165,16 +165,16 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
 	}
 
-	subnetIDs, ok, err := readTopologyStringSlice(cluster, topologySubnetIDsVariableName)
+	nodeSubnetIDs, ok, err := readTopologyStringSlice(cluster, topologyNodeSubnetIDsVariableName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	subnetIDs = normalizeDistinctStrings(subnetIDs)
-	if !ok || len(subnetIDs) < 2 {
+	nodeSubnetIDs = normalizeDistinctStrings(nodeSubnetIDs)
+	if !ok || len(nodeSubnetIDs) == 0 {
 		msg := fmt.Sprintf(
-			"missing/invalid topology variable %q; cause: Fargate bootstrap requires at least two private subnet IDs across AZs. action: set Cluster.spec.topology.variables[%q] to private subnet IDs",
-			topologySubnetIDsVariableName,
-			topologySubnetIDsVariableName,
+			"missing/invalid topology variable %q; cause: karpenter Fargate + NodePool require at least one private subnet ID. action: set Cluster.spec.topology.variables[%q] to private subnet IDs (NAT egress or VPC endpoints recommended for image pulls; >=2 across >=2 AZs recommended for HA)",
+			topologyNodeSubnetIDsVariableName,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonTopologyVariableMissing, msg)
 		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
@@ -291,13 +291,13 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	log = log.WithValues("region", region)
 	ctx = logf.IntoContext(ctx, log)
 
-	subnetValidation, err := r.validateFargateSubnets(ctx, region, subnetIDs)
+	subnetValidation, err := r.validateFargateSubnets(ctx, region, nodeSubnetIDs)
 	if err != nil {
 		msg := fmt.Sprintf(
-			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets in one VPC across multiple AZs. action: pass private subnet IDs only in Cluster.spec.topology.variables[%q]",
-			topologySubnetIDsVariableName,
+			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: pass private subnet IDs in Cluster.spec.topology.variables[%q]; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
+			topologyNodeSubnetIDsVariableName,
 			err,
-			topologySubnetIDsVariableName,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
@@ -306,6 +306,14 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		msg := fmt.Sprintf(
 			"subnets %v have no default route via NAT gateway/instance; cause: image pulls on Fargate/Karpenter may fail without egress. action: add NAT route or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs)",
 			subnetValidation.SubnetsWithoutNATDefaultRoute,
+		)
+		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
+	}
+	if subnetValidation.DistinctAZCount < 2 {
+		msg := fmt.Sprintf(
+			"node subnets span only %d AZ; cause: karpenter Fargate + NodePool become single-AZ and lose HA. action: add private+NAT subnets in additional AZs to Cluster.spec.topology.variables[%q]",
+			subnetValidation.DistinctAZCount,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 	}
@@ -329,7 +337,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	// If the topology variable vpc-node-security-group-ids is empty, we create a default node SecurityGroup via ACK,
 	// then inject the created security group ID back into Cluster.spec.topology.variables.
 	if len(nodeSecurityGroupIDs) == 0 {
-		id, managed, err := r.ensureNodeSecurityGroup(ctx, cluster, region, eksClusterName, subnetIDs)
+		id, managed, err := r.ensureNodeSecurityGroup(ctx, cluster, region, eksClusterName, nodeSubnetIDs)
 		if err != nil {
 			msg := fmt.Sprintf("failed to reconcile node SecurityGroup: %v", err)
 			r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
@@ -490,13 +498,13 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	// 4) Ensure Fargate profiles for bootstrap compute.
 	karpenterFargateObjName := fmt.Sprintf("%s-fargate-karpenter", capiClusterName)
 	corednsFargateObjName := fmt.Sprintf("%s-fargate-coredns", capiClusterName)
-	if ok, err := r.ensureFargateProfile(ctx, cluster, karpenterFargateObjName, region, ackClusterName, "karpenter", fargateRoleName, subnetIDs, []map[string]any{{"namespace": "karpenter"}}); err != nil {
+	if ok, err := r.ensureFargateProfile(ctx, cluster, karpenterFargateObjName, region, ackClusterName, "karpenter", fargateRoleName, nodeSubnetIDs, []map[string]any{{"namespace": "karpenter"}}); err != nil {
 		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS requires private subnets and workload egress. action: verify %q are private and provide NAT or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs)",
+			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
 			cluster.Namespace,
 			karpenterFargateObjName,
 			err,
-			topologySubnetIDsVariableName,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
@@ -506,16 +514,16 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		recordOwnershipConflict(metricControllerBootstrapper, "FargateProfile")
 		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
 	}
-	if ok, err := r.ensureFargateProfile(ctx, cluster, corednsFargateObjName, region, ackClusterName, "coredns", fargateRoleName, subnetIDs, []map[string]any{{
+	if ok, err := r.ensureFargateProfile(ctx, cluster, corednsFargateObjName, region, ackClusterName, "coredns", fargateRoleName, nodeSubnetIDs, []map[string]any{{
 		"namespace": "kube-system",
 		"labels":    map[string]any{"k8s-app": "kube-dns"},
 	}}); err != nil {
 		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS requires private subnets and workload egress. action: verify %q are private and provide NAT or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs)",
+			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
 			cluster.Namespace,
 			corednsFargateObjName,
 			err,
-			topologySubnetIDsVariableName,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
@@ -568,7 +576,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 
 	// 6) ClusterResourceSet: apply default NodePool/EC2NodeClass to workload cluster.
 	if len(nodeSecurityGroupIDs) > 0 {
-		if err := r.ensureDefaultNodePoolResources(ctx, cluster, capiClusterName, eksClusterName, nodeInstanceProfileAWSName, subnetIDs, nodeSecurityGroupIDs); err != nil {
+		if err := r.ensureDefaultNodePoolResources(ctx, cluster, capiClusterName, eksClusterName, nodeInstanceProfileAWSName, nodeSubnetIDs, nodeSecurityGroupIDs); err != nil {
 			if errors.Is(err, errNodePoolTemplateInvalid) {
 				msg := fmt.Sprintf(
 					"invalid NodePool template: %v; action: fix ConfigMap referenced by %q/%q or remove the annotation to use defaults",
@@ -1162,10 +1170,10 @@ func (r *EKSKarpenterBootstrapperReconciler) resolveNodePoolTemplateYAML(
 	owner *clusterv1.Cluster,
 	eksClusterName,
 	nodeInstanceProfileName string,
-	subnetIDs,
+	nodeSubnetIDs,
 	securityGroupIDs []string,
 ) (string, error) {
-	defaultYAML := buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName, subnetIDs, securityGroupIDs)
+	defaultYAML := buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs)
 	if owner == nil || len(owner.Annotations) == 0 {
 		return defaultYAML, nil
 	}
@@ -1314,7 +1322,7 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureAccessEntry(ctx context.Conte
 	})
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureFargateProfile(ctx context.Context, owner *clusterv1.Cluster, name, region, ackClusterName, profileName, podExecutionRoleRefName string, subnetIDs []string, selectors []map[string]any) (bool, error) {
+func (r *EKSKarpenterBootstrapperReconciler) ensureFargateProfile(ctx context.Context, owner *clusterv1.Cluster, name, region, ackClusterName, profileName, podExecutionRoleRefName string, nodeSubnetIDs []string, selectors []map[string]any) (bool, error) {
 	obj := newUnstructured(ackFargateProfileGVK, owner.Namespace, name)
 	return r.upsertManagedUnstructured(ctx, owner, obj, func(u *unstructured.Unstructured) error {
 		setRegionAnnotation(u, region)
@@ -1324,7 +1332,7 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFargateProfile(ctx context.Co
 		mustSetNestedField(u, map[string]any{"from": map[string]any{"name": ackClusterName, "namespace": owner.Namespace}}, "spec", "clusterRef")
 		mustSetNestedField(u, map[string]any{"from": map[string]any{"name": podExecutionRoleRefName, "namespace": owner.Namespace}}, "spec", "podExecutionRoleRef")
 		subnetsAny := []any{}
-		for _, s := range subnetIDs {
+		for _, s := range nodeSubnetIDs {
 			subnetsAny = append(subnetsAny, s)
 		}
 		mustSetNestedSlice(u, subnetsAny, "spec", "subnets")
@@ -1338,7 +1346,7 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFargateProfile(ctx context.Co
 	})
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureNodeSecurityGroup(ctx context.Context, owner *clusterv1.Cluster, region, eksClusterName string, subnetIDs []string) (string, bool, error) {
+func (r *EKSKarpenterBootstrapperReconciler) ensureNodeSecurityGroup(ctx context.Context, owner *clusterv1.Cluster, region, eksClusterName string, nodeSubnetIDs []string) (string, bool, error) {
 	if owner == nil {
 		return "", false, fmt.Errorf("owner cluster is nil")
 	}
@@ -1350,11 +1358,11 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureNodeSecurityGroup(ctx context
 	if eksClusterName == "" {
 		return "", false, fmt.Errorf("eks cluster name is empty")
 	}
-	if len(subnetIDs) == 0 {
+	if len(nodeSubnetIDs) == 0 {
 		return "", false, fmt.Errorf("subnet IDs are empty")
 	}
 
-	vpcID, vpcCIDRs, err := discoverVPCBySubnets(ctx, region, subnetIDs)
+	vpcID, vpcCIDRs, err := discoverVPCBySubnets(ctx, region, nodeSubnetIDs)
 	if err != nil {
 		return "", false, err
 	}
@@ -1421,13 +1429,13 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureNodeSecurityGroup(ctx context
 	return strings.TrimSpace(id), true, nil
 }
 
-func discoverVPCBySubnets(ctx context.Context, region string, subnetIDs []string) (string, []string, error) {
+func discoverVPCBySubnets(ctx context.Context, region string, nodeSubnetIDs []string) (string, []string, error) {
 	region = strings.TrimSpace(region)
 	if region == "" {
 		return "", nil, fmt.Errorf("region is empty")
 	}
 	ids := []string{}
-	for _, id := range subnetIDs {
+	for _, id := range nodeSubnetIDs {
 		id = strings.TrimSpace(id)
 		if id == "" {
 			continue
@@ -1497,6 +1505,7 @@ func discoverVPCBySubnets(ctx context.Context, region string, subnetIDs []string
 
 type fargateSubnetValidationResult struct {
 	SubnetsWithoutNATDefaultRoute []string
+	DistinctAZCount               int
 }
 
 // validateFargateSubnets orchestrates a series of AWS SDK calls to inspect
@@ -1504,11 +1513,23 @@ type fargateSubnetValidationResult struct {
 // failure modes reported to Fargate operators, so cyclomatic complexity is
 // acceptable here.
 //
+// This validator runs against node subnets only (vpc-node-subnet-ids), since
+// EKS FargateProfile and the default EC2NodeClass are the consumers of these
+// subnets. Hard failures returned as error: empty input, AWS API errors,
+// unknown subnet IDs, multiple VPCs, and public subnets. NAT default route
+// is checked but surfaced as a warning via SubnetsWithoutNATDefaultRoute
+// (image pulls may fail without it but it is not a hard AWS requirement;
+// VPC endpoints can substitute). AZ diversity is reported via
+// DistinctAZCount; the caller emits a non-blocking warning when
+// DistinctAZCount < 2 (HA recommendation, not enforced). Control plane
+// subnet IDs are consumed directly by EKS resourcesVPCConfig.subnetIDs and
+// are not validated here.
+//
 //nolint:gocyclo // sequential AWS probe with per-check error surfacing
-func validateFargateSubnets(ctx context.Context, region string, subnetIDs []string) (fargateSubnetValidationResult, error) {
-	ids := normalizeDistinctStrings(subnetIDs)
-	if len(ids) < 2 {
-		return fargateSubnetValidationResult{}, fmt.Errorf("need at least 2 subnets, got %d", len(ids))
+func validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []string) (fargateSubnetValidationResult, error) {
+	ids := normalizeDistinctStrings(nodeSubnetIDs)
+	if len(ids) == 0 {
+		return fargateSubnetValidationResult{}, fmt.Errorf("need at least 1 subnet, got 0")
 	}
 	region = strings.TrimSpace(region)
 	if region == "" {
@@ -1564,9 +1585,9 @@ func validateFargateSubnets(ctx context.Context, region string, subnetIDs []stri
 			azSet[az] = struct{}{}
 		}
 	}
-	if len(azSet) < 2 {
-		return fargateSubnetValidationResult{}, fmt.Errorf("subnets must span at least 2 AZs, got %d", len(azSet))
-	}
+	// AZ count is non-blocking: AWS FargateProfile accepts >=1 subnet (no AZ
+	// minimum). HA across >=2 AZs is recommended but not required; the caller
+	// emits a warning event when DistinctAZCount < 2.
 
 	rtOut, err := ec2c.DescribeRouteTables(ctx, &ec2.DescribeRouteTablesInput{
 		Filters: []ec2types.Filter{
@@ -1659,6 +1680,7 @@ func validateFargateSubnets(ctx context.Context, region string, subnetIDs []stri
 	sort.Strings(subnetsWithoutNATDefaultRoute)
 	return fargateSubnetValidationResult{
 		SubnetsWithoutNATDefaultRoute: subnetsWithoutNATDefaultRoute,
+		DistinctAZCount:               len(azSet),
 	}, nil
 }
 
@@ -1736,8 +1758,8 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFluxKarpenter(ctx context.Con
 	return ok, nil
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx context.Context, owner *clusterv1.Cluster, capiClusterName, eksClusterName, nodeInstanceProfileName string, subnetIDs, securityGroupIDs []string) error {
-	desiredYAML, err := r.resolveNodePoolTemplateYAML(ctx, owner, eksClusterName, nodeInstanceProfileName, subnetIDs, securityGroupIDs)
+func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx context.Context, owner *clusterv1.Cluster, capiClusterName, eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string) error {
+	desiredYAML, err := r.resolveNodePoolTemplateYAML(ctx, owner, eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs)
 	if err != nil {
 		return err
 	}
@@ -1807,10 +1829,10 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx 
 	return nil
 }
 
-func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, subnetIDs, securityGroupIDs []string) string {
+func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string) string {
 	// EC2NodeClass (v1)
 	subnetTerms := []string{}
-	for _, id := range subnetIDs {
+	for _, id := range nodeSubnetIDs {
 		subnetTerms = append(subnetTerms, fmt.Sprintf("    - id: %s", id))
 	}
 	sgTerms := []string{}
@@ -2237,11 +2259,11 @@ func (r *EKSKarpenterBootstrapperReconciler) now() time.Time {
 	return r.Now().UTC()
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) validateFargateSubnets(ctx context.Context, region string, subnetIDs []string) (fargateSubnetValidationResult, error) {
+func (r *EKSKarpenterBootstrapperReconciler) validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []string) (fargateSubnetValidationResult, error) {
 	if r != nil && r.ValidateSubnets != nil {
-		return r.ValidateSubnets(ctx, region, subnetIDs)
+		return r.ValidateSubnets(ctx, region, nodeSubnetIDs)
 	}
-	return validateFargateSubnets(ctx, region, subnetIDs)
+	return validateFargateSubnets(ctx, region, nodeSubnetIDs)
 }
 
 func (r *EKSKarpenterBootstrapperReconciler) resolveOIDCThumbprints(ctx context.Context, cluster *clusterv1.Cluster, issuerURL string) ([]string, error) {
