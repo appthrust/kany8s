@@ -156,7 +156,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 
 	if !cluster.Spec.Topology.IsDefined() {
 		msg := fmt.Sprintf(
-			"Cluster.spec.topology is required; cause: BYO bootstrap needs topology variables (%q, %q or %q). action: set Cluster.spec.topology.variables before enabling karpenter bootstrap",
+			"Cluster.spec.topology is required; cause: BYO bootstrap needs topology variable %q (required); %q and %q are optional (bootstrapper creates/patches security groups when they are empty). action: set Cluster.spec.topology.variables before enabling karpenter bootstrap",
 			topologyNodeSubnetIDsVariableName,
 			topologyNodeSecurityGroupIDsVariableName,
 			topologyControlPlaneSecurityGroupIDsVariableName,

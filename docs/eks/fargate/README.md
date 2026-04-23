@@ -22,7 +22,7 @@
   - FargateProfile は private subnet のみを受け付けます。
   - BYO の subnet 変数は用途で 2 種類に分かれています:
     - `vpc-control-plane-subnet-ids` (EKS control plane ENI 用): NAT egress 不要。endpoint アクセスモードに応じて public/private/isolated を選択。
-    - `vpc-node-subnet-ids` (FargateProfile + Karpenter NodePool 用): private subnet + NAT default route が必須(image pull のため)。
+    - `vpc-node-subnet-ids` (FargateProfile + Karpenter NodePool 用): private subnet が必須。image pull のための egress は NAT default route または VPC endpoints (ecr.api, ecr.dkr, s3, sts, logs) で確保する (controller は NAT 未設定を warning として報告し、VPC endpoints で代替可能)。
   - 検証用にネットワークが無い場合は、`docs/eks/byo-network/manifests/bootstrap-network-private-nat.yaml.tpl` で private subnets + NAT を ACK(EC2) で作れます。
 - egress
   - private subnet の場合、NAT gateway か VPC endpoints が必要です（ECR pull / AWS APIs）。

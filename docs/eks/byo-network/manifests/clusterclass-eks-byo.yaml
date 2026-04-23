@@ -87,9 +87,12 @@ spec:
           description: |
             Subnet IDs that back the karpenter Fargate profile and the
             default EC2NodeClass subnetSelectorTerms. Must be private
-            with a NAT default route (AWS FargateProfile rejects public
-            subnets; image pulls require egress). >=2 across >=2 AZs is
-            recommended for HA but not required (AWS FargateProfile
+            subnets (AWS FargateProfile rejects public subnets); image
+            pulls require outbound egress, which can be provided by a
+            NAT default route or by VPC endpoints (ecr.api, ecr.dkr,
+            s3, sts, logs). The controller treats missing NAT default
+            route as a warning, not a hard failure. >=2 across >=2 AZs
+            is recommended for HA but not required (AWS FargateProfile
             accepts >=1 subnet); the controller emits a warning event
             when AZ count < 2.
     - name: vpc-security-group-ids
@@ -160,10 +163,14 @@ spec:
             - op: add
               path: /spec/template/spec/kroSpec/vpc/subnetIDs
               valueFrom:
-                # Decorative readiness gate (size>=2 only); fed from the
-                # node subnet list because that is the side with real
-                # external requirements (Fargate + NodePool).
-                variable: vpc-node-subnet-ids
+                # Decorative readiness gate: aws-byo-network-rgd.yaml
+                # marks the infra inputs ready when size(...) >= 2. Feed
+                # the control plane subnet list (minItems=2 by schema) so
+                # the gate is always satisfiable; vpc-node-subnet-ids is
+                # minItems=1 (AWS FargateProfile accepts >=1 subnet) and
+                # would stall the gate when a single-AZ node layout is
+                # used.
+                variable: vpc-control-plane-subnet-ids
             - op: add
               path: /spec/template/spec/kroSpec/vpc/securityGroupIDs
               valueFrom:

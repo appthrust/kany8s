@@ -211,7 +211,7 @@ BYO network では ControlPlane RGD は VPC/Subnet を作らず、subnetIDs 等�
 - `region` (required)
 - `eks-version` (required; EKS expects major.minor like 1.35)
 - `vpc-control-plane-subnet-ids` (required, minItems=2; feeds EKS `resourcesVPCConfig.subnetIDs`; NAT egress NOT required; class depends on endpoint mode)
-- `vpc-node-subnet-ids` (required, minItems=2; feeds karpenter Fargate profile + default EC2NodeClass `subnetSelectorTerms`; must be private with NAT default route)
+- `vpc-node-subnet-ids` (required, minItems=1; feeds karpenter Fargate profile + default EC2NodeClass `subnetSelectorTerms`; must be private subnets; egress via NAT default route or VPC endpoints; >=2 across >=2 AZs recommended for HA)
 - `vpc-security-group-ids` (required; empty list is allowed)
 - `eks-public-access-cidrs` (required; 明示が必須)
 - `eks-access-mode` (optional; default=`API_AND_CONFIG_MAP`)
