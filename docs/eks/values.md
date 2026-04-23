@@ -36,9 +36,9 @@ export PUBLIC_ACCESS_CIDR="$(curl -fsSL https://checkip.amazonaws.com | tr -d '\
 BYO network で追加で必要な値:
 
 ```bash
-# 既存 subnet IDs (control plane + node、それぞれ最低2つで >=2 AZ)
-# - CONTROL_PLANE_SUBNET_ID_*: EKS 控制 plane ENI 用。NAT egress は不要 (class は endpoint access mode に依存)。
-# - NODE_SUBNET_ID_*: karpenter Fargate + 既定 EC2NodeClass 用。private + NAT egress 必須。
+# 既存 subnet IDs
+# - CONTROL_PLANE_SUBNET_ID_*: EKS control plane ENI 用。AWS API 要件で >=2 across >=2 AZ 必須。NAT egress は不要 (class は endpoint access mode に依存)。
+# - NODE_SUBNET_ID_*: karpenter Fargate + 既定 EC2NodeClass 用。private + NAT egress 必須。AWS API としては 1 subnet で動くが、HA のため >=2 AZ 推奨。
 export CONTROL_PLANE_SUBNET_ID_1=subnet-aaaa1111
 export CONTROL_PLANE_SUBNET_ID_2=subnet-bbbb2222
 export NODE_SUBNET_ID_1=subnet-cccc3333
@@ -156,8 +156,8 @@ BYO network では `eks.publicAccessCIDRs` が ClusterClass 変数として requ
 - `eks-version` <- `EKS_VERSION`
 - `vpc-control-plane-subnet-ids` <- `CONTROL_PLANE_SUBNET_ID_1`, `CONTROL_PLANE_SUBNET_ID_2`
   - control plane ENI placement only (no NAT egress required; class depends on `eks-endpoint-*-access` mode)
-- `vpc-node-subnet-ids` <- `NODE_SUBNET_ID_1`, `NODE_SUBNET_ID_2`
-  - karpenter Fargate profile + default EC2NodeClass `subnetSelectorTerms`; must be private with NAT default route across `>=2` AZs
+- `vpc-node-subnet-ids` <- `NODE_SUBNET_ID_1` (+ optional `NODE_SUBNET_ID_2`)
+  - karpenter Fargate profile + default EC2NodeClass `subnetSelectorTerms`; must be private with NAT default route. `>=1` subnet 必須 (AWS FargateProfile は 1 subnet を許容)。HA のため `>=2` AZ 推奨 (AZ 数 < 2 で controller が warning event を発火するが reconcile はブロックしない)
 - `vpc-security-group-ids` <- `SECURITY_GROUP_IDS_JSON`
 - `vpc-node-security-group-ids` <- `NODE_SECURITY_GROUP_IDS_JSON` (optional; node向け)
 - `karpenter-node-role-additional-policy-arns` <- `KARPENTER_NODE_ADDITIONAL_POLICY_ARNS_JSON` (optional)

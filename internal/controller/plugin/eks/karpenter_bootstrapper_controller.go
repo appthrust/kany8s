@@ -170,9 +170,9 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{}, err
 	}
 	nodeSubnetIDs = normalizeDistinctStrings(nodeSubnetIDs)
-	if !ok || len(nodeSubnetIDs) < 2 {
+	if !ok || len(nodeSubnetIDs) == 0 {
 		msg := fmt.Sprintf(
-			"missing/invalid topology variable %q; cause: karpenter Fargate + NodePool require at least two private subnet IDs with NAT egress across AZs. action: set Cluster.spec.topology.variables[%q] to private subnet IDs",
+			"missing/invalid topology variable %q; cause: karpenter Fargate + NodePool require at least one private subnet ID with NAT egress (>=2 across >=2 AZs recommended for HA). action: set Cluster.spec.topology.variables[%q] to private subnet IDs",
 			topologyNodeSubnetIDsVariableName,
 			topologyNodeSubnetIDsVariableName,
 		)
@@ -294,7 +294,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	subnetValidation, err := r.validateFargateSubnets(ctx, region, nodeSubnetIDs)
 	if err != nil {
 		msg := fmt.Sprintf(
-			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets with NAT egress in one VPC across multiple AZs. action: pass two private subnet IDs with NAT egress in Cluster.spec.topology.variables[%q]",
+			"invalid topology variable %q: %v; cause: EKS FargateProfile requires private subnets with NAT egress in one VPC. action: pass private subnet IDs with NAT egress in Cluster.spec.topology.variables[%q]",
 			topologyNodeSubnetIDsVariableName,
 			err,
 			topologyNodeSubnetIDsVariableName,
@@ -306,6 +306,14 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		msg := fmt.Sprintf(
 			"subnets %v have no default route via NAT gateway/instance; cause: image pulls on Fargate/Karpenter may fail without egress. action: add NAT route or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs)",
 			subnetValidation.SubnetsWithoutNATDefaultRoute,
+		)
+		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
+	}
+	if subnetValidation.DistinctAZCount < 2 {
+		msg := fmt.Sprintf(
+			"node subnets span only %d AZ; cause: karpenter Fargate + NodePool become single-AZ and lose HA. action: add private+NAT subnets in additional AZs to Cluster.spec.topology.variables[%q]",
+			subnetValidation.DistinctAZCount,
+			topologyNodeSubnetIDsVariableName,
 		)
 		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 	}
@@ -1497,6 +1505,7 @@ func discoverVPCBySubnets(ctx context.Context, region string, nodeSubnetIDs []st
 
 type fargateSubnetValidationResult struct {
 	SubnetsWithoutNATDefaultRoute []string
+	DistinctAZCount               int
 }
 
 // validateFargateSubnets orchestrates a series of AWS SDK calls to inspect
@@ -1513,8 +1522,8 @@ type fargateSubnetValidationResult struct {
 //nolint:gocyclo // sequential AWS probe with per-check error surfacing
 func validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []string) (fargateSubnetValidationResult, error) {
 	ids := normalizeDistinctStrings(nodeSubnetIDs)
-	if len(ids) < 2 {
-		return fargateSubnetValidationResult{}, fmt.Errorf("need at least 2 subnets, got %d", len(ids))
+	if len(ids) == 0 {
+		return fargateSubnetValidationResult{}, fmt.Errorf("need at least 1 subnet, got 0")
 	}
 	region = strings.TrimSpace(region)
 	if region == "" {
@@ -1570,9 +1579,9 @@ func validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []
 			azSet[az] = struct{}{}
 		}
 	}
-	if len(azSet) < 2 {
-		return fargateSubnetValidationResult{}, fmt.Errorf("subnets must span at least 2 AZs, got %d", len(azSet))
-	}
+	// AZ count is non-blocking: AWS FargateProfile accepts >=1 subnet (no AZ
+	// minimum). HA across >=2 AZs is recommended but not required; the caller
+	// emits a warning event when DistinctAZCount < 2.
 
 	rtOut, err := ec2c.DescribeRouteTables(ctx, &ec2.DescribeRouteTablesInput{
 		Filters: []ec2types.Filter{
@@ -1665,6 +1674,7 @@ func validateFargateSubnets(ctx context.Context, region string, nodeSubnetIDs []
 	sort.Strings(subnetsWithoutNATDefaultRoute)
 	return fargateSubnetValidationResult{
 		SubnetsWithoutNATDefaultRoute: subnetsWithoutNATDefaultRoute,
+		DistinctAZCount:               len(azSet),
 	}, nil
 }
 

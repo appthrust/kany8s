@@ -23,8 +23,9 @@ spec:
       #     >=2 across >=2 AZs. NAT egress NOT required (control plane ENIs do
       #     not originate outbound traffic). Class depends on endpoint mode.
       #   - vpc-node-subnet-ids: feeds karpenter Fargate profile + default
-      #     EC2NodeClass subnetSelectorTerms. >=2 across >=2 AZs. Must be
-      #     private with NAT default route (Fargate rejects public subnets).
+      #     EC2NodeClass subnetSelectorTerms. Must be private with NAT
+      #     default route (Fargate rejects public subnets). >=1 subnet
+      #     required; >=2 across >=2 AZs recommended for HA.
       - name: vpc-control-plane-subnet-ids
         value:
           - "__CONTROL_PLANE_SUBNET_ID_1__"
