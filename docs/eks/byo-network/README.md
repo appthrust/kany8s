@@ -46,8 +46,10 @@ kubectl apply -f "${rendered}"
 
 # subnet IDs を取得 (ACK が反映するまで少し待つことがあります)
 # NOTE: この public-only bootstrap は `vpc-control-plane-subnet-ids` のみ満たせます。
-# `vpc-node-subnet-ids` は private + NAT default route が必須なので、
-# Karpenter / Fargate を使う場合は下の private+NAT bootstrap を使ってください。
+# `vpc-node-subnet-ids` は AWS FargateProfile が private subnet のみ許容するため
+# private subnet が必須 (image pull のための egress は NAT default route または
+# VPC endpoints のいずれか)。Karpenter / Fargate を使う場合は下の private+NAT
+# bootstrap を使ってください。
 export CONTROL_PLANE_SUBNET_ID_1="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-a" -o jsonpath='{.status.subnetID}')"
 export CONTROL_PLANE_SUBNET_ID_2="$(kubectl -n "$NAMESPACE" get subnets.ec2.services.k8s.aws "${NETWORK_NAME}-subnet-b" -o jsonpath='{.status.subnetID}')"
 
