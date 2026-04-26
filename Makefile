@@ -60,6 +60,12 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook $(CONTROLLER_GEN_MANIFESTS_PATHS) output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+	# Append a v1beta2 served alias to every generated CRD so CAPI v1.13 +
+	# Sveltos v1.8 can resolve our resources via API discovery in addition to
+	# the CRD label hint that the topology controller follows. v1alpha1 stays
+	# the storage version, conversion strategy stays the default (None), and
+	# the schema is mirrored verbatim. See APTH-1563 + hack/add-v1beta2-alias.py.
+	python3 hack/add-v1beta2-alias.py config/crd/bases/*.yaml
 
 .PHONY: clusterapi-manifests
 clusterapi-manifests: controller-gen ## Generate group-scoped CRDs and RBAC roles for the clusterctl provider bundle.
@@ -81,6 +87,10 @@ clusterapi-manifests: controller-gen ## Generate group-scoped CRDs and RBAC role
 	"$(CONTROLLER_GEN)" crd:generateEmbeddedObjectMeta=true webhook \
 	    paths="./api/v1alpha1/..." \
 	    output:crd:artifacts:config=config/clusterapi/controlplane/bases
+	# Mirror the v1beta2 alias post-process onto the clusterctl bundle CRDs.
+	python3 hack/add-v1beta2-alias.py \
+	    config/clusterapi/infrastructure/bases/*.yaml \
+	    config/clusterapi/controlplane/bases/*.yaml
 
 .PHONY: clusterctl-setup
 clusterctl-setup: clusterapi-manifests kustomize ## Render the clusterctl provider bundle (infrastructure + control-plane components + metadata) into out/.
