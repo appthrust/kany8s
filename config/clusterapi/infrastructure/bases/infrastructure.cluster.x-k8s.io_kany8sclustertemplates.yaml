@@ -100,3 +100,88 @@ spec:
         type: object
     served: true
     storage: true
+
+  - name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: Kany8sClusterTemplate is the Schema for the kany8sclustertemplates
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of Kany8sClusterTemplate
+            properties:
+              template:
+                description: template describes the desired state of Kany8sClusterTemplate.
+                properties:
+                  metadata:
+                    description: metadata is the standard object's metadata.
+                    minProperties: 1
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: http://kubernetes.io/docs/user-guide/annotations
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          labels is a map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels
+                        type: object
+                    type: object
+                  spec:
+                    description: spec is the desired state of Kany8sClusterTemplateResource.
+                    properties:
+                      kroSpec:
+                        description: kroSpec is an arbitrary, provider-specific object.
+                        x-kubernetes-preserve-unknown-fields: true
+                      resourceGraphDefinitionRef:
+                        description: |-
+                          resourceGraphDefinitionRef identifies the kro ResourceGraphDefinition to use
+                          for provisioning infrastructure.
+
+                          When unset, the controller runs in stub mode.
+                        properties:
+                          name:
+                            description: name is the name of the ResourceGraphDefinition.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: false
