@@ -137,7 +137,9 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_DerivedResourcesAndReadyGate
 		{gvk: ackIAMRoleGVK, name: "demo-karpenter-controller"},
 		{gvk: ackIAMInstanceProfileGVK, name: "demo-karpenter-node-instance-profile"},
 		{gvk: ackAccessEntryGVK, name: "demo-karpenter-node"},
-		{gvk: ackFargateProfileGVK, name: "demo-fargate-karpenter"},
+		// FargateProfile (= demo-karpenter / demo-coredns) is owned by the
+		// kany8s-eks-byo ClusterClass RGD now, not the plugin (= APTH-1568
+		// Path α). The simulation seed below stands in for the RGD output.
 		{gvk: fluxHelmReleaseGVK, name: "demo-karpenter"},
 		{gvk: clusterResourceSetGVK, name: "demo-karpenter-nodepool"},
 	} {
@@ -152,8 +154,14 @@ func TestEKSKarpenterBootstrapperReconciler_Envtest_DerivedResourcesAndReadyGate
 		t.Fatalf("get ConfigMap demo-karpenter-nodepool: %v", err)
 	}
 
-	markFargateProfileStatusActive(t, h.client, "default", "demo-fargate-karpenter")
-	markFargateProfileStatusActive(t, h.client, "default", "demo-fargate-coredns")
+	// Seed RGD-managed FargateProfile objects so the plugin's status monitor
+	// (= isACKFargateProfileActive) can observe them. In production the
+	// kany8s-eks-byo ClusterClass RGD creates these via ACK; envtest stands
+	// in here.
+	seedRGDFargateProfile(t, h.client, "default", "demo-karpenter")
+	seedRGDFargateProfile(t, h.client, "default", "demo-coredns")
+	markFargateProfileStatusActive(t, h.client, "default", "demo-karpenter")
+	markFargateProfileStatusActive(t, h.client, "default", "demo-coredns")
 
 	second, err := r.Reconcile(context.Background(), req)
 	if err != nil {
@@ -246,5 +254,31 @@ func markFargateProfileStatusActive(t *testing.T, c client.Client, namespace, na
 	}
 	if err := c.Update(context.Background(), obj); err != nil {
 		t.Fatalf("update FargateProfile %s/%s: %v", namespace, name, err)
+	}
+}
+
+// seedRGDFargateProfile materialises an ACK FargateProfile object that, in
+// production, would be created by the kany8s-eks-byo ClusterClass RGD. The
+// plugin no longer creates FargateProfile resources (= APTH-1568 Path α);
+// it only monitors their status. This helper stands in for the RGD output
+// so envtest can drive the status monitor path deterministically.
+func seedRGDFargateProfile(t *testing.T, c client.Client, namespace, name string) {
+	t.Helper()
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(ackFargateProfileGVK)
+	obj.SetNamespace(namespace)
+	obj.SetName(name)
+	obj.SetLabels(map[string]string{
+		"kany8s.io/managed-by":          "clusterclass-rgd",
+		"cluster.x-k8s.io/cluster-name": "demo",
+	})
+	if err := unstructured.SetNestedField(obj.Object, name, "spec", "name"); err != nil {
+		t.Fatalf("set spec.name on RGD FargateProfile %s/%s: %v", namespace, name, err)
+	}
+	if err := unstructured.SetNestedField(obj.Object, map[string]any{"from": map[string]any{"name": "demo", "namespace": namespace}}, "spec", "clusterRef"); err != nil {
+		t.Fatalf("set spec.clusterRef on RGD FargateProfile %s/%s: %v", namespace, name, err)
+	}
+	if err := c.Create(context.Background(), obj); err != nil {
+		t.Fatalf("create RGD FargateProfile %s/%s: %v", namespace, name, err)
 	}
 }

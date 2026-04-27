@@ -465,22 +465,11 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("instanceProfile spec.roleRef.from.namespace = %q, want %q", got, want)
 	}
 
-	if ok, err := r.ensureIAMRoleForFargatePods(context.Background(), cluster, "demo-fargate-pod-execution", "ap-northeast-1", "eks-demo-fargate", []string{"arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"}); err != nil {
-		t.Fatalf("ensureIAMRoleForFargatePods() error = %v", err)
-	} else if !ok {
-		t.Fatalf("ensureIAMRoleForFargatePods() managed = false, want true")
-	}
-	fargateRole := getUnstructured(t, c, ackIAMRoleGVK, "demo-fargate-pod-execution")
-	if got, _, err := unstructured.NestedString(fargateRole.Object, "spec", "name"); err != nil {
-		t.Fatalf("fargate role spec.name: %v", err)
-	} else if want := "eks-demo-fargate"; got != want {
-		t.Fatalf("fargate role spec.name = %q, want %q", got, want)
-	}
-	if got, _, err := unstructured.NestedString(fargateRole.Object, "spec", "assumeRolePolicyDocument"); err != nil {
-		t.Fatalf("fargate role spec.assumeRolePolicyDocument: %v", err)
-	} else if !strings.Contains(got, "eks-fargate-pods.amazonaws.com") {
-		t.Fatalf("fargate role assume role doc does not contain eks-fargate-pods.amazonaws.com: %q", got)
-	}
+	// Fargate Pod Execution IAM Role + Fargate Profile are produced declaratively by
+	// the kany8s-eks-byo ClusterClass RGD now (see knowledge/eks-root-fix-design.md
+	// and APTH-1568 Path α). The plugin no longer creates them, so the create-spec
+	// assertions that previously sat here are removed; status monitoring
+	// (isACKFargateProfileActive) is exercised separately in the envtest.
 
 	if ok, err := r.ensureAccessEntry(context.Background(), cluster, "demo-karpenter-node", "ap-northeast-1", "demo-ack", "arn:aws:iam::123456789012:role/demo-node"); err != nil {
 		t.Fatalf("ensureAccessEntry() error = %v", err)
@@ -511,35 +500,9 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("accessEntry spec.tags managed-by = %v, want %q", got, want)
 	}
 
-	selectors := []map[string]any{{"namespace": "karpenter"}}
-	if ok, err := r.ensureFargateProfile(context.Background(), cluster, "demo-fargate-karpenter", "ap-northeast-1", "demo-ack", "karpenter", "demo-fargate-pod-execution", []string{"subnet-a", "subnet-b"}, selectors); err != nil {
-		t.Fatalf("ensureFargateProfile() error = %v", err)
-	} else if !ok {
-		t.Fatalf("ensureFargateProfile() managed = false, want true")
-	}
-	fargateProfile := getUnstructured(t, c, ackFargateProfileGVK, "demo-fargate-karpenter")
-	if got, _, err := unstructured.NestedString(fargateProfile.Object, "spec", "name"); err != nil {
-		t.Fatalf("fargateProfile spec.name: %v", err)
-	} else if want := "karpenter"; got != want {
-		t.Fatalf("fargateProfile spec.name = %q, want %q", got, want)
-	}
-	if got, _, err := unstructured.NestedStringSlice(fargateProfile.Object, "spec", "subnets"); err != nil {
-		t.Fatalf("fargateProfile spec.subnets: %v", err)
-	} else if len(got) != 2 || got[0] != "subnet-a" || got[1] != "subnet-b" {
-		t.Fatalf("fargateProfile spec.subnets = %#v, want [subnet-a subnet-b]", got)
-	}
-	if got, _, err := unstructured.NestedString(fargateProfile.Object, "spec", "podExecutionRoleRef", "from", "name"); err != nil {
-		t.Fatalf("fargateProfile spec.podExecutionRoleRef.from.name: %v", err)
-	} else if want := "demo-fargate-pod-execution"; got != want {
-		t.Fatalf("fargateProfile spec.podExecutionRoleRef.from.name = %q, want %q", got, want)
-	}
-	if tags, found, err := unstructured.NestedMap(fargateProfile.Object, "spec", "tags"); err != nil {
-		t.Fatalf("fargateProfile spec.tags: %v", err)
-	} else if !found {
-		t.Fatalf("fargateProfile spec.tags missing")
-	} else if got, want := tags["kany8s.io/cluster-name"], testClusterName; got != want {
-		t.Fatalf("fargateProfile spec.tags cluster-name = %v, want %q", got, want)
-	}
+	// Fargate Profile create-spec assertions removed: the kany8s-eks-byo
+	// ClusterClass RGD now owns FargateProfile lifecycle (PR-1, APTH-1568).
+	// Status monitoring is covered by the envtest in this same package.
 }
 
 func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExplicitlyAllowed(t *testing.T) {

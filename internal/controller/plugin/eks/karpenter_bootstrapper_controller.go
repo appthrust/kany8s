@@ -418,8 +418,10 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	nodeRoleAWSName := shortenAWSName(fmt.Sprintf("%s-node", eksClusterName), 64)
 	nodeInstanceProfileName := fmt.Sprintf("%s-karpenter-node-instance-profile", capiClusterName)
 	nodeInstanceProfileAWSName := shortenAWSName(fmt.Sprintf("%s-node", eksClusterName), 128)
-	fargateRoleName := fmt.Sprintf("%s-fargate-pod-execution", capiClusterName)
-	fargateRoleAWSName := shortenAWSName(fmt.Sprintf("%s-fargate-pod-execution", eksClusterName), 64)
+	// Fargate pod-execution IAM Role + FargateProfile resources are owned by
+	// the kany8s-eks-byo ClusterClass ResourceGraphDefinition now (= APTH-1568
+	// Path α). The plugin no longer materializes them; see monitor-only block
+	// further below for status polling.
 
 	controllerRoleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, controllerRoleAWSName)
 	nodeRoleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, nodeRoleAWSName)
@@ -472,17 +474,8 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
 	}
 
-	fargateManagedPolicies := []string{
-		"arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy",
-	}
-	if ok, err := r.ensureIAMRoleForFargatePods(ctx, cluster, fargateRoleName, region, fargateRoleAWSName, fargateManagedPolicies); err != nil {
-		return ctrl.Result{}, err
-	} else if !ok {
-		msg := fmt.Sprintf("IAM Role %s/%s exists and is not managed by %s", cluster.Namespace, fargateRoleName, karpenterManagedByValue)
-		r.emitEvent(cluster, corev1.EventTypeWarning, reasonResourceOwnership, msg)
-		recordOwnershipConflict(metricControllerBootstrapper, "Role")
-		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
-	}
+	// (Fargate pod-execution IAM Role create moved to ClusterClass RGD; see comment
+	// near IAM section above and APTH-1568.)
 
 	// 3) Ensure EKS AccessEntry (node join without aws-auth).
 	accessEntryName := fmt.Sprintf("%s-karpenter-node", capiClusterName)
@@ -495,44 +488,14 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
 	}
 
-	// 4) Ensure Fargate profiles for bootstrap compute.
-	karpenterFargateObjName := fmt.Sprintf("%s-fargate-karpenter", capiClusterName)
-	corednsFargateObjName := fmt.Sprintf("%s-fargate-coredns", capiClusterName)
-	if ok, err := r.ensureFargateProfile(ctx, cluster, karpenterFargateObjName, region, ackClusterName, "karpenter", fargateRoleName, nodeSubnetIDs, []map[string]any{{"namespace": "karpenter"}}); err != nil {
-		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
-			cluster.Namespace,
-			karpenterFargateObjName,
-			err,
-			topologyNodeSubnetIDsVariableName,
-		)
-		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
-	} else if !ok {
-		msg := fmt.Sprintf("FargateProfile %s/%s exists and is not managed by %s", cluster.Namespace, karpenterFargateObjName, karpenterManagedByValue)
-		r.emitEvent(cluster, corev1.EventTypeWarning, reasonResourceOwnership, msg)
-		recordOwnershipConflict(metricControllerBootstrapper, "FargateProfile")
-		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
-	}
-	if ok, err := r.ensureFargateProfile(ctx, cluster, corednsFargateObjName, region, ackClusterName, "coredns", fargateRoleName, nodeSubnetIDs, []map[string]any{{
-		"namespace": "kube-system",
-		"labels":    map[string]any{"k8s-app": "kube-dns"},
-	}}); err != nil {
-		msg := fmt.Sprintf(
-			"failed to reconcile FargateProfile %s/%s: %v; cause: EKS FargateProfile requires private subnets in one VPC. action: verify %q are private subnets; ensure NAT egress or VPC endpoints (ecr.api,ecr.dkr,s3,sts,logs) for image pulls",
-			cluster.Namespace,
-			corednsFargateObjName,
-			err,
-			topologyNodeSubnetIDsVariableName,
-		)
-		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
-		return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
-	} else if !ok {
-		msg := fmt.Sprintf("FargateProfile %s/%s exists and is not managed by %s", cluster.Namespace, corednsFargateObjName, karpenterManagedByValue)
-		r.emitEvent(cluster, corev1.EventTypeWarning, reasonResourceOwnership, msg)
-		recordOwnershipConflict(metricControllerBootstrapper, "FargateProfile")
-		return ctrl.Result{RequeueAfter: r.steadyStateRequeue()}, nil
-	}
+	// 4) Wait for Fargate profiles created declaratively by the kany8s-eks-byo
+	//    ClusterClass ResourceGraphDefinition. The RGD owns FargateProfile and
+	//    Fargate Pod Execution IAM Role lifecycle now; the plugin only monitors
+	//    status (= isACKFargateProfileActive) and triggers workload restarts
+	//    after ACTIVE. See APTH-1568 and the design doc at
+	//    knowledge/eks-root-fix-design.md (= reoring/demo0521 PR #28) § 2.1.
+	karpenterFargateObjName := fmt.Sprintf("%s-karpenter", capiClusterName)
+	corednsFargateObjName := fmt.Sprintf("%s-coredns", capiClusterName)
 
 	karpenterFargateActive, err := r.isACKFargateProfileActive(ctx, cluster.Namespace, karpenterFargateObjName)
 	if err != nil {
@@ -543,6 +506,19 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{}, err
 	}
 	if !karpenterFargateActive || !corednsFargateActive {
+		// Surface a Warning event so operators can see why the bootstrap is
+		// blocked. The owner-conflict signal that previously fired here was
+		// retired together with the in-plugin create logic; without this
+		// emit the only signal of "Fargate not ready" was status fields on
+		// the plugin CR, invisible to anyone watching CAPI Cluster events.
+		msg := fmt.Sprintf(
+			"waiting for ClusterClass RGD to provision FargateProfile %q/%q on %s/%s; cause: kany8s-eks-byo ClusterClass owns FargateProfile lifecycle. action: check ResourceGraphDefinition + ACK eks-controller logs if this persists",
+			karpenterFargateObjName,
+			corednsFargateObjName,
+			cluster.Namespace,
+			cluster.Name,
+		)
+		r.emitEvent(cluster, corev1.EventTypeWarning, reasonAWSPrerequisitesNotReady, msg)
 		requeueAfter = r.failureBackoff()
 	}
 
@@ -1289,25 +1265,6 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureIAMInstanceProfile(ctx contex
 	})
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureIAMRoleForFargatePods(ctx context.Context, owner *clusterv1.Cluster, name, region, awsRoleName string, managedPolicyARNs []string) (bool, error) {
-	obj := newUnstructured(ackIAMRoleGVK, owner.Namespace, name)
-	assume := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks-fargate-pods.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
-	return r.upsertManagedUnstructured(ctx, owner, obj, func(u *unstructured.Unstructured) error {
-		setRegionAnnotation(u, region)
-		setManagedBy(u)
-		setClusterLabel(u, owner.Name)
-		mustSetNestedString(u, awsRoleName, "spec", "name")
-		mustSetNestedString(u, assume, "spec", "assumeRolePolicyDocument")
-		policies := []any{}
-		for _, arn := range managedPolicyARNs {
-			policies = append(policies, arn)
-		}
-		mustSetNestedSlice(u, policies, "spec", "policies")
-		mustSetNestedSlice(u, awsTagsAsSlice(bootstrapperResourceTags(owner, nil)), "spec", "tags")
-		return nil
-	})
-}
-
 func (r *EKSKarpenterBootstrapperReconciler) ensureAccessEntry(ctx context.Context, owner *clusterv1.Cluster, name, region, ackClusterName, principalARN string) (bool, error) {
 	obj := newUnstructured(ackAccessEntryGVK, owner.Namespace, name)
 	return r.upsertManagedUnstructured(ctx, owner, obj, func(u *unstructured.Unstructured) error {
@@ -1317,30 +1274,6 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureAccessEntry(ctx context.Conte
 		mustSetNestedString(u, principalARN, "spec", "principalARN")
 		mustSetNestedString(u, "EC2_LINUX", "spec", "type")
 		mustSetNestedField(u, map[string]any{"from": map[string]any{"name": ackClusterName, "namespace": owner.Namespace}}, "spec", "clusterRef")
-		mustSetNestedField(u, awsTagsAsMap(bootstrapperResourceTags(owner, nil)), "spec", "tags")
-		return nil
-	})
-}
-
-func (r *EKSKarpenterBootstrapperReconciler) ensureFargateProfile(ctx context.Context, owner *clusterv1.Cluster, name, region, ackClusterName, profileName, podExecutionRoleRefName string, nodeSubnetIDs []string, selectors []map[string]any) (bool, error) {
-	obj := newUnstructured(ackFargateProfileGVK, owner.Namespace, name)
-	return r.upsertManagedUnstructured(ctx, owner, obj, func(u *unstructured.Unstructured) error {
-		setRegionAnnotation(u, region)
-		setManagedBy(u)
-		setClusterLabel(u, owner.Name)
-		mustSetNestedString(u, profileName, "spec", "name")
-		mustSetNestedField(u, map[string]any{"from": map[string]any{"name": ackClusterName, "namespace": owner.Namespace}}, "spec", "clusterRef")
-		mustSetNestedField(u, map[string]any{"from": map[string]any{"name": podExecutionRoleRefName, "namespace": owner.Namespace}}, "spec", "podExecutionRoleRef")
-		subnetsAny := []any{}
-		for _, s := range nodeSubnetIDs {
-			subnetsAny = append(subnetsAny, s)
-		}
-		mustSetNestedSlice(u, subnetsAny, "spec", "subnets")
-		selAny := []any{}
-		for _, sel := range selectors {
-			selAny = append(selAny, sel)
-		}
-		mustSetNestedSlice(u, selAny, "spec", "selectors")
 		mustSetNestedField(u, awsTagsAsMap(bootstrapperResourceTags(owner, nil)), "spec", "tags")
 		return nil
 	})
