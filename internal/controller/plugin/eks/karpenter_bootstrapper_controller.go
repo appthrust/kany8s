@@ -494,8 +494,14 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	//    status (= isACKFargateProfileActive) and triggers workload restarts
 	//    after ACTIVE. See APTH-1568 and the design doc at
 	//    knowledge/eks-root-fix-design.md (= reoring/demo0521 PR #28) § 2.1.
-	karpenterFargateObjName := fmt.Sprintf("%s-karpenter", capiClusterName)
-	corednsFargateObjName := fmt.Sprintf("%s-coredns", capiClusterName)
+	// FargateProfile object names are produced by the kany8s-eks-byo
+	// ClusterClass RGD using safeFargateProfileBaseName(...) to dodge AWS's
+	// reserved "eks-" prefix on FargateProfile / Pod-Execution Role names.
+	// This reader MUST mirror that sanitizer so the lookup keys match the
+	// objects materialized by the RGD. See APTH-1576.
+	fargateBase := safeFargateProfileBaseName(capiClusterName)
+	karpenterFargateObjName := fmt.Sprintf("%s-karpenter", fargateBase)
+	corednsFargateObjName := fmt.Sprintf("%s-coredns", fargateBase)
 
 	karpenterFargateActive, err := r.isACKFargateProfileActive(ctx, cluster.Namespace, karpenterFargateObjName)
 	if err != nil {
