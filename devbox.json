@@ -10,7 +10,7 @@
     "kubernetes-helm@latest",
     "kind@latest",
     "clusterctl@latest",
-    "go@1.25.5",
+    "go@1.25.7",
     "kubebuilder@latest",
     "gettext@latest",
     "yq@latest"
