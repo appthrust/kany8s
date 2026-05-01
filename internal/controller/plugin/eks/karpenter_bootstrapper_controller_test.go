@@ -166,8 +166,23 @@ func TestBuildDefaultNodePoolYAML_IsValidMultiDocYAML(t *testing.T) {
 		t.Fatalf("get securityGroupSelectorTerms: %v", err)
 	} else if !found {
 		t.Fatalf("missing securityGroupSelectorTerms")
-	} else if got, want := len(terms), 2; got != want {
+	} else if got, want := len(terms), 3; got != want {
+		// 2 explicit `id` selectors (= sg-1111 + sg-2222) + 1 tag-based selector
+		// for the EKS cluster security group (= aws:eks:cluster-name).
 		t.Fatalf("securityGroupSelectorTerms len = %d, want %d", got, want)
+	} else {
+		// Last term must be the tag-based cluster SG selector.
+		last, ok := terms[len(terms)-1].(map[string]interface{})
+		if !ok {
+			t.Fatalf("last securityGroupSelectorTerms entry is not a map: %T", terms[len(terms)-1])
+		}
+		tags, ok := last["tags"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("last securityGroupSelectorTerms entry missing tags map: %v", last)
+		}
+		if got, want := tags["aws:eks:cluster-name"], "eks-demo"; got != want {
+			t.Fatalf("tags[aws:eks:cluster-name] = %v, want %q", got, want)
+		}
 	}
 	if got, found, err := unstructured.NestedString(objs[0].Object, "spec", "instanceProfile"); err != nil {
 		t.Fatalf("get spec.instanceProfile: %v", err)
