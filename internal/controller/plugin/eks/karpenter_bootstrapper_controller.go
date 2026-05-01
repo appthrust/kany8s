@@ -1778,6 +1778,16 @@ func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, no
 	for _, id := range securityGroupIDs {
 		sgTerms = append(sgTerms, fmt.Sprintf("    - id: %s", id))
 	}
+	// EKS auto-creates a cluster security group tagged with `aws:eks:cluster-name`
+	// that carries the kube-proxy / coredns ingress+egress rules required for
+	// in-cluster networking. Karpenter-provisioned nodes must attach this SG too,
+	// otherwise pods scheduled on them cannot reach the coredns Service IP and
+	// any DNS-dependent operation (helm chart fetch, OCI registry pulls, etc.)
+	// fails with `i/o timeout`.
+	sgTerms = append(sgTerms,
+		"    - tags:",
+		fmt.Sprintf("        aws:eks:cluster-name: %q", eksClusterName),
+	)
 
 	return strings.TrimSpace(fmt.Sprintf(`
 apiVersion: karpenter.k8s.aws/v1
