@@ -171,16 +171,17 @@ func TestBuildDefaultNodePoolYAML_IsValidMultiDocYAML(t *testing.T) {
 		// for the EKS cluster security group (= aws:eks:cluster-name).
 		t.Fatalf("securityGroupSelectorTerms len = %d, want %d", got, want)
 	} else {
+		const expectedClusterName = "eks-demo"
 		// Last term must be the tag-based cluster SG selector.
-		last, ok := terms[len(terms)-1].(map[string]interface{})
+		last, ok := terms[len(terms)-1].(map[string]any)
 		if !ok {
 			t.Fatalf("last securityGroupSelectorTerms entry is not a map: %T", terms[len(terms)-1])
 		}
-		tags, ok := last["tags"].(map[string]interface{})
+		tags, ok := last["tags"].(map[string]any)
 		if !ok {
 			t.Fatalf("last securityGroupSelectorTerms entry missing tags map: %v", last)
 		}
-		if got, want := tags["aws:eks:cluster-name"], "eks-demo"; got != want {
+		if got, want := tags["aws:eks:cluster-name"], expectedClusterName; got != want {
 			t.Fatalf("tags[aws:eks:cluster-name] = %v, want %q", got, want)
 		}
 	}
