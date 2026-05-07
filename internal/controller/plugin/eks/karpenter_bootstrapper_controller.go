@@ -457,7 +457,19 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		nodeManagedPolicies = append(nodeManagedPolicies, additionalPolicyARNs...)
 	}
 	nodeManagedPolicies = normalizeDistinctStrings(nodeManagedPolicies)
-	if ok, err := r.ensureIAMRoleForEC2(ctx, cluster, nodeRoleName, region, nodeRoleAWSName, nodeManagedPolicies); err != nil {
+	// APTH-1704: read additional inline policies from the ClusterClass topology
+	// variable (sister to karpenter-node-role-additional-policy-arns above).
+	// nil map = no inline policies; the writer skips spec.inlinePolicies
+	// entirely so existing clusters that do not opt in remain byte-identical.
+	nodeInlinePolicies := map[string]string{}
+	if additionalInline, ok, err := readTopologyStringMap(cluster, topologyNodeRoleAdditionalInlinePoliciesVariableName); err != nil {
+		return ctrl.Result{}, err
+	} else if ok {
+		for k, v := range additionalInline {
+			nodeInlinePolicies[k] = v
+		}
+	}
+	if ok, err := r.ensureIAMRoleForEC2(ctx, cluster, nodeRoleName, region, nodeRoleAWSName, nodeManagedPolicies, nodeInlinePolicies); err != nil {
 		return ctrl.Result{}, err
 	} else if !ok {
 		msg := fmt.Sprintf("IAM Role %s/%s exists and is not managed by %s", cluster.Namespace, nodeRoleName, karpenterManagedByValue)
@@ -1239,7 +1251,7 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureIAMRoleForIRSA(ctx context.Co
 	})
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureIAMRoleForEC2(ctx context.Context, owner *clusterv1.Cluster, name, region, awsRoleName string, managedPolicyARNs []string) (bool, error) {
+func (r *EKSKarpenterBootstrapperReconciler) ensureIAMRoleForEC2(ctx context.Context, owner *clusterv1.Cluster, name, region, awsRoleName string, managedPolicyARNs []string, inlinePolicies map[string]string) (bool, error) {
 	obj := newUnstructured(ackIAMRoleGVK, owner.Namespace, name)
 	assume := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
 	return r.upsertManagedUnstructured(ctx, owner, obj, func(u *unstructured.Unstructured) error {
@@ -1253,6 +1265,17 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureIAMRoleForEC2(ctx context.Con
 			policies = append(policies, arn)
 		}
 		mustSetNestedSlice(u, policies, "spec", "policies")
+		// APTH-1704: inline policies become declarative state on the ACK Role
+		// CR. Without this, ACK + kro reconcile interprets externally attached
+		// inline policies as drift and issues DeleteRolePolicy on the next
+		// reconcile cycle.
+		if len(inlinePolicies) > 0 {
+			inlineMap := make(map[string]any, len(inlinePolicies))
+			for k, v := range inlinePolicies {
+				inlineMap[k] = v
+			}
+			mustSetNestedField(u, inlineMap, "spec", "inlinePolicies")
+		}
 		mustSetNestedSlice(u, awsTagsAsSlice(bootstrapperResourceTags(owner, nil)), "spec", "tags")
 		return nil
 	})
@@ -2431,6 +2454,30 @@ func readTopologyStringSlice(cluster *clusterv1.Cluster, variableName string) ([
 			continue
 		}
 		var out []string
+		if err := json.Unmarshal(v.Value.Raw, &out); err != nil {
+			return nil, false, fmt.Errorf("unmarshal topology variable %q: %w", variableName, err)
+		}
+		return out, true, nil
+	}
+	return nil, false, nil
+}
+
+// readTopologyStringMap reads a ClusterClass topology variable that is shaped
+// as map[string]string and returns the decoded value. It mirrors
+// readTopologyStringSlice for sister variables whose schema is
+// (type: object, additionalProperties: type: string) — used by APTH-1704 for
+// karpenter-node-role-additional-inline-policies, where each map entry is an
+// IAM inline policy name → JSON document string.
+func readTopologyStringMap(cluster *clusterv1.Cluster, variableName string) (map[string]string, bool, error) {
+	if cluster == nil || !cluster.Spec.Topology.IsDefined() {
+		return nil, false, nil
+	}
+	for i := range cluster.Spec.Topology.Variables {
+		v := cluster.Spec.Topology.Variables[i]
+		if v.Name != variableName {
+			continue
+		}
+		var out map[string]string
 		if err := json.Unmarshal(v.Value.Raw, &out); err != nil {
 			return nil, false, fmt.Errorf("unmarshal topology variable %q: %w", variableName, err)
 		}
