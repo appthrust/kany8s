@@ -443,7 +443,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("irsa role spec.policyRefs len = %d, want 1", len(refs))
 	}
 
-	if ok, err := r.ensureIAMRoleForEC2(context.Background(), cluster, "demo-karpenter-node", "ap-northeast-1", testEKSNodeRoleName, []string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"}); err != nil {
+	if ok, err := r.ensureIAMRoleForEC2(context.Background(), cluster, "demo-karpenter-node", "ap-northeast-1", testEKSNodeRoleName, []string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"}, nil); err != nil {
 		t.Fatalf("ensureIAMRoleForEC2() error = %v", err)
 	} else if !ok {
 		t.Fatalf("ensureIAMRoleForEC2() managed = false, want true")
@@ -458,6 +458,14 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureACKResources_CreateExpectedSpe
 		t.Fatalf("ec2 role spec.policies: %v", err)
 	} else if len(got) != 1 || got[0] != "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy" {
 		t.Fatalf("ec2 role spec.policies = %#v", got)
+	}
+	// APTH-1704: with nil inlinePolicies, spec.inlinePolicies must remain
+	// absent so that existing ACK Role CRs are byte-identical to the v0.3.x
+	// shape.
+	if _, found, err := unstructured.NestedMap(ec2Role.Object, "spec", "inlinePolicies"); err != nil {
+		t.Fatalf("ec2 role spec.inlinePolicies: %v", err)
+	} else if found {
+		t.Fatalf("ec2 role spec.inlinePolicies = present, want absent for nil input")
 	}
 	if ok, err := r.ensureIAMInstanceProfile(context.Background(), cluster, "demo-karpenter-node-instance-profile", "ap-northeast-1", testEKSNodeRoleName, "demo-karpenter-node"); err != nil {
 		t.Fatalf("ensureIAMInstanceProfile() error = %v", err)
@@ -554,6 +562,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExpl
 		"ap-northeast-1",
 		testEKSNodeRoleName,
 		[]string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("ensureIAMRoleForEC2() error = %v", err)
@@ -570,6 +579,130 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_TakeoverWhenExpl
 		t.Fatalf("role spec.name: %v", err)
 	} else if want := testEKSNodeRoleName; gotName != want {
 		t.Fatalf("role spec.name = %q, want %q", gotName, want)
+	}
+}
+
+// TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_InlinePoliciesDeclaredOnSpec
+// verifies the APTH-1704 root fix: when the caller passes a non-empty
+// inlinePolicies map, the writer materializes it into spec.inlinePolicies on
+// the ACK Role CR so that ACK + kro reconcile sees the policies as declarative
+// state (not drift). Without this assertion, the ACK IAM controller would
+// issue DeleteRolePolicy on every reconcile cycle (~6.5h period observed in
+// pmc-local CloudTrail).
+func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_InlinePoliciesDeclaredOnSpec(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testClusterName,
+			Namespace: "default",
+			UID:       "cluster-uid",
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster).Build()
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+
+	certManagerPolicy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["route53:GetChange"],"Resource":"arn:aws:route53:::change/*"}]}`
+	externalDNSPolicy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["route53:ListHostedZones"],"Resource":"*"}]}`
+
+	ok, err := r.ensureIAMRoleForEC2(
+		context.Background(),
+		cluster,
+		"demo-karpenter-node",
+		"ap-northeast-1",
+		testEKSNodeRoleName,
+		[]string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"},
+		map[string]string{
+			"cert-manager-route53-dns01-txt-only":     certManagerPolicy,
+			"external-dns-route53-record-management": externalDNSPolicy,
+		},
+	)
+	if err != nil {
+		t.Fatalf("ensureIAMRoleForEC2() error = %v", err)
+	}
+	if !ok {
+		t.Fatalf("ensureIAMRoleForEC2() managed = false, want true")
+	}
+
+	got := getUnstructured(t, c, ackIAMRoleGVK, "demo-karpenter-node")
+	// Managed policies (existing path) must still be set independently of
+	// inlinePolicies — the two fields are independent on the ACK Role CR.
+	if policies, _, err := unstructured.NestedStringSlice(got.Object, "spec", "policies"); err != nil {
+		t.Fatalf("role spec.policies: %v", err)
+	} else if len(policies) != 1 || policies[0] != "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy" {
+		t.Fatalf("role spec.policies = %#v, want managed policy preserved", policies)
+	}
+	// spec.inlinePolicies must be present and contain both entries with the
+	// JSON document strings preserved verbatim (ACK schema = map[string]string).
+	inline, found, err := unstructured.NestedMap(got.Object, "spec", "inlinePolicies")
+	if err != nil {
+		t.Fatalf("role spec.inlinePolicies: %v", err)
+	}
+	if !found {
+		t.Fatalf("role spec.inlinePolicies missing, want both inline entries declared")
+	}
+	if got, want := inline["cert-manager-route53-dns01-txt-only"], certManagerPolicy; got != want {
+		t.Fatalf("inlinePolicies[cert-manager] = %v, want %q", got, want)
+	}
+	if got, want := inline["external-dns-route53-record-management"], externalDNSPolicy; got != want {
+		t.Fatalf("inlinePolicies[external-dns] = %v, want %q", got, want)
+	}
+	if len(inline) != 2 {
+		t.Fatalf("inlinePolicies len = %d, want 2", len(inline))
+	}
+}
+
+// TestReadTopologyStringMap_RoundTripsClusterClassVariable verifies that the
+// new helper introduced for APTH-1704 decodes a map[string]string topology
+// variable identically to readTopologyStringSlice's []string sister. boot
+// scripts (boot-single.sh) emit a YAML object whose values are JSON-document
+// strings; the helper must preserve those strings byte-for-byte for the writer
+// to forward them to spec.inlinePolicies on the ACK Role CR.
+func TestReadTopologyStringMap_RoundTripsClusterClassVariable(t *testing.T) {
+	t.Parallel()
+
+	rawJSON := `{"cert-manager-route53-dns01-txt-only":"{\"Version\":\"2012-10-17\"}","external-dns-route53-record-management":"{\"Version\":\"2012-10-17\",\"Statement\":[]}"}`
+	inlineVar := clusterv1.ClusterVariable{Name: topologyNodeRoleAdditionalInlinePoliciesVariableName}
+	inlineVar.Value.Raw = []byte(rawJSON)
+	cluster := &clusterv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: "default"},
+		Spec: clusterv1.ClusterSpec{
+			Topology: clusterv1.Topology{
+				ClassRef:  clusterv1.ClusterClassRef{Name: "kany8s-eks-byo"},
+				Variables: []clusterv1.ClusterVariable{inlineVar},
+			},
+		},
+	}
+
+	got, ok, err := readTopologyStringMap(cluster, topologyNodeRoleAdditionalInlinePoliciesVariableName)
+	if err != nil {
+		t.Fatalf("readTopologyStringMap() error = %v", err)
+	}
+	if !ok {
+		t.Fatalf("readTopologyStringMap() ok = false, want true")
+	}
+	if len(got) != 2 {
+		t.Fatalf("readTopologyStringMap() len = %d, want 2", len(got))
+	}
+	if v := got["cert-manager-route53-dns01-txt-only"]; v != `{"Version":"2012-10-17"}` {
+		t.Fatalf("cert-manager value = %q, want JSON document preserved verbatim", v)
+	}
+	if v := got["external-dns-route53-record-management"]; v != `{"Version":"2012-10-17","Statement":[]}` {
+		t.Fatalf("external-dns value = %q, want JSON document preserved verbatim", v)
+	}
+
+	// Sister assertion: readTopologyStringMap on a non-existent variable name
+	// returns (nil, false, nil) — same shape as readTopologyStringSlice — so
+	// production cluster specs that omit the variable see no inline policies
+	// (= production side-effect-zero invariant).
+	if missing, ok, err := readTopologyStringMap(cluster, "non-existent-variable"); err != nil {
+		t.Fatalf("readTopologyStringMap(missing) error = %v", err)
+	} else if ok || missing != nil {
+		t.Fatalf("readTopologyStringMap(missing) = (%v, %v), want (nil, false)", missing, ok)
 	}
 }
 

@@ -2,14 +2,21 @@ apiVersion: clusterctl.cluster.x-k8s.io/v1alpha3
 kind: Metadata
 # Release series declare which controller contract a given minor line ships.
 # kany8s v0.1.x ships with Cluster API v1beta2 because cmd/main.go imports
-# sigs.k8s.io/cluster-api/api/core/v1beta2 (CAPI v1.12+). v0.2.x and v0.3.x
-# stay on v1beta2: v0.2.x added the v1beta2 served-alias on existing CRDs
-# (APTH-1563) without changing the contract, and v0.3.x simplifies the
+# sigs.k8s.io/cluster-api/api/core/v1beta2 (CAPI v1.12+). v0.2.x, v0.3.x, and
+# v0.4.x stay on v1beta2: v0.2.x added the v1beta2 served-alias on existing
+# CRDs (APTH-1563) without changing the contract; v0.3.x simplifies the
 # eks-karpenter-bootstrapper plugin so the kany8s-eks-byo ClusterClass RGD
-# owns the FargateProfile lifecycle (APTH-1568) — neither touches contract.
+# owns the FargateProfile lifecycle (APTH-1568); v0.4.x adds a new
+# ClusterClass topology variable (karpenter-node-role-additional-inline-policies)
+# so node-role inline policies become declarative end-to-end (APTH-1704),
+# eliminating the ACK + kro drift delete race against externally attached
+# inline policies — none of these touch the controller contract.
 # When cutting a new minor, prepend another entry; clusterctl requires
 # descending order by (major, minor).
 releaseSeries:
+- major: 0
+  minor: 4
+  contract: v1beta2
 - major: 0
   minor: 3
   contract: v1beta2

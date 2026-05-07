@@ -29,7 +29,8 @@ const (
 	topologyNodeSubnetIDsVariableName                = "vpc-node-subnet-ids"
 	topologyControlPlaneSecurityGroupIDsVariableName = "vpc-security-group-ids"
 	topologyNodeSecurityGroupIDsVariableName         = "vpc-node-security-group-ids"
-	topologyNodeRoleAdditionalPolicyARNsVariableName = "karpenter-node-role-additional-policy-arns"
+	topologyNodeRoleAdditionalPolicyARNsVariableName     = "karpenter-node-role-additional-policy-arns"
+	topologyNodeRoleAdditionalInlinePoliciesVariableName = "karpenter-node-role-additional-inline-policies"
 
 	defaultKarpenterChartVersion = "1.0.8"
 )
