@@ -25,12 +25,13 @@ const (
 	karpenterNodePoolTemplateConfigMapKeyAnnotation = "eks.kany8s.io/karpenter-nodepool-template-key"
 	oidcThumbprintAutoAnnotation                    = "eks.kany8s.io/oidc-thumbprint-auto"
 
-	topologyControlPlaneSubnetIDsVariableName        = "vpc-control-plane-subnet-ids"
-	topologyNodeSubnetIDsVariableName                = "vpc-node-subnet-ids"
-	topologyControlPlaneSecurityGroupIDsVariableName = "vpc-security-group-ids"
-	topologyNodeSecurityGroupIDsVariableName         = "vpc-node-security-group-ids"
+	topologyControlPlaneSubnetIDsVariableName            = "vpc-control-plane-subnet-ids"
+	topologyNodeSubnetIDsVariableName                    = "vpc-node-subnet-ids"
+	topologyControlPlaneSecurityGroupIDsVariableName     = "vpc-security-group-ids"
+	topologyNodeSecurityGroupIDsVariableName             = "vpc-node-security-group-ids"
 	topologyNodeRoleAdditionalPolicyARNsVariableName     = "karpenter-node-role-additional-policy-arns"
 	topologyNodeRoleAdditionalInlinePoliciesVariableName = "karpenter-node-role-additional-inline-policies"
+	topologyKarpenterNodeIMDSHopLimitVariableName        = "karpenter-node-imds-hop-limit"
 
 	defaultKarpenterChartVersion = "1.0.8"
 )

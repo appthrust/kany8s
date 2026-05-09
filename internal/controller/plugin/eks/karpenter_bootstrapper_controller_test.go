@@ -126,6 +126,7 @@ func TestBuildDefaultNodePoolYAML_IsValidMultiDocYAML(t *testing.T) {
 		"eks-demo-node-profile",
 		[]string{"subnet-a", "subnet-b"},
 		[]string{"sg-1111", "sg-2222"},
+		2,
 	)
 
 	decoder := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(yamlText)), 4096)
@@ -197,12 +198,49 @@ func TestBuildDefaultNodePoolYAML_IsValidMultiDocYAML(t *testing.T) {
 	} else if found {
 		t.Fatalf("unexpected spec.role in EC2NodeClass")
 	}
+	if got, found, err := unstructured.NestedInt64(objs[0].Object, "spec", "metadataOptions", "httpPutResponseHopLimit"); err != nil {
+		t.Fatalf("get spec.metadataOptions.httpPutResponseHopLimit: %v", err)
+	} else if !found {
+		t.Fatalf("missing spec.metadataOptions.httpPutResponseHopLimit")
+	} else if got != 2 {
+		t.Fatalf("spec.metadataOptions.httpPutResponseHopLimit = %d, want 2", got)
+	}
+	if got, found, err := unstructured.NestedString(objs[0].Object, "spec", "metadataOptions", "httpTokens"); err != nil {
+		t.Fatalf("get spec.metadataOptions.httpTokens: %v", err)
+	} else if !found {
+		t.Fatalf("missing spec.metadataOptions.httpTokens")
+	} else if got != "required" {
+		t.Fatalf("spec.metadataOptions.httpTokens = %q, want %q", got, "required")
+	}
 
 	if got, want := objs[1].GetAPIVersion(), "karpenter.sh/v1"; got != want {
 		t.Fatalf("obj[1] apiVersion = %q, want %q", got, want)
 	}
 	if got, want := objs[1].GetKind(), "NodePool"; got != want {
 		t.Fatalf("obj[1] kind = %q, want %q", got, want)
+	}
+}
+
+func TestBuildDefaultNodePoolYAML_LeavesMetadataOptionsUnsetByDefault(t *testing.T) {
+	t.Parallel()
+
+	yamlText := buildDefaultNodePoolYAML(
+		"eks-demo",
+		"eks-demo-node-profile",
+		[]string{"subnet-a"},
+		[]string{"sg-1111"},
+		0,
+	)
+
+	decoder := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(yamlText)), 4096)
+	var obj unstructured.Unstructured
+	if err := decoder.Decode(&obj); err != nil {
+		t.Fatalf("decode EC2NodeClass YAML: %v", err)
+	}
+	if _, found, err := unstructured.NestedMap(obj.Object, "spec", "metadataOptions"); err != nil {
+		t.Fatalf("get spec.metadataOptions: %v", err)
+	} else if found {
+		t.Fatalf("unexpected spec.metadataOptions when IMDS hop limit is unset")
 	}
 }
 
@@ -230,6 +268,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureDefaultNodePoolResources_Creat
 		"eks-demo-node-profile",
 		[]string{"subnet-a", "subnet-b"},
 		[]string{"sg-1111"},
+		2,
 	)
 
 	cmName := "demo-karpenter-nodepool"
@@ -250,6 +289,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureDefaultNodePoolResources_Creat
 		"eks-demo-node-profile",
 		[]string{"subnet-a", "subnet-b"},
 		[]string{"sg-1111"},
+		2,
 	); err != nil {
 		t.Fatalf("ensureDefaultNodePoolResources() error = %v", err)
 	}
@@ -617,7 +657,7 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureIAMRoleForEC2_InlinePoliciesDe
 		testEKSNodeRoleName,
 		[]string{"arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"},
 		map[string]string{
-			"cert-manager-route53-dns01-txt-only":     certManagerPolicy,
+			"cert-manager-route53-dns01-txt-only":    certManagerPolicy,
 			"external-dns-route53-record-management": externalDNSPolicy,
 		},
 	)
@@ -1126,7 +1166,7 @@ func TestEKSKarpenterBootstrapperReconciler_ResolveNodePoolTemplateYAML_UsesConf
 	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster, templateCM).Build()
 
 	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
-	got, err := r.resolveNodePoolTemplateYAML(context.Background(), cluster, "eks-demo", "demo-profile", []string{"subnet-a", "subnet-b"}, []string{"sg-a"})
+	got, err := r.resolveNodePoolTemplateYAML(context.Background(), cluster, "eks-demo", "demo-profile", []string{"subnet-a", "subnet-b"}, []string{"sg-a"}, 2)
 	if err != nil {
 		t.Fatalf("resolveNodePoolTemplateYAML() error = %v", err)
 	}

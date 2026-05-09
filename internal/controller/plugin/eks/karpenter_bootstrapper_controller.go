@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/url"
 	"sort"
@@ -194,6 +195,23 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 		return ctrl.Result{}, err
 	} else if found {
 		nodeSecurityGroupIDs = normalizeDistinctStrings(ids)
+	}
+
+	karpenterNodeIMDSHopLimit := int64(0)
+	if hopLimit, found, err := readTopologyInt64(cluster, topologyKarpenterNodeIMDSHopLimitVariableName); err != nil {
+		return ctrl.Result{}, err
+	} else if found {
+		if hopLimit < 1 || hopLimit > 64 {
+			msg := fmt.Sprintf(
+				"invalid topology variable %q: %d; cause: EC2 metadataOptions.httpPutResponseHopLimit must be between 1 and 64. action: set %q to an integer in [1,64] or remove it to use Karpenter defaults",
+				topologyKarpenterNodeIMDSHopLimitVariableName,
+				hopLimit,
+				topologyKarpenterNodeIMDSHopLimitVariableName,
+			)
+			r.emitEvent(cluster, corev1.EventTypeWarning, reasonTopologyVariableMissing, msg)
+			return ctrl.Result{RequeueAfter: r.failureBackoff()}, nil
+		}
+		karpenterNodeIMDSHopLimit = hopLimit
 	}
 
 	requiredAPIs := []schema.GroupVersionKind{
@@ -465,9 +483,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 	if additionalInline, ok, err := readTopologyStringMap(cluster, topologyNodeRoleAdditionalInlinePoliciesVariableName); err != nil {
 		return ctrl.Result{}, err
 	} else if ok {
-		for k, v := range additionalInline {
-			nodeInlinePolicies[k] = v
-		}
+		maps.Copy(nodeInlinePolicies, additionalInline)
 	}
 	if ok, err := r.ensureIAMRoleForEC2(ctx, cluster, nodeRoleName, region, nodeRoleAWSName, nodeManagedPolicies, nodeInlinePolicies); err != nil {
 		return ctrl.Result{}, err
@@ -570,7 +586,7 @@ func (r *EKSKarpenterBootstrapperReconciler) Reconcile(ctx context.Context, req 
 
 	// 6) ClusterResourceSet: apply default NodePool/EC2NodeClass to workload cluster.
 	if len(nodeSecurityGroupIDs) > 0 {
-		if err := r.ensureDefaultNodePoolResources(ctx, cluster, capiClusterName, eksClusterName, nodeInstanceProfileAWSName, nodeSubnetIDs, nodeSecurityGroupIDs); err != nil {
+		if err := r.ensureDefaultNodePoolResources(ctx, cluster, capiClusterName, eksClusterName, nodeInstanceProfileAWSName, nodeSubnetIDs, nodeSecurityGroupIDs, karpenterNodeIMDSHopLimit); err != nil {
 			if errors.Is(err, errNodePoolTemplateInvalid) {
 				msg := fmt.Sprintf(
 					"invalid NodePool template: %v; action: fix ConfigMap referenced by %q/%q or remove the annotation to use defaults",
@@ -1166,8 +1182,9 @@ func (r *EKSKarpenterBootstrapperReconciler) resolveNodePoolTemplateYAML(
 	nodeInstanceProfileName string,
 	nodeSubnetIDs,
 	securityGroupIDs []string,
+	imdsHopLimit int64,
 ) (string, error) {
-	defaultYAML := buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs)
+	defaultYAML := buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs, imdsHopLimit)
 	if owner == nil || len(owner.Annotations) == 0 {
 		return defaultYAML, nil
 	}
@@ -1720,8 +1737,8 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFluxKarpenter(ctx context.Con
 	return ok, nil
 }
 
-func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx context.Context, owner *clusterv1.Cluster, capiClusterName, eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string) error {
-	desiredYAML, err := r.resolveNodePoolTemplateYAML(ctx, owner, eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs)
+func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx context.Context, owner *clusterv1.Cluster, capiClusterName, eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string, imdsHopLimit int64) error {
+	desiredYAML, err := r.resolveNodePoolTemplateYAML(ctx, owner, eksClusterName, nodeInstanceProfileName, nodeSubnetIDs, securityGroupIDs, imdsHopLimit)
 	if err != nil {
 		return err
 	}
@@ -1791,7 +1808,7 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx 
 	return nil
 }
 
-func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string) string {
+func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string, imdsHopLimit int64) string {
 	// EC2NodeClass (v1)
 	subnetTerms := []string{}
 	for _, id := range nodeSubnetIDs {
@@ -1811,6 +1828,14 @@ func buildDefaultNodePoolYAML(eksClusterName, nodeInstanceProfileName string, no
 		"    - tags:",
 		fmt.Sprintf("        aws:eks:cluster-name: %q", eksClusterName),
 	)
+	metadataOptions := ""
+	if imdsHopLimit > 0 {
+		metadataOptions = fmt.Sprintf(`  metadataOptions:
+    httpEndpoint: enabled
+    httpPutResponseHopLimit: %d
+    httpTokens: required
+`, imdsHopLimit)
+	}
 
 	return strings.TrimSpace(fmt.Sprintf(`
 apiVersion: karpenter.k8s.aws/v1
@@ -1821,7 +1846,7 @@ spec:
   amiSelectorTerms:
     - alias: bottlerocket@latest
   instanceProfile: %s
-  subnetSelectorTerms:
+%s  subnetSelectorTerms:
 %s
   securityGroupSelectorTerms:
 %s
@@ -1854,7 +1879,7 @@ spec:
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
     consolidateAfter: 1m
-`, nodeInstanceProfileName, strings.Join(subnetTerms, "\n"), strings.Join(sgTerms, "\n"), eksClusterName)) + "\n"
+`, nodeInstanceProfileName, metadataOptions, strings.Join(subnetTerms, "\n"), strings.Join(sgTerms, "\n"), eksClusterName)) + "\n"
 }
 
 func mutateManagedConfigMap(cm *corev1.ConfigMap, owner *clusterv1.Cluster, resourcesYAML string) {
@@ -2484,6 +2509,24 @@ func readTopologyStringMap(cluster *clusterv1.Cluster, variableName string) (map
 		return out, true, nil
 	}
 	return nil, false, nil
+}
+
+func readTopologyInt64(cluster *clusterv1.Cluster, variableName string) (int64, bool, error) {
+	if cluster == nil || !cluster.Spec.Topology.IsDefined() {
+		return 0, false, nil
+	}
+	for i := range cluster.Spec.Topology.Variables {
+		v := cluster.Spec.Topology.Variables[i]
+		if v.Name != variableName {
+			continue
+		}
+		var out int64
+		if err := json.Unmarshal(v.Value.Raw, &out); err != nil {
+			return 0, false, fmt.Errorf("unmarshal topology variable %q: %w", variableName, err)
+		}
+		return out, true, nil
+	}
+	return 0, false, nil
 }
 
 func (r *EKSKarpenterBootstrapperReconciler) ensureTopologyStringSliceVariable(ctx context.Context, cluster *clusterv1.Cluster, variableName string, desired []string) (bool, error) {
