@@ -117,6 +117,12 @@ clusterctl-setup: clusterapi-manifests kustomize ## Render the clusterctl provid
 	    -e 's#%version%#$(CLUSTERCTL_PROVIDER_VERSION)#g' \
 	    ./hack/capi/config.yaml > capi-local-config.yaml
 
+.PHONY: verify-clusterctl-artifacts
+verify-clusterctl-artifacts: clusterctl-setup ## Verify generated clusterctl release artifacts carry CAPI contract labels and v1beta2 aliases.
+	CLUSTERCTL_NAME="$(CLUSTERCTL_NAME)" \
+	CLUSTERCTL_PROVIDER_VERSION="$(CLUSTERCTL_PROVIDER_VERSION)" \
+	go test -tags releaseartifact ./hack/releaseartifact
+
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	"$(CONTROLLER_GEN)" object:headerFile="hack/boilerplate.go.txt" $(CONTROLLER_GEN_GENERATE_PATHS)

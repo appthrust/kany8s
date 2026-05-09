@@ -168,7 +168,7 @@ jobs:
         env:
           IMG: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/manager:${{ needs.resolve.outputs.tag }}
         run: |
-          make clusterctl-setup IMG="${IMG}"
+          make verify-clusterctl-artifacts IMG="${IMG}"
 
       - name: Render clusterctl-config.yaml for this release tag
         shell: bash
