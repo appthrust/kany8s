@@ -1,8 +1,9 @@
 # eks-karpenter-bootstrapper
 
-Kany8s EKS Karpenter bootstrapper — a controller that provisions the AWS
-side-cars Karpenter needs (IAM Role, OIDC provider, SecurityGroup, Fargate
-profile) and installs Karpenter via Flux on CAPI-managed EKS clusters.
+Kany8s EKS bootstrapper — a controller that provisions the AWS side-cars
+Karpenter needs (IAM Role, OIDC provider, SecurityGroup, Fargate profile),
+installs Karpenter via Flux on CAPI-managed EKS clusters, and can prepare the
+OCM AWS IRSA managed-cluster registration role.
 
 ## TL;DR
 
@@ -21,6 +22,27 @@ helm install bootstrapper oci://ghcr.io/appthrust/charts/eks-karpenter-bootstrap
 - Flux installed (`source.toolkit.fluxcd.io` + `helm.toolkit.fluxcd.io`). The
   bootstrapper emits `OCIRepository` + `HelmRelease` for upstream Karpenter.
 - One of the AWS credential sources below.
+
+## Cluster opt-ins
+
+The binary runs multiple EKS plugin reconcilers. Each reconciler is opt-in per
+CAPI `Cluster`.
+
+| Purpose | Cluster metadata | Managed resources |
+|---|---|---|
+| Karpenter bootstrap | label `eks.kany8s.io/karpenter=enabled` | ACK IAM/OIDC/EC2/EKS side-cars, Flux `OCIRepository`/`HelmRelease`, default `NodePool`/`EC2NodeClass` resources |
+| OCM AWS IRSA registration bootstrap | label `eks.kany8s.io/ocm-awsirsa=enabled` and annotation `eks.kany8s.io/ocm-hub-cluster-arn=arn:aws:eks:<region>:<account>:cluster/<hub>` | ACK IAM `Role` named `ocm-managed-cluster-<md5>` |
+
+The OCM role suffix is `md5(<hubAccountId>#<hubClusterName>#<managedAccountId>#<managedClusterName>)`,
+matching OCM's AWS IRSA registration flow. The generated role trusts
+`klusterlet-registration-sa` and `klusterlet-work-sa` in the managed cluster and
+can assume the hub-side `ocm-hub-<md5>` role.
+
+Do not enable `eks.kany8s.io/ocm-awsirsa` on a cluster that already has a
+manually-created AWS IAM role with the same `ocm-managed-cluster-<md5>` name
+unless you have an ACK adoption/removal plan. The controller creates an ACK
+`Role` CR as the source of truth for future clusters; it does not import
+pre-existing AWS IAM roles by itself.
 
 ## AWS credentials
 
@@ -102,6 +124,8 @@ for the quickstart.
 
 ## Source
 
-- Controller source: `cmd/eks-karpenter-bootstrapper/main.go`, `internal/controller/plugin/eks/karpenter_bootstrapper_controller.go`
+- Controller source: `cmd/eks-karpenter-bootstrapper/main.go`,
+  `internal/controller/plugin/eks/karpenter_bootstrapper_controller.go`,
+  `internal/controller/plugin/eks/ocm_awsirsa_bootstrapper_controller.go`
 - Kustomize overlay (legacy / dev): `config/eks-karpenter-bootstrapper/`
 - Companion chart: `eks-kubeconfig-rotator`

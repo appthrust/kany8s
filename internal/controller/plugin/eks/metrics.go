@@ -11,6 +11,7 @@ import (
 const (
 	metricControllerRotator      = "eks-kubeconfig-rotator"
 	metricControllerBootstrapper = "eks-karpenter-bootstrapper"
+	metricControllerOCMAWSIRSA   = "eks-ocm-awsirsa-bootstrapper"
 )
 
 var (

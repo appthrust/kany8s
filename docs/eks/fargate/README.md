@@ -47,6 +47,18 @@
   - `eks.kany8s.io/oidc-thumbprint-auto=enabled` を `Cluster` に付与すると、bootstrapper が issuer から thumbprint を算出して `OpenIDConnectProvider.spec.thumbprints` を設定します。
   - 算出対象は root ではなく top intermediate CA thumbprint（AWS IAM 要件）です。
   - 証明書チェーンが検証できない場合は thumbprint 設定を skip し、Warning Event を出して reconcile は継続します。
+- OCM AWS IRSA registration (optional)
+  - `eks.kany8s.io/ocm-awsirsa=enabled` label と
+    `eks.kany8s.io/ocm-hub-cluster-arn=arn:aws:eks:<region>:<account>:cluster/<hub>`
+    annotation を `Cluster` に付与すると、OCM awsirsa join 前提の spoke 側
+    ACK IAM `Role` を作成します。
+  - Role 名は OCM 方式に合わせて
+    `ocm-managed-cluster-<md5(hubAccount#hubCluster#managedAccount#managedCluster)>`
+    です。
+  - 既に同名 AWS IAM role を手動作成済みの cluster では、ACK adoption /
+    手動 role 削除の段取りを決めるまで opt-in しないでください。
+    controller は将来 cluster の source of truth として ACK `Role` CR を作る
+    ため、既存 AWS role の自動 import はしません。
 
 ## 実装コンポーネント
 
@@ -63,6 +75,9 @@
     - base: `config/eks-karpenter-bootstrapper/`
     - kind overlay: `config/overlays/eks-karpenter-bootstrapper/kind/`
     - IRSA overlay: `config/overlays/eks-karpenter-bootstrapper/irsa/`
+  - included reconcilers:
+    - Karpenter bootstrapper: `internal/controller/plugin/eks/karpenter_bootstrapper_controller.go`
+    - OCM AWS IRSA bootstrapper: `internal/controller/plugin/eks/ocm_awsirsa_bootstrapper_controller.go`
 
 ## Credentials strategy
 
@@ -155,12 +170,21 @@ kubectl -n "$NAMESPACE" annotate cluster "$CLUSTER_NAME" \
 kubectl -n "$NAMESPACE" annotate cluster "$CLUSTER_NAME" \
   eks.kany8s.io/allow-unmanaged-takeover=enabled \
   --overwrite
+
+# (任意) OCM AWS IRSA registration 用 spoke role を ACK IAM Role として作成
+kubectl -n "$NAMESPACE" label cluster "$CLUSTER_NAME" \
+  eks.kany8s.io/ocm-awsirsa=enabled \
+  --overwrite
+kubectl -n "$NAMESPACE" annotate cluster "$CLUSTER_NAME" \
+  eks.kany8s.io/ocm-hub-cluster-arn=arn:aws:eks:ap-northeast-1:123456789012:cluster/pmc \
+  --overwrite
 ```
 
 6) 確認
 
 - management cluster
   - `SecurityGroup` / `AccessEntry` / `FargateProfile` / `Role` / `Policy` / `InstanceProfile` / `OpenIDConnectProvider` が作られる
+  - OCM opt-in 時は `ocm-managed-cluster-<md5>` の ACK IAM `Role` が作られる
   - Flux の `HelmRelease` が作られる
 - workload cluster
   - `karpenter` の Pod が Running（Fargate）
