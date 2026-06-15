@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -379,6 +380,7 @@ func TestBuildKarpenterControllerPolicyDocument_InterpolatesAndIsValidJSON(t *te
 	}
 
 	var passRole map[string]any
+	var instanceProfileReads map[string]any
 	for _, s := range statements {
 		stmt, ok := s.(map[string]any)
 		if !ok {
@@ -386,11 +388,16 @@ func TestBuildKarpenterControllerPolicyDocument_InterpolatesAndIsValidJSON(t *te
 		}
 		if sid, _ := stmt["Sid"].(string); sid == "AllowPassingInstanceRole" {
 			passRole = stmt
-			break
+		}
+		if sid, _ := stmt["Sid"].(string); sid == "AllowInstanceProfileReadActions" {
+			instanceProfileReads = stmt
 		}
 	}
 	if passRole == nil {
 		t.Fatalf("statement with Sid=AllowPassingInstanceRole not found")
+	}
+	if instanceProfileReads == nil {
+		t.Fatalf("statement with Sid=AllowInstanceProfileReadActions not found")
 	}
 
 	resources, ok := passRole["Resource"].([]any)
@@ -399,6 +406,16 @@ func TestBuildKarpenterControllerPolicyDocument_InterpolatesAndIsValidJSON(t *te
 	}
 	if got, want := resources[0], "arn:aws:iam::123456789012:role/demo-eks-node"; got != want {
 		t.Fatalf("AllowPassingInstanceRole.Resource[0] = %v, want %q", got, want)
+	}
+
+	readActions, ok := instanceProfileReads["Action"].([]any)
+	if !ok {
+		t.Fatalf("AllowInstanceProfileReadActions.Action has unexpected value: %#v", instanceProfileReads["Action"])
+	}
+	for _, want := range []string{"iam:GetInstanceProfile", "iam:ListInstanceProfiles"} {
+		if !slices.Contains(readActions, any(want)) {
+			t.Fatalf("AllowInstanceProfileReadActions.Action missing %q: %#v", want, readActions)
+		}
 	}
 }
 

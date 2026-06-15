@@ -2853,7 +2853,10 @@ func buildKarpenterControllerPolicyDocument(region, accountID, eksClusterName, n
       "Sid": "AllowInstanceProfileReadActions",
       "Effect": "Allow",
       "Resource": ["arn:aws:iam::%[4]s:instance-profile/*"],
-      "Action": ["iam:GetInstanceProfile"]
+      "Action": [
+        "iam:GetInstanceProfile",
+        "iam:ListInstanceProfiles"
+      ]
     },
     {
       "Sid": "AllowAPIServerEndpointDiscovery",
