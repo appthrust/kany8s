@@ -67,6 +67,9 @@ args:
   # Overrides Flux OCIRepository spec.ref.tag for the upstream Karpenter chart.
   # Empty means fall back to the controller default compiled into the binary.
   karpenterChartVersion: ""
+  # Merged into child-cluster Karpenter Helm values at settings.featureGates.
+  # Example: { staticCapacity: true } enables Karpenter static NodePools.
+  karpenterFeatureGates: {}
 
 aws:
   # If specified, use the AWS region for AWS API calls

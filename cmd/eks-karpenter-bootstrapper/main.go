@@ -44,6 +44,7 @@ func main() {
 	var failureBackoff string
 	var steadyStateRequeue string
 	var karpenterChartVersion string
+	var karpenterFeatureGatesJSON string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -56,6 +57,9 @@ func main() {
 	flag.StringVar(&karpenterChartVersion, "karpenter-chart-version", "",
 		"Override Flux OCIRepository spec.ref.tag for Karpenter chart. "+
 			"Empty means controller default.")
+	flag.StringVar(&karpenterFeatureGatesJSON, "karpenter-feature-gates-json", "",
+		"JSON object merged into Karpenter Helm values settings.featureGates. "+
+			"Example: {\"staticCapacity\":true}.")
 
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
@@ -71,6 +75,11 @@ func main() {
 	steadyStateRequeueDuration, err := time.ParseDuration(steadyStateRequeue)
 	if err != nil {
 		setupLog.Error(err, "invalid --steady-state-requeue")
+		os.Exit(1)
+	}
+	karpenterFeatureGates, err := eksplugincontroller.ParseKarpenterFeatureGatesJSON(karpenterFeatureGatesJSON)
+	if err != nil {
+		setupLog.Error(err, "invalid --karpenter-feature-gates-json")
 		os.Exit(1)
 	}
 
@@ -114,13 +123,14 @@ func main() {
 	}
 
 	if err := (&eksplugincontroller.EKSKarpenterBootstrapperReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		Recorder:           mgr.GetEventRecorderFor("eks-karpenter-bootstrapper"), //nolint:staticcheck
-		FailureBackoff:     failureBackoffDuration,
-		SteadyStateRequeue: steadyStateRequeueDuration,
-		Now:                time.Now,
-		KarpenterChartTag:  karpenterChartVersion,
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		Recorder:              mgr.GetEventRecorderFor("eks-karpenter-bootstrapper"), //nolint:staticcheck
+		FailureBackoff:        failureBackoffDuration,
+		SteadyStateRequeue:    steadyStateRequeueDuration,
+		Now:                   time.Now,
+		KarpenterChartTag:     karpenterChartVersion,
+		KarpenterFeatureGates: karpenterFeatureGates,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "EKSKarpenterBootstrapper")
 		os.Exit(1)

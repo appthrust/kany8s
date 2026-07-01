@@ -113,6 +113,7 @@ See [`values.yaml`](values.yaml) for the full list; highlights:
 | `args.failureBackoff` | `30s` | Requeue interval when prerequisites are not ready. |
 | `args.steadyStateRequeue` | `10m` | Requeue interval after a successful reconciliation. |
 | `args.karpenterChartVersion` | `""` | Override Flux `OCIRepository.spec.ref.tag` for the upstream Karpenter chart. Empty uses the controller default. |
+| `args.karpenterFeatureGates` | `{}` | Merge boolean feature gates into child-cluster Karpenter Helm values at `settings.featureGates` (for example `staticCapacity: true`). |
 
 ## Relationship to `clusterctl` / cluster-api-operator
 

@@ -945,7 +945,11 @@ func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterChartTag(t *testing.
 func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_OverrideAndProtectCriticalKeys(t *testing.T) {
 	t.Parallel()
 
-	r := &EKSKarpenterBootstrapperReconciler{}
+	r := &EKSKarpenterBootstrapperReconciler{
+		KarpenterFeatureGates: map[string]bool{
+			"staticCapacity": true,
+		},
+	}
 	cluster := &clusterv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
@@ -994,6 +998,11 @@ func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_OverrideA
 	} else if want := "demo-interruption-queue"; got != want {
 		t.Fatalf("settings.interruptionQueue = %q, want %q", got, want)
 	}
+	if got, _, err := unstructured.NestedBool(values, "settings", "featureGates", "staticCapacity"); err != nil {
+		t.Fatalf("settings.featureGates.staticCapacity: %v", err)
+	} else if !got {
+		t.Fatalf("settings.featureGates.staticCapacity = false, want true")
+	}
 }
 
 func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_InvalidJSON(t *testing.T) {
@@ -1010,6 +1019,36 @@ func TestEKSKarpenterBootstrapperReconciler_ResolveKarpenterHelmValues_InvalidJS
 
 	if _, err := r.resolveKarpenterHelmValues(cluster, "eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo"); err == nil {
 		t.Fatalf("resolveKarpenterHelmValues() error = nil, want non-nil")
+	}
+}
+
+func TestParseKarpenterFeatureGatesJSON(t *testing.T) {
+	t.Parallel()
+
+	got, err := ParseKarpenterFeatureGatesJSON(`{"staticCapacity":true,"nodeRepair":false,"":true}`)
+	if err != nil {
+		t.Fatalf("ParseKarpenterFeatureGatesJSON() error = %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("ParseKarpenterFeatureGatesJSON() len = %d, want 2", len(got))
+	}
+	if !got["staticCapacity"] {
+		t.Fatalf("staticCapacity = false, want true")
+	}
+	if got["nodeRepair"] {
+		t.Fatalf("nodeRepair = true, want false")
+	}
+
+	empty, err := ParseKarpenterFeatureGatesJSON("")
+	if err != nil {
+		t.Fatalf("ParseKarpenterFeatureGatesJSON(empty) error = %v", err)
+	}
+	if empty != nil {
+		t.Fatalf("ParseKarpenterFeatureGatesJSON(empty) = %#v, want nil", empty)
+	}
+
+	if _, err := ParseKarpenterFeatureGatesJSON("{"); err == nil {
+		t.Fatalf("ParseKarpenterFeatureGatesJSON(invalid) error = nil, want non-nil")
 	}
 }
 

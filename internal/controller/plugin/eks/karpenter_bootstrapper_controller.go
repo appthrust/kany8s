@@ -101,10 +101,11 @@ type EKSKarpenterBootstrapperReconciler struct {
 	Now            func() time.Time
 	RESTMapper     meta.RESTMapper
 
-	FailureBackoff     time.Duration
-	SteadyStateRequeue time.Duration
-	KarpenterChartTag  string
-	CleanupFinalizer   string
+	FailureBackoff        time.Duration
+	SteadyStateRequeue    time.Duration
+	KarpenterChartTag     string
+	KarpenterFeatureGates map[string]bool
+	CleanupFinalizer      string
 
 	ValidateSubnets        func(ctx context.Context, region string, subnetIDs []string) (fargateSubnetValidationResult, error)
 	ResolveOIDCThumbprints func(ctx context.Context, issuerURL string) ([]string, error)
@@ -1139,6 +1140,15 @@ func (r *EKSKarpenterBootstrapperReconciler) resolveKarpenterHelmValues(
 	controllerRoleARN string,
 ) (map[string]any, error) {
 	values := defaultKarpenterHelmValues(eksClusterName, endpoint, controllerRoleARN)
+	if r != nil && len(r.KarpenterFeatureGates) > 0 {
+		featureGates := mustEnsureNestedMap(mustEnsureNestedMap(values, "settings"), "featureGates")
+		for name, enabled := range r.KarpenterFeatureGates {
+			if strings.TrimSpace(name) == "" {
+				continue
+			}
+			featureGates[name] = enabled
+		}
+	}
 	if owner == nil || len(owner.Annotations) == 0 {
 		return values, nil
 	}
@@ -1163,6 +1173,29 @@ func (r *EKSKarpenterBootstrapperReconciler) resolveKarpenterHelmValues(
 	mustEnsureNestedMap(values, "settings")["clusterEndpoint"] = endpoint
 	mustEnsureNestedMap(mustEnsureNestedMap(values, "serviceAccount"), "annotations")["eks.amazonaws.com/role-arn"] = controllerRoleARN
 	return values, nil
+}
+
+func ParseKarpenterFeatureGatesJSON(raw string) (map[string]bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	parsed := map[string]bool{}
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(parsed))
+	for name, enabled := range parsed {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out[name] = enabled
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
 }
 
 func defaultKarpenterHelmValues(eksClusterName, endpoint, controllerRoleARN string) map[string]any {

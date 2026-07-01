@@ -138,4 +138,7 @@ defaults are emitted to keep Deployment args minimal.
 {{- if .Values.args.karpenterChartVersion }}
 - --karpenter-chart-version={{ .Values.args.karpenterChartVersion }}
 {{- end }}
+{{- if .Values.args.karpenterFeatureGates }}
+- {{ printf "--karpenter-feature-gates-json=%s" (toJson .Values.args.karpenterFeatureGates) | quote }}
+{{- end }}
 {{- end }}

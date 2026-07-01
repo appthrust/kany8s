@@ -57,7 +57,11 @@
         "watchNamespace":         { "type": "string" },
         "failureBackoff":         { "type": "string" },
         "steadyStateRequeue":     { "type": "string" },
-        "karpenterChartVersion":  { "type": "string" }
+        "karpenterChartVersion":  { "type": "string" },
+        "karpenterFeatureGates": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        }
       }
     },
     "rbac": {
