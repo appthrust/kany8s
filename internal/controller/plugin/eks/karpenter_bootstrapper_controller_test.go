@@ -828,8 +828,8 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 	if err != nil {
 		t.Fatalf("ensureFluxKarpenter() error = %v", err)
 	}
-	if !ok {
-		t.Fatalf("ensureFluxKarpenter() managed = false, want true")
+	if ok {
+		t.Fatalf("ensureFluxKarpenter() ready = true before Flux reports Ready")
 	}
 
 	oci := getUnstructured(t, c, fluxOCIRepositoryGVK, "demo-karpenter")
@@ -894,6 +894,55 @@ func TestEKSKarpenterBootstrapperReconciler_EnsureFluxKarpenter_CreateExpectedSp
 		t.Fatalf("HelmRelease spec.values.webhook.enabled: %v", err)
 	} else if got {
 		t.Fatalf("HelmRelease spec.values.webhook.enabled = true, want false")
+	}
+
+}
+
+func TestEnsureFluxKarpenterWaitsForCurrentReadyHelmRelease(t *testing.T) {
+	t.Parallel()
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	cluster := &clusterv1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: testClusterName, Namespace: "default", UID: "cluster-uid"}}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cluster).Build()
+	r := &EKSKarpenterBootstrapperReconciler{Client: c, Scheme: scheme}
+	values := defaultKarpenterHelmValues("eks-demo", "https://demo.example", "arn:aws:iam::123456789012:role/demo-karpenter-controller")
+
+	ready, err := r.ensureFluxKarpenter(context.Background(), cluster, testClusterName, defaultKarpenterChartVersion, values)
+	if err != nil || ready {
+		t.Fatalf("initial ensure ready=%t err=%v, want false and nil", ready, err)
+	}
+	hr := getUnstructured(t, c, fluxHelmReleaseGVK, "demo-karpenter")
+	installWait, _, _ := unstructured.NestedBool(hr.Object, "spec", "install", "disableWait")
+	upgradeWait, _, _ := unstructured.NestedBool(hr.Object, "spec", "upgrade", "disableWait")
+	if installWait || upgradeWait {
+		t.Fatalf("disableWait install=%t upgrade=%t, want both false", installWait, upgradeWait)
+	}
+
+	hr.SetGeneration(2)
+	mustSetNestedSlice(hr, []any{map[string]any{
+		"type": "Ready", "status": "True", "observedGeneration": int64(2),
+	}}, "status", "conditions")
+	if err := c.Update(context.Background(), hr); err != nil {
+		t.Fatalf("update HelmRelease Ready status: %v", err)
+	}
+	ready, err = r.ensureFluxKarpenter(context.Background(), cluster, testClusterName, defaultKarpenterChartVersion, values)
+	if err != nil || !ready {
+		t.Fatalf("current Ready ensure ready=%t err=%v, want true and nil", ready, err)
+	}
+}
+
+func TestHelmReleaseReadyRejectsStaleOrMissingCondition(t *testing.T) {
+	t.Parallel()
+	hr := newUnstructured(fluxHelmReleaseGVK, "default", "demo-karpenter")
+	hr.SetGeneration(3)
+	if helmReleaseReady(hr) {
+		t.Fatal("missing Ready condition accepted")
+	}
+	mustSetNestedSlice(hr, []any{map[string]any{
+		"type": "Ready", "status": "True", "observedGeneration": int64(2),
+	}}, "status", "conditions")
+	if helmReleaseReady(hr) {
+		t.Fatal("stale Ready condition accepted")
 	}
 }
 
