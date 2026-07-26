@@ -122,7 +122,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.resolve.outputs.tag }}
+          # A real publication must checkout the immutable tag. A dry-run is
+          # explicitly allowed before that tag exists, so bind it to the
+          # exact workflow-dispatch commit instead.
+          ref: ${{ needs.resolve.outputs.push == 'true' && needs.resolve.outputs.tag || github.sha }}
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
