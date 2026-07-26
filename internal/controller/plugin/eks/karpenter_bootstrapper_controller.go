@@ -1720,12 +1720,12 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFluxKarpenter(ctx context.Con
 		mustSetNestedField(u, map[string]any{
 			"createNamespace": true,
 			"crds":            "CreateReplace",
-			"disableWait":     true,
+			"disableWait":     false,
 			"remediation":     map[string]any{"retries": int64(-1)},
 		}, "spec", "install")
 		mustSetNestedField(u, map[string]any{
 			"crds":        "CreateReplace",
-			"disableWait": true,
+			"disableWait": false,
 			"remediation": map[string]any{"retries": int64(-1)},
 		}, "spec", "upgrade")
 		mustSetNestedField(u, deepCopyMapAny(helmValues), "spec", "values")
@@ -1734,7 +1734,37 @@ func (r *EKSKarpenterBootstrapperReconciler) ensureFluxKarpenter(ctx context.Con
 	if err != nil {
 		return false, err
 	}
-	return ok, nil
+	if !ok {
+		return false, nil
+	}
+	// Creating/updating a HelmRelease proves only that delivery intent exists.
+	// Karpenter is installed only after Flux has observed this generation and
+	// reported Ready=True. This prevents callers from treating a missing CRD or
+	// controller rollout as usable capacity.
+	current := newUnstructured(fluxHelmReleaseGVK, owner.Namespace, hrName)
+	if err := r.Get(ctx, client.ObjectKeyFromObject(current), current); err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	return helmReleaseReady(current), nil
+}
+
+func helmReleaseReady(hr *unstructured.Unstructured) bool {
+	if hr == nil || hr.GetGeneration() == 0 {
+		return false
+	}
+	conditions, found, err := unstructured.NestedSlice(hr.Object, "status", "conditions")
+	if err != nil || !found {
+		return false
+	}
+	for _, raw := range conditions {
+		condition, ok := raw.(map[string]any)
+		if !ok || condition["type"] != "Ready" || condition["status"] != "True" {
+			continue
+		}
+		observed, ok := condition["observedGeneration"].(int64)
+		return ok && observed == hr.GetGeneration()
+	}
+	return false
 }
 
 func (r *EKSKarpenterBootstrapperReconciler) ensureDefaultNodePoolResources(ctx context.Context, owner *clusterv1.Cluster, capiClusterName, eksClusterName, nodeInstanceProfileName string, nodeSubnetIDs, securityGroupIDs []string, imdsHopLimit int64) error {
