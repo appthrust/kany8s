@@ -89,7 +89,7 @@ type Kany8sClusterStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1beta2"
 
 // Kany8sCluster is the Schema for the kany8sclusters API
 type Kany8sCluster struct {

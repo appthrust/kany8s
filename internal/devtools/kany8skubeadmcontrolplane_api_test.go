@@ -76,10 +76,10 @@ func TestKany8sKubeadmControlPlaneCRDHasCAPIContractLabel(t *testing.T) {
 	}
 
 	crd := string(crdBytes)
-	// Cluster API resolves a v1beta2 contract reference to our v1alpha1 API via this label.
-	// Without it, CAPI can't reliably interact with the ControlPlane provider object.
-	if !strings.Contains(crd, "cluster.x-k8s.io/v1beta2: v1alpha1") {
-		t.Fatalf("%s missing CAPI contract label %q", filepath.ToSlash(crdPath), "cluster.x-k8s.io/v1beta2: v1alpha1")
+	// Cluster API follows this label to the actually served v1beta2 alias.
+	// Pointing it at v1alpha1 makes the v1beta2 contract undiscoverable.
+	if !strings.Contains(crd, "cluster.x-k8s.io/v1beta2: v1beta2") {
+		t.Fatalf("%s missing CAPI contract label %q", filepath.ToSlash(crdPath), "cluster.x-k8s.io/v1beta2: v1beta2")
 	}
 }
 
