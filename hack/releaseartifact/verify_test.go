@@ -116,8 +116,8 @@ func assertContractLabel(t *testing.T, crdName string, doc map[string]any) {
 
 	labels := mapField(mapField(doc, "metadata"), "labels")
 	got := stringField(labels, contractLabel)
-	if got != "v1alpha1" {
-		t.Fatalf("%s label %s = %q, want v1alpha1", crdName, contractLabel, got)
+	if got != "v1beta2" {
+		t.Fatalf("%s label %s = %q, want v1beta2", crdName, contractLabel, got)
 	}
 }
 
