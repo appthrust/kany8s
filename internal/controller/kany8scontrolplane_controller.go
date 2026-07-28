@@ -399,8 +399,8 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeadmBackend(
 		setBackendClusterMetadata(backend, ownerCluster)
 
 		backend.Spec.Version = cp.Spec.Version
-		if cp.Spec.Kubeadm.Replicas != nil {
-			replicas := *cp.Spec.Kubeadm.Replicas
+		if replicasIntent := kany8sControlPlaneReplicas(cp); replicasIntent != nil {
+			replicas := *replicasIntent
 			backend.Spec.Replicas = &replicas
 		} else {
 			backend.Spec.Replicas = nil
@@ -420,6 +420,19 @@ func (r *Kany8sControlPlaneReconciler) reconcileKubeadmBackend(
 	result.Status = kubeadmBackendStatusToInstanceStatus(backend)
 	result.Initialized = backend.Status.Initialization.ControlPlaneInitialized
 	return result, nil
+}
+
+func kany8sControlPlaneReplicas(cp *controlplanev1alpha1.Kany8sControlPlane) *int32 {
+	if cp == nil {
+		return nil
+	}
+	if cp.Spec.Replicas != nil {
+		return cp.Spec.Replicas
+	}
+	if cp.Spec.Kubeadm != nil {
+		return cp.Spec.Kubeadm.Replicas
+	}
+	return nil
 }
 
 func (r *Kany8sControlPlaneReconciler) reconcileExternalBackend(

@@ -2509,6 +2509,17 @@ spec:
                 required:
                 - machineTemplate
                 type: object
+              replicas:
+                description: |-
+                  replicas is the desired number of control plane replicas.
+
+                  This field is required by the Cluster API control plane provider contract.
+                  Backends which model individual control plane Machines consume it directly;
+                  managed control plane backends retain it as topology intent without
+                  translating it into a provider-specific scaling operation.
+                format: int32
+                minimum: 1
+                type: integer
               resourceGraphDefinitionRef:
                 description: |-
                   resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
@@ -5128,6 +5139,17 @@ spec:
                 required:
                 - machineTemplate
                 type: object
+              replicas:
+                description: |-
+                  replicas is the desired number of control plane replicas.
+
+                  This field is required by the Cluster API control plane provider contract.
+                  Backends which model individual control plane Machines consume it directly;
+                  managed control plane backends retain it as topology intent without
+                  translating it into a provider-specific scaling operation.
+                format: int32
+                minimum: 1
+                type: integer
               resourceGraphDefinitionRef:
                 description: |-
                   resourceGraphDefinitionRef selects the kro ResourceGraphDefinition used to
