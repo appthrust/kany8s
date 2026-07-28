@@ -33,6 +33,7 @@ func TestKany8sControlPlaneReconciler_ReconcilesKubeadmBackendAndReflectsStatus(
 		t.Fatalf("add cluster-api scheme: %v", err)
 	}
 
+	replicas := int32(3)
 	cp := &controlplanev1alpha1.Kany8sControlPlane{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      demoName,
@@ -40,7 +41,8 @@ func TestKany8sControlPlaneReconciler_ReconcilesKubeadmBackendAndReflectsStatus(
 			UID:       types.UID("00000000-0000-0000-0000-000000000000"),
 		},
 		Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
-			Version: "v1.34.0",
+			Version:  "v1.34.0",
+			Replicas: &replicas,
 			Kubeadm: &controlplanev1alpha1.Kany8sControlPlaneKubeadmSpec{
 				MachineTemplate: controlplanev1alpha1.Kany8sKubeadmControlPlaneMachineTemplate{
 					InfrastructureRef: clusterv1.ContractVersionedObjectReference{
@@ -78,6 +80,9 @@ func TestKany8sControlPlaneReconciler_ReconcilesKubeadmBackendAndReflectsStatus(
 	}
 	if backend.Spec.Version != "v1.34.0" {
 		t.Fatalf("backend spec.version = %q, want %q", backend.Spec.Version, "v1.34.0")
+	}
+	if backend.Spec.Replicas == nil || *backend.Spec.Replicas != replicas {
+		t.Fatalf("backend spec.replicas = %v, want %d", backend.Spec.Replicas, replicas)
 	}
 	if backend.Spec.MachineTemplate.InfrastructureRef.Kind != "DockerMachineTemplate" {
 		t.Fatalf("backend machineTemplate.infrastructureRef.kind = %q, want %q", backend.Spec.MachineTemplate.InfrastructureRef.Kind, "DockerMachineTemplate")
@@ -139,6 +144,50 @@ func TestKany8sControlPlaneReconciler_ReconcilesKubeadmBackendAndReflectsStatus(
 	ready := meta.FindStatusCondition(got.Status.Conditions, conditionTypeReady)
 	if ready == nil || ready.Status != metav1.ConditionTrue {
 		t.Fatalf("control plane Ready condition = %v, want True", ready)
+	}
+}
+
+func TestKany8sControlPlaneReplicasPrefersCAPIContractAndRetainsLegacyFallback(t *testing.T) {
+	t.Parallel()
+
+	topLevel := int32(3)
+	legacy := int32(1)
+	tests := []struct {
+		name string
+		cp   *controlplanev1alpha1.Kany8sControlPlane
+		want *int32
+	}{
+		{name: "nil control plane"},
+		{
+			name: "top-level CAPI contract wins",
+			cp: &controlplanev1alpha1.Kany8sControlPlane{Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+				Replicas: &topLevel,
+				Kubeadm:  &controlplanev1alpha1.Kany8sControlPlaneKubeadmSpec{Replicas: &legacy},
+			}},
+			want: &topLevel,
+		},
+		{
+			name: "legacy kubeadm field remains a fallback",
+			cp: &controlplanev1alpha1.Kany8sControlPlane{Spec: controlplanev1alpha1.Kany8sControlPlaneSpec{
+				Kubeadm: &controlplanev1alpha1.Kany8sControlPlaneKubeadmSpec{Replicas: &legacy},
+			}},
+			want: &legacy,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := kany8sControlPlaneReplicas(tt.cp)
+			if tt.want == nil {
+				if got != nil {
+					t.Fatalf("replicas = %d, want nil", *got)
+				}
+				return
+			}
+			if got == nil || *got != *tt.want {
+				t.Fatalf("replicas = %v, want %d", got, *tt.want)
+			}
+		})
 	}
 }
 

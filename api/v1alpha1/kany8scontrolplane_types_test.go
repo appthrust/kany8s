@@ -22,6 +22,13 @@ func TestKany8sControlPlaneSpec_MVPFields(t *testing.T) {
 		t.Errorf("Kany8sControlPlaneSpec should not include scaffold field Foo")
 	}
 
+	assertField(t, specType, "Replicas", "replicas,omitempty", func(f reflect.StructField) error {
+		if f.Type.Kind() != reflect.Ptr || f.Type.Elem().Kind() != reflect.Int32 {
+			return newTypeErr(f.Type.String(), "*int32")
+		}
+		return nil
+	})
+
 	assertField(t, specType, "Version", "version", func(f reflect.StructField) error {
 		if f.Type.Kind() != reflect.String {
 			return newTypeErr(f.Type.String(), "string")

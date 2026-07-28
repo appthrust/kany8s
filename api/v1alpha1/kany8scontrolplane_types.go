@@ -77,6 +77,16 @@ type Kany8sControlPlaneExternalBackendSpec struct {
 
 // Kany8sControlPlaneSpec defines the desired state of Kany8sControlPlane.
 type Kany8sControlPlaneSpec struct {
+	// replicas is the desired number of control plane replicas.
+	//
+	// This field is required by the Cluster API control plane provider contract.
+	// Backends which model individual control plane Machines consume it directly;
+	// managed control plane backends retain it as topology intent without
+	// translating it into a provider-specific scaling operation.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+
 	// version is the Kubernetes version to use for the control plane.
 	// +kubebuilder:validation:MinLength=1
 	Version string `json:"version"`
