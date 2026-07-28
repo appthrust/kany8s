@@ -34,7 +34,7 @@ func TestClusterTopologyVersionChangePropagatesToKroInstance(t *testing.T) {
 	crd := &apiextensionsv1.CustomResourceDefinition{}
 	g.Expect(yaml.Unmarshal(crdBytes, crd)).To(Succeed())
 	g.Expect(crd.Labels).NotTo(BeNil())
-	g.Expect(crd.Labels["cluster.x-k8s.io/v1beta2"]).To(Equal("v1alpha1"))
+	g.Expect(crd.Labels["cluster.x-k8s.io/v1beta2"]).To(Equal("v1beta2"))
 
 	scheme := runtime.NewScheme()
 	g.Expect(corev1.AddToScheme(scheme)).To(Succeed())

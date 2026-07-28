@@ -162,7 +162,7 @@ type Kany8sControlPlaneStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1alpha1"
+// +kubebuilder:metadata:labels="cluster.x-k8s.io/v1beta2=v1beta2"
 // +kubebuilder:printcolumn:name="INITIALIZED",type=boolean,JSONPath=".status.initialization.controlPlaneInitialized"
 // +kubebuilder:printcolumn:name="ENDPOINT",type=string,JSONPath=".spec.controlPlaneEndpoint.host"
 

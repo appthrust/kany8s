@@ -27,7 +27,7 @@ func TestKany8sClusterAPIScaffoldExists(t *testing.T) {
 		"Provisioned bool",
 		"Conditions []metav1.Condition",
 		"// +kubebuilder:subresource:status",
-		"cluster.x-k8s.io/v1beta2=v1alpha1",
+		"cluster.x-k8s.io/v1beta2=v1beta2",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(typesGo, want) {
@@ -52,7 +52,7 @@ func TestGeneratedCRDBasesContainExpectedSchemaForKany8sCluster(t *testing.T) {
 	crd := string(crdBytes)
 	wantSubstrings := []string{
 		"kind: CustomResourceDefinition",
-		"cluster.x-k8s.io/v1beta2: v1alpha1",
+		"cluster.x-k8s.io/v1beta2: v1beta2",
 		"name: kany8sclusters.infrastructure.cluster.x-k8s.io",
 		"group: infrastructure.cluster.x-k8s.io",
 		"kind: Kany8sCluster",
